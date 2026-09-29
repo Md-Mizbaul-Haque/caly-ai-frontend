@@ -1,5 +1,5 @@
 import './global.css';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
@@ -8,25 +8,63 @@ import LogFoodScreen from './src/screens/LogFoodScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import BottomNav from './src/components/ui/BottomNav';
-import { mockMeals } from './src/lib/mockMeals';
+import { fetchWeek, createMeal, deleteMealById } from './src/lib/mealsApi';
 const tokens = require('./src/theme/tokens.js');
 
 export default function App() {
   const [tab, setTab] = useState('dashboard');
-  const [meals, setMeals] = useState(mockMeals);
+  const [meals, setMeals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [goal, setGoal] = useState(2000);
-  function handleSave(meal) {
-    setMeals(prev => [{ id: Date.now().toString(), loggedAt: new Date().toISOString(), ...meal }, ...prev]);
+  const snapshotRef = useRef([]);
+
+  const loadWeek = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setMeals(await fetchWeek(new Date()));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadWeek(); }, [loadWeek]);
+
+  async function handleSave(meal) {
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = { id: tempId, loggedAt: new Date().toISOString(), emoji: '🍽️', ...meal };
+    setMeals(prev => [optimistic, ...prev]);
     setTab('dashboard');
+    try {
+      const saved = await createMeal({ ...meal, loggedAt: optimistic.loggedAt });
+      setMeals(prev => prev.map(m => (m.id === tempId ? saved : m)));
+    } catch (e) {
+      setMeals(prev => prev.filter(m => m.id !== tempId));
+      setError(e.message);
+    }
   }
+
   function deleteMeal(id) {
-    setMeals(prev => prev.filter(m => m.id !== id));
+    setMeals(prev => {
+      snapshotRef.current = prev;
+      return prev.filter(m => m.id !== id);
+    });
+    deleteMealById(id).catch(e => {
+      setMeals(snapshotRef.current);
+      setError(e.message);
+    });
   }
+
   return (
     <SafeAreaProvider>
     <SafeAreaView edges={['top']} className="flex-1 bg-cream">
       <View className="flex-1">
-        {tab === 'dashboard' && <DashboardScreen meals={meals} goal={goal} onAdd={() => setTab('log')} onDelete={deleteMeal} />}
+        {tab === 'dashboard' && (
+          <DashboardScreen meals={meals} goal={goal} loading={loading} error={error} onRetry={loadWeek} onAdd={() => setTab('log')} onDelete={deleteMeal} />
+        )}
         {tab === 'log' && <LogFoodScreen onSave={handleSave} />}
         {tab === 'history' && <HistoryScreen meals={meals} goal={goal} onAdd={() => setTab('log')} />}
         {tab === 'profile' && <ProfileScreen goal={goal} setGoal={setGoal} />}
