@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, View, Text, Image, useWindowDimensions } from 'react-native';
+import { ScrollView, View, Text, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Beef, Wheat, Droplet } from 'lucide-react-native';
 import Card from '../components/ui/Card';
 import ProgressRing from '../components/ui/ProgressRing';
@@ -9,7 +9,8 @@ import DaySelector from '../components/dashboard/DaySelector';
 import MealRow from '../components/dashboard/MealRow';
 import { calcTotals } from '../utils/totals';
 import { dateKey } from '../utils/format';
-import { mockStats } from '../lib/mockMeals';
+import PrimaryButton from '../components/ui/Button';
+const tokens = require('../theme/tokens.js');
 
 const MACROS = [
   { key: 'protein', label: 'Protein', target: 120, color: '#FF6B35', icon: Beef },
@@ -17,7 +18,7 @@ const MACROS = [
   { key: 'fat', label: 'Fat', target: 65, color: '#22C55E', icon: Droplet },
 ];
 
-export default function DashboardScreen({ meals = [], goal = 2000, onAdd, onDelete }) {
+export default function DashboardScreen({ meals = [], goal = 2000, loading = false, error = null, onRetry, onAdd, onDelete }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [macroIndex, setMacroIndex] = useState(0);
   const { width } = useWindowDimensions();
@@ -27,6 +28,18 @@ export default function DashboardScreen({ meals = [], goal = 2000, onAdd, onDele
     [meals, selectedDate]
   );
   const t = calcTotals(dayMeals, goal);
+
+  const totalsByDate = useMemo(() => {
+    const grouped = {};
+    for (const m of meals) {
+      const k = dateKey(m.loggedAt);
+      if (!k) continue;
+      (grouped[k] ||= []).push(m);
+    }
+    const out = {};
+    for (const [k, list] of Object.entries(grouped)) out[k] = calcTotals(list, goal);
+    return out;
+  }, [meals, goal]);
 
   const contentWidth = Math.min(width, 480) - 32;
   const cardWidth = Math.max(100, Math.floor((contentWidth - 16) / 3));
@@ -39,19 +52,26 @@ export default function DashboardScreen({ meals = [], goal = 2000, onAdd, onDele
     >
       <View style={{ width: '100%', maxWidth: 480, alignSelf: 'center' }}>
         <View className="flex-row items-center">
-          <View className="w-8 h-8 rounded-full overflow-hidden bg-white border border-[#F1E8E0] items-center justify-center">
-            <Image source={require('../../assets/splash-logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
-          </View>
-          <Text className="text-lg font-bold text-ink ml-2.5">Caly AI</Text>
+          <Text className="text-lg font-bold text-ink">Caly AI</Text>
           <View className="flex-1" />
-          <View className="flex-row items-center bg-white border border-[#F1E8E0] rounded-full px-3 py-1.5" style={{ gap: 4 }}>
-            <Text className="text-xs">🔥</Text>
-            <Text className="text-sm font-bold text-ink">{mockStats.streak}</Text>
-          </View>
         </View>
 
+        {loading && meals.length === 0 && (
+          <View className="items-center justify-center py-16">
+            <ActivityIndicator size="large" color={tokens.colors.primary} />
+            <Text className="text-sm text-muted mt-3">Loading your week…</Text>
+          </View>
+        )}
+        {error && meals.length === 0 && !loading && (
+          <Card style={{ marginTop: 4 }}>
+            <Text className="font-bold text-ink mb-1">Couldn't load meals</Text>
+            <Text className="text-sm text-muted mb-3">{error}</Text>
+            <PrimaryButton title="Retry" onPress={onRetry} />
+          </Card>
+        )}
+
         <View className="mt-4">
-          <DaySelector selected={selectedDate} onSelect={setSelectedDate} />
+          <DaySelector selected={selectedDate} onSelect={setSelectedDate} totalsByDate={totalsByDate} goal={goal} />
         </View>
 
         <Card style={{ marginTop: 16 }}>

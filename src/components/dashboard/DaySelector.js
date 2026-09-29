@@ -1,5 +1,7 @@
 import { ScrollView, Pressable, Text, View } from 'react-native';
 import { dateKey } from '../../utils/format';
+import ProgressRing from '../ui/ProgressRing';
+const tokens = require('../../theme/tokens.js');
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -8,7 +10,7 @@ function buildWeek(reference) {
   return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
 }
 
-export default function DaySelector({ selected, onSelect }) {
+export default function DaySelector({ selected, onSelect, totalsByDate = {}, goal = 2000 }) {
   const today = new Date();
   const days = buildWeek(today);
   const todayKey = dateKey(today);
@@ -19,6 +21,7 @@ export default function DaySelector({ selected, onSelect }) {
         const key = dateKey(d);
         const isSelected = key === selectedKey;
         const isToday = key === todayKey;
+        const eaten = (totalsByDate[key] && totalsByDate[key].eaten) || 0;
         return (
           <Pressable
             key={key}
@@ -29,6 +32,16 @@ export default function DaySelector({ selected, onSelect }) {
           >
             <Text className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-muted'}`}>{DAY_LABELS[d.getDay()]}</Text>
             <Text className={`text-sm font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-ink'}`}>{d.getDate()}</Text>
+            <View className="mt-1.5">
+              <ProgressRing
+                eaten={eaten}
+                goal={goal}
+                size={36}
+                strokeWidth={4}
+                color={isSelected ? '#FFFFFF' : tokens.colors.primary}
+                trackColor={isSelected ? 'rgba(255,255,255,0.35)' : tokens.colors.border}
+              />
+            </View>
           </Pressable>
         );
       })}
