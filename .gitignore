@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# superpowers execution scratch (ledger, briefs, review packages)
+/.superpowers/
