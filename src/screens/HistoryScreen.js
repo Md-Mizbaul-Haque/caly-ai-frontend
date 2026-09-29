@@ -2,8 +2,8 @@ import { ScrollView, Text, View } from 'react-native';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import { calcTotals } from '../utils/totals';
-export default function HistoryScreen({ meals, onAdd }) {
-  const t = calcTotals(meals, 2000);
+export default function HistoryScreen({ meals = [], goal = 2000, onAdd }) {
+  const t = calcTotals(meals, goal);
   const days = ['M','T','W','T','F','S','S'];
   return (
     <ScrollView className="flex-1 bg-cream px-4 pt-12">

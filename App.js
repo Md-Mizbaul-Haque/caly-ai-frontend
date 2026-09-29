@@ -24,7 +24,7 @@ export default function App() {
       <View className="flex-1">
         {tab === 'dashboard' && <DashboardScreen meals={meals} goal={goal} onAdd={() => setTab('log')} onDelete={deleteMeal} />}
         {tab === 'log' && <LogFoodScreen onSave={handleSave} />}
-        {tab === 'history' && <HistoryScreen meals={meals} onAdd={() => setTab('log')} />}
+        {tab === 'history' && <HistoryScreen meals={meals} goal={goal} onAdd={() => setTab('log')} />}
         {tab === 'profile' && <ProfileScreen goal={goal} setGoal={setGoal} />}
       </View>
       <View className="flex-row border-t border-[#F1E8E0] bg-white pb-6 pt-2">

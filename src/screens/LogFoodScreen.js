@@ -11,6 +11,7 @@ export default function LogFoodScreen({ onSave }) {
   const [name, setName] = useState('');
   const [kcal, setKcal] = useState('');
   const [type, setType] = useState('Snack');
+  const canEstimate = aiText.trim().length > 0;
   const canSave = name.trim().length > 0 && Number(kcal) > 0;
   return (
     <ScrollView className="flex-1 bg-cream px-4 pt-12">
@@ -18,8 +19,9 @@ export default function LogFoodScreen({ onSave }) {
       <Card>
         <Text className="font-bold text-ink mb-2">AI estimate (mock v1)</Text>
         <TextInput value={aiText} onChangeText={setAiText} placeholder="e.g. 2 eggs + toast" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-        <PrimaryButton title="Estimate" onPress={() => setEst(estimateMock(aiText))} />
-        {est && <Text className="text-muted mt-2">{est.kcal} kcal • P{est.protein} C{est.carbs} F{est.fat}</Text>}
+        <PrimaryButton title="Estimate" disabled={!canEstimate} onPress={() => setEst(estimateMock(aiText))} />
+        {!canEstimate && <Text className="text-muted mt-2">Type a food first to estimate</Text>}
+        {est && est.kcal > 0 && <Text className="text-muted mt-2">{est.kcal} kcal • P{est.protein} C{est.carbs} F{est.fat}</Text>}
       </Card>
       <View className="mt-4 mb-24"><Card>
         <Text className="font-bold text-ink mb-2">Manual entry</Text>
