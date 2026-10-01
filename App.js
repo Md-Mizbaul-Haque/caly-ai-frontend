@@ -141,10 +141,10 @@ export default function App() {
   }
 
   function handleSaveScan(meal) {
+    const imageUrl = scanResult && scanResult.imageUri ? scanResult.imageUri : (pendingPhoto || undefined);
     setScanResult(null);
-    setPendingPhoto(null);
-    if (scanResult && scanResult.imageUri) setPendingPhoto(scanResult.imageUri);
-    handleSave(meal);
+    setPendingPhoto(imageUrl || null);
+    handleSave(imageUrl ? { ...meal, imageUrl } : meal);
   }
 
   function handleTabChange(next) {
