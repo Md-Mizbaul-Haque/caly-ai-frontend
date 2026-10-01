@@ -14,7 +14,7 @@ import QuickLogSheet from './src/components/ui/QuickLogSheet';
 import ThemedToast from './src/components/ui/ThemedToast';
 import SplashOverlay from './src/components/SplashOverlay';
 import { fetchWeek, createMeal, deleteMealById } from './src/lib/mealsApi';
-import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal } from './src/lib/weightsApi';
+import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from './src/lib/weightsApi';
 import { fetchMe } from './src/lib/authApi';
 import { getToken, setSessionExpiredHandler } from './src/lib/tokenStore';
 import WeightLogSheet from './src/components/WeightLogSheet';
@@ -169,6 +169,18 @@ export default function App() {
     }
   }
 
+  async function handleDeleteWeight(id) {
+    const prev = weights;
+    setWeights(w => w.filter(x => (x.id || x._id) !== id));
+    try {
+      await deleteWeight(id);
+      toastSuccess('Weight deleted', '');
+    } catch (e) {
+      setWeights(prev);
+      toastError("Couldn't delete", e.message);
+    }
+  }
+
   const todayRemaining = Math.max(
     0,
     calcTotals(meals.filter(m => dateKey(m.loggedAt) === dateKey(new Date())), goal).remaining
@@ -209,6 +221,8 @@ export default function App() {
             weights={weights}
             weightGoal={weightGoal}
             onLogWeight={() => setLogWeightOpen(true)}
+            onRetry={loadWeek}
+            onDeleteWeight={handleDeleteWeight}
           />
         )}
         {tab === 'profile' && <ProfileScreen goal={goal} setGoal={setGoal} />}

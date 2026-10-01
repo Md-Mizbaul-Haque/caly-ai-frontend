@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, View, Text, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { Beef, Wheat, Droplet } from 'lucide-react-native';
+import { ScrollView, View, Text, ActivityIndicator } from 'react-native';
+import { Beef, Wheat, Droplet } from '../components/ui/icons';
 import Card from '../components/ui/Card';
 import ProgressRing from '../components/ui/ProgressRing';
 import MacroCard from '../components/ui/MacroCard';
@@ -12,16 +12,17 @@ import { dateKey } from '../utils/format';
 import PrimaryButton from '../components/ui/Button';
 const tokens = require('../theme/tokens.js');
 
-const MACROS = [
-  { key: 'protein', label: 'Protein', target: 120, color: '#FF6B35', icon: Beef },
-  { key: 'carbs', label: 'Carbs', target: 250, color: '#FACC15', icon: Wheat },
-  { key: 'fat', label: 'Fat', target: 65, color: '#22C55E', icon: Droplet },
-];
+function macroTargets(goal) {
+  return [
+    { key: 'protein', label: 'Protein', target: Math.round(goal * 0.25 / 4), color: '#FF6B35', icon: Beef },
+    { key: 'carbs', label: 'Carbs', target: Math.round(goal * 0.50 / 4), color: '#FACC15', icon: Wheat },
+    { key: 'fat', label: 'Fat', target: Math.round(goal * 0.25 / 9), color: '#22C55E', icon: Droplet },
+  ];
+}
 
 export default function DashboardScreen({ meals = [], goal = 2000, loading = false, error = null, onRetry, onAdd, onDelete }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [macroIndex, setMacroIndex] = useState(0);
-  const { width } = useWindowDimensions();
+  const MACROS = macroTargets(goal);
 
   const dayMeals = useMemo(
     () => meals.filter(m => dateKey(m.loggedAt) === dateKey(selectedDate)),
@@ -40,10 +41,6 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
     for (const [k, list] of Object.entries(grouped)) out[k] = calcTotals(list, goal);
     return out;
   }, [meals, goal]);
-
-  const contentWidth = Math.min(width, 480) - 32;
-  const cardWidth = Math.max(100, Math.floor((contentWidth - 16) / 3));
-  const snapInterval = cardWidth + 8;
 
   return (
     <ScrollView
@@ -64,7 +61,7 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
         )}
         {error && meals.length === 0 && !loading && (
           <Card style={{ marginTop: 4 }}>
-            <Text className="font-bold text-ink mb-1">Couldn't load meals</Text>
+            <Text className="font-bold text-ink mb-1">{"Couldn't load meals"}</Text>
             <Text className="text-sm text-muted mb-3">{error}</Text>
             <PrimaryButton title="Retry" onPress={onRetry} />
           </Card>
@@ -89,20 +86,7 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
           </View>
         </Card>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={snapInterval}
-          decelerationRate="fast"
-          className="mt-4"
-          contentContainerStyle={{ gap: 8 }}
-          onScroll={e => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / snapInterval);
-            const clamped = Math.min(MACROS.length - 1, Math.max(0, idx));
-            if (clamped !== macroIndex) setMacroIndex(clamped);
-          }}
-          scrollEventThrottle={16}
-        >
+        <View className="flex-row mt-4" style={{ gap: 8 }}>
           {MACROS.map(m => (
             <MacroCard
               key={m.key}
@@ -111,18 +95,12 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
               target={m.target}
               color={m.color}
               icon={m.icon}
-              style={{ width: cardWidth }}
+              style={{ flex: 1 }}
             />
-          ))}
-        </ScrollView>
-
-        <View className="flex-row justify-center mt-3" style={{ gap: 6 }}>
-          {MACROS.map((m, i) => (
-            <View key={m.key} className={`h-1.5 rounded-full ${i === macroIndex ? 'w-4 bg-primary' : 'w-1.5 bg-[#F1E8E0]'}`} />
           ))}
         </View>
 
-        <Text className="text-base font-bold text-ink mt-6 mb-3">Recently uploaded</Text>
+        <Text className="text-base font-bold text-ink mt-6 mb-3">{"Today's Meals"}</Text>
         {dayMeals.length === 0 ? (
           <Card>
             <EmptyState onCta={onAdd} />
