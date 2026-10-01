@@ -11,9 +11,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/caly-logo.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.mizba.calyaifrontend"
@@ -30,7 +29,21 @@
           "imageWidth": 200,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Caly AI to access your camera to scan your meals"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Caly AI to access your photos to log meals",
+          "cameraPermission": "Allow Caly AI to access your camera to scan your meals"
+        }
+      ],
+      "expo-secure-store"
     ]
   }
 }

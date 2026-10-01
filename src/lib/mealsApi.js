@@ -10,6 +10,10 @@ export function weekRange(reference) {
 
 export async function fetchWeek(reference = new Date()) {
   const { from, to } = weekRange(reference);
+  return fetchMeals(from, to);
+}
+
+export async function fetchMeals(from, to) {
   const data = await apiGet(`/api/meals?from=${from}&to=${to}`);
   return data.meals;
 }
