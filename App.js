@@ -57,12 +57,15 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { loadWeek(); }, [loadWeek]);
+  useEffect(() => {
+    setSessionExpiredHandler(() => setUser(null));
+  }, []);
+
+  useEffect(() => { if (authChecked && user) loadWeek(); }, [authChecked, user, loadWeek]);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      setSessionExpiredHandler(() => { if (alive) setUser(null); });
       const t = await getToken();
       if (!t) { if (alive) setAuthChecked(true); return; }
       try {
@@ -78,6 +81,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!user) return;
     let alive = true;
     (async () => {
       try {
@@ -93,7 +97,7 @@ export default function App() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const minTimer = setTimeout(() => setSplashMin(true), SPLASH_MIN_MS);
@@ -117,6 +121,7 @@ export default function App() {
     try {
       const saved = await createMeal({ ...meal, loggedAt: optimistic.loggedAt });
       setMeals(prev => prev.map(m => (m.id === tempId ? saved : m)));
+      setPendingPhoto(null);
       toastSuccess('Meal logged', saved.name ?? meal.name);
     } catch (e) {
       setMeals(prev => prev.filter(m => m.id !== tempId));

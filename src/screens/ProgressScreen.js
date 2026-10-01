@@ -72,7 +72,7 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
   const entries = useMemo(
     () =>
       weights
-        .map(w => ({ date: new Date(w.loggedAt), value: Number(w.value) }))
+        .map(w => ({ id: w.id || w._id, date: new Date(w.loggedAt), value: Number(w.value) }))
         .filter(w => !Number.isNaN(w.date.getTime()) && Number.isFinite(w.value))
         .sort((a, b) => a.date - b.date),
     [weights]
