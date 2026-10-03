@@ -7,6 +7,7 @@ import LogFoodScreen from './src/screens/LogFoodScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 import PictureUploadScreen from './src/screens/PictureUploadScreen';
 import ScanResultScreen from './src/screens/ScanResultScreen';
 import BottomNav from './src/components/ui/BottomNav';
@@ -43,6 +44,7 @@ export default function App() {
   const [logWeightOpen, setLogWeightOpen] = useState(false);
   const [splashMin, setSplashMin] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
+  const [authChoice, setAuthChoice] = useState(null);
   const snapshotRef = useRef([]);
 
   const loadWeek = useCallback(async () => {
@@ -58,7 +60,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setSessionExpiredHandler(() => setUser(null));
+    setSessionExpiredHandler(() => {
+      setUser(null);
+      setAuthChoice(null);
+    });
   }, []);
 
   useEffect(() => { if (authChecked && user) loadWeek(); }, [authChecked, user, loadWeek]);
@@ -194,8 +199,16 @@ export default function App() {
   if (!authChecked) return null;
   if (!user) return (
     <SafeAreaProvider>
-    <SafeAreaView edges={['top']} className="flex-1 bg-cream">
-      <AuthScreen onAuthed={(u) => { setUser(u); if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal); loadWeek(); }} />
+    <SafeAreaView edges={['top']} className={`flex-1 ${authChoice ? 'bg-cream' : 'bg-[#F2F2F2]'}`}>
+      {authChoice ? (
+        <AuthScreen
+          initialMode={authChoice}
+          onBack={() => setAuthChoice(null)}
+          onAuthed={(u) => { setAuthChoice(null); setUser(u); if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal); loadWeek(); }}
+        />
+      ) : (
+        <WelcomeScreen onLogin={() => setAuthChoice('login')} onRegister={() => setAuthChoice('register')} />
+      )}
       <ThemedToast />
     </SafeAreaView>
     </SafeAreaProvider>
