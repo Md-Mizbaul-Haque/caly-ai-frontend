@@ -6,7 +6,11 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import LogFoodScreen from './src/screens/LogFoodScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import AuthScreen from './src/screens/AuthScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import VerifyScreen from './src/screens/VerifyScreen';
+import ForgotScreen from './src/screens/ForgotScreen';
+import OnboardingWizard from './src/screens/onboarding/OnboardingWizard';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import PictureUploadScreen from './src/screens/PictureUploadScreen';
 import ScanResultScreen from './src/screens/ScanResultScreen';
@@ -16,7 +20,7 @@ import ThemedToast from './src/components/ui/ThemedToast';
 import SplashOverlay from './src/components/SplashOverlay';
 import { fetchWeek, createMeal, deleteMealById } from './src/lib/mealsApi';
 import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from './src/lib/weightsApi';
-import { fetchMe } from './src/lib/authApi';
+import { login, register, verifyEmail, resendCode, fetchMe } from './src/lib/authApi';
 import { getToken, setSessionExpiredHandler } from './src/lib/tokenStore';
 import WeightLogSheet from './src/components/WeightLogSheet';
 import { calcTotals } from './src/utils/totals';
@@ -44,7 +48,10 @@ export default function App() {
   const [logWeightOpen, setLogWeightOpen] = useState(false);
   const [splashMin, setSplashMin] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
-  const [authChoice, setAuthChoice] = useState(null);
+  const [authStage, setAuthStage] = useState('welcome');
+  const [stageEmail, setStageEmail] = useState('');
+  const [verifyNext, setVerifyNext] = useState('app');
+  const [authBusy, setAuthBusy] = useState(false);
   const snapshotRef = useRef([]);
 
   const loadWeek = useCallback(async () => {
@@ -62,7 +69,7 @@ export default function App() {
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setUser(null);
-      setAuthChoice(null);
+      setAuthStage('welcome');
     });
   }, []);
 
@@ -191,6 +198,73 @@ export default function App() {
     }
   }
 
+  async function handleLogin(email, password) {
+    setAuthBusy(true);
+    try {
+      const data = await login(email, password);
+      setAuthStage('welcome');
+      setUser(data.user);
+      if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
+      loadWeek();
+      toastSuccess('Welcome', 'Signed in');
+    } catch (e) {
+      if (e.needsVerification) {
+        setStageEmail(email);
+        setVerifyNext('app');
+        setAuthStage('verify');
+        toastSuccess('Check email', 'Verify your email to continue');
+      } else {
+        toastError('Login failed', e.message);
+      }
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleRegister(name, email, password) {
+    setAuthBusy(true);
+    try {
+      await register(name, email, password);
+      setStageEmail(email);
+      setVerifyNext('onboarding');
+      setAuthStage('verify');
+      toastSuccess('Check email', 'Enter the verification code');
+    } catch (e) {
+      toastError('Registration failed', e.message);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleVerify(email, code) {
+    setAuthBusy(true);
+    try {
+      const data = await verifyEmail(email, code);
+      if (verifyNext === 'onboarding') {
+        setAuthStage('onboarding');
+      } else {
+        setAuthStage('welcome');
+        setUser(data.user);
+        if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
+        loadWeek();
+        toastSuccess('Welcome', 'Verified');
+      }
+    } catch (e) {
+      toastError('Verification failed', e.message);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleResend(email) {
+    try {
+      await resendCode(email);
+      toastSuccess('Code resent', 'Check your email');
+    } catch (e) {
+      toastError('Could not resend', e.message);
+    }
+  }
+
   const todayRemaining = Math.max(
     0,
     calcTotals(meals.filter(m => dateKey(m.loggedAt) === dateKey(new Date())), goal).remaining
@@ -199,15 +273,49 @@ export default function App() {
   if (!authChecked) return null;
   if (!user) return (
     <SafeAreaProvider>
-    <SafeAreaView edges={['top']} className={`flex-1 ${authChoice ? 'bg-cream' : 'bg-[#F2F2F2]'}`}>
-      {authChoice ? (
-        <AuthScreen
-          initialMode={authChoice}
-          onBack={() => setAuthChoice(null)}
-          onAuthed={(u) => { setAuthChoice(null); setUser(u); if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal); loadWeek(); }}
+    <SafeAreaView edges={['top']} className="flex-1 bg-[#F2F2F2]">
+      {authStage === 'welcome' && (
+        <WelcomeScreen onLogin={() => setAuthStage('login')} onRegister={() => setAuthStage('register')} />
+      )}
+      {authStage === 'login' && (
+        <LoginScreen
+          onBack={() => setAuthStage('welcome')}
+          onSubmit={handleLogin}
+          onForgot={() => setAuthStage('forgot')}
+          onSwitchRegister={() => setAuthStage('register')}
+          busy={authBusy}
+          prefillEmail={stageEmail}
         />
-      ) : (
-        <WelcomeScreen onLogin={() => setAuthChoice('login')} onRegister={() => setAuthChoice('register')} />
+      )}
+      {authStage === 'register' && (
+        <RegisterScreen
+          onBack={() => setAuthStage('welcome')}
+          onSubmit={handleRegister}
+          onSwitchLogin={() => setAuthStage('login')}
+          busy={authBusy}
+        />
+      )}
+      {authStage === 'verify' && (
+        <VerifyScreen
+          email={stageEmail}
+          onBack={() => setAuthStage('welcome')}
+          onVerify={handleVerify}
+          onResend={handleResend}
+          busy={authBusy}
+        />
+      )}
+      {authStage === 'forgot' && (
+        <ForgotScreen
+          onBack={() => setAuthStage('login')}
+          onDone={(em) => { setStageEmail(em); setAuthStage('login'); }}
+        />
+      )}
+      {authStage === 'onboarding' && (
+        <OnboardingWizard
+          email={stageEmail}
+          onExit={() => setAuthStage('welcome')}
+          onComplete={(u) => { setAuthStage('welcome'); setUser(u); if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal); loadWeek(); }}
+        />
       )}
       <ThemedToast />
     </SafeAreaView>
@@ -216,7 +324,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-    <SafeAreaView edges={['top']} className="flex-1 bg-cream">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
       <View className="flex-1">
         {showScan && !scanResult && (
           <PictureUploadScreen onClose={() => setShowScan(false)} onResult={handleCapture} />
