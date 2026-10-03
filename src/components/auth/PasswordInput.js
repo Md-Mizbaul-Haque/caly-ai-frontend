@@ -7,7 +7,7 @@ export default function PasswordInput({ value, onChangeText, placeholder = 'Ente
   const [hidden, setHidden] = useState(true);
   return (
     <View className="relative mb-4">
-      <AuthInput value={value} onChangeText={onChangeText} placeholder={placeholder} testID={testID} noMargin />
+      <AuthInput value={value} onChangeText={onChangeText} placeholder={placeholder} testID={testID} noMargin secureTextEntry={hidden} />
       <Pressable
         onPress={() => setHidden((h) => !h)}
         testID="password-visibility"

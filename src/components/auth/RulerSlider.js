@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { snapToStep } from '../../utils/nutrition';
 
@@ -8,6 +8,11 @@ export default function RulerSlider({ min, max, step, value, onChange, testID = 
   const ref = useRef(null);
   const count = Math.floor((max - min) / step) + 1;
   const ticks = Array.from({ length: count }, (_, i) => min + i * step);
+  const safeValue = Math.min(max, Math.max(min, value ?? min));
+  useEffect(() => {
+    ref.current?.scrollTo({ x: ((safeValue - min) / step) * TICK_W, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <View testID={testID}>
       <View className="items-center mb-2">
