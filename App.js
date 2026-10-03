@@ -17,7 +17,9 @@ import ScanResultScreen from './src/screens/ScanResultScreen';
 import BottomNav from './src/components/ui/BottomNav';
 import QuickLogSheet from './src/components/ui/QuickLogSheet';
 import ThemedToast from './src/components/ui/ThemedToast';
+import OfflineBanner from './src/components/ui/OfflineBanner';
 import SplashOverlay from './src/components/SplashOverlay';
+import { useIsOnline } from './src/lib/useIsOnline';
 import { fetchWeek, createMeal, deleteMealById } from './src/lib/mealsApi';
 import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from './src/lib/weightsApi';
 import { login, register, verifyEmail, resendCode, fetchMe } from './src/lib/authApi';
@@ -52,6 +54,7 @@ export default function App() {
   const [stageEmail, setStageEmail] = useState('');
   const [verifyNext, setVerifyNext] = useState('app');
   const [authBusy, setAuthBusy] = useState(false);
+  const online = useIsOnline();
   const snapshotRef = useRef([]);
 
   const loadWeek = useCallback(async () => {
@@ -274,6 +277,7 @@ export default function App() {
   if (!user) return (
     <SafeAreaProvider>
     <SafeAreaView edges={['top']} className="flex-1 bg-[#F2F2F2]">
+      <OfflineBanner />
       {authStage === 'welcome' && (
         <WelcomeScreen onLogin={() => setAuthStage('login')} onRegister={() => setAuthStage('register')} />
       )}
@@ -284,6 +288,7 @@ export default function App() {
           onForgot={() => setAuthStage('forgot')}
           onSwitchRegister={() => setAuthStage('register')}
           busy={authBusy}
+          online={online}
           prefillEmail={stageEmail}
         />
       )}
@@ -293,6 +298,7 @@ export default function App() {
           onSubmit={handleRegister}
           onSwitchLogin={() => setAuthStage('login')}
           busy={authBusy}
+          online={online}
         />
       )}
       {authStage === 'verify' && (
@@ -325,6 +331,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
     <SafeAreaView edges={['top']} className="flex-1 bg-cream">
+      <OfflineBanner />
       <View className="flex-1">
         {showScan && !scanResult && (
           <PictureUploadScreen onClose={() => setShowScan(false)} onResult={handleCapture} />

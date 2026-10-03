@@ -6,7 +6,7 @@ import PasswordInput from '../components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function LoginScreen({ onBack, onSubmit, onForgot, onSwitchRegister, busy, prefillEmail }) {
+export default function LoginScreen({ onBack, onSubmit, onForgot, onSwitchRegister, busy, online = true, prefillEmail }) {
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
   const valid = EMAIL_RE.test(email.trim()) && password.length > 0;
@@ -16,7 +16,7 @@ export default function LoginScreen({ onBack, onSubmit, onForgot, onSwitchRegist
       titleSize={26}
       onBack={onBack}
       ctaLabel={busy ? 'Signing in…' : 'Login'}
-      ctaDisabled={!valid || busy}
+      ctaDisabled={!valid || busy || !online}
       onCta={() => onSubmit(email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">

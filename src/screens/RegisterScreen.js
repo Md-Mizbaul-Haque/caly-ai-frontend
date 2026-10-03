@@ -6,7 +6,7 @@ import PasswordInput from '../components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy }) {
+export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, online = true }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +17,7 @@ export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy }
       titleSize={26}
       onBack={onBack}
       ctaLabel={busy ? 'Creating…' : 'Register'}
-      ctaDisabled={!valid || busy}
+      ctaDisabled={!valid || busy || !online}
       onCta={() => onSubmit(name.trim(), email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">
