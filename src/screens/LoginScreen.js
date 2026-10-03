@@ -13,14 +13,15 @@ export default function LoginScreen({ onBack, onSubmit, onForgot, onSwitchRegist
   return (
     <AuthScaffold
       title="Welcome back! Good to see you again!"
+      titleSize={26}
       onBack={onBack}
       ctaLabel={busy ? 'Signing in…' : 'Login'}
       ctaDisabled={!valid || busy}
       onCta={() => onSubmit(email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">
-          <Text className="text-[17px] text-black/60">Don&apos;t have an account? </Text>
-          <Pressable onPress={onSwitchRegister}><Text className="text-[17px] text-[#2D9CDB] font-medium">Register Now</Text></Pressable>
+          <Text className="text-[14px] text-black/60">Don&apos;t have an account? </Text>
+          <Pressable onPress={onSwitchRegister}><Text className="text-[14px] text-[#2D9CDB] font-medium">Register Now</Text></Pressable>
         </View>
       }
     >

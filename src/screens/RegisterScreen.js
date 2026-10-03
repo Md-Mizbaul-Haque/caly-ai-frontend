@@ -14,14 +14,15 @@ export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy }
   return (
     <AuthScaffold
       title="Hello! Register now to get started."
+      titleSize={26}
       onBack={onBack}
       ctaLabel={busy ? 'Creating…' : 'Register'}
       ctaDisabled={!valid || busy}
       onCta={() => onSubmit(name.trim(), email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">
-          <Text className="text-[17px] text-black/60">Already have an account? </Text>
-          <Pressable onPress={onSwitchLogin}><Text className="text-[17px] text-[#2D9CDB] font-medium">Login Now</Text></Pressable>
+          <Text className="text-[14px] text-black/60">Already have an account? </Text>
+          <Pressable onPress={onSwitchLogin}><Text className="text-[14px] text-[#2D9CDB] font-medium">Login Now</Text></Pressable>
         </View>
       }
     >

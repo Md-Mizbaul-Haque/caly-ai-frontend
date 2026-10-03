@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import BottomCTA from './BottomCTA';
 
-export default function AuthScaffold({ title, titleColor = '#000', subtitle, onBack, ctaLabel, onCta, ctaDisabled, bottomNote, children }) {
+export default function AuthScaffold({ title, titleColor = '#000', titleSize = 32, subtitle, onBack, ctaLabel, onCta, ctaDisabled, bottomNote, children }) {
   const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 bg-[#F2F2F2]">
@@ -18,9 +18,9 @@ export default function AuthScaffold({ title, titleColor = '#000', subtitle, onB
             <ChevronLeft size={26} color="#1A1A1A" />
           </Pressable>
         )}
-        <Text className="text-[32px] font-extrabold leading-[38px]" style={{ color: titleColor }}>{title}</Text>
+        <Text className="font-extrabold" style={{ color: titleColor, fontSize: titleSize, lineHeight: Math.round(titleSize * 1.2) }}>{title}</Text>
         {!!subtitle && <Text className="text-[16px] text-[#6B6B6B] mt-2 mb-6">{subtitle}</Text>}
-        <View className="flex-1">{children}</View>
+        <View className={`flex-1${subtitle ? '' : ' mt-8'}`}>{children}</View>
       </ScrollView>
       <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}>
         <BottomCTA label={ctaLabel} onPress={onCta} disabled={ctaDisabled} />
