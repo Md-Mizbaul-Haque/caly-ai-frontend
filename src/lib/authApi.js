@@ -45,8 +45,11 @@ export async function fetchMe() {
   return apiGet('/api/auth/me'); // { user }
 }
 
-export async function updateProfile(dailyGoalKcal) {
-  return apiPut('/api/auth/profile', { dailyGoalKcal }); // { user }
+export async function updateProfile(dailyGoalKcalOrPartial) {
+  const body = typeof dailyGoalKcalOrPartial === 'number'
+    ? { dailyGoalKcal: dailyGoalKcalOrPartial }
+    : dailyGoalKcalOrPartial;
+  return apiPut('/api/auth/profile', body); // { user }
 }
 
 export async function logout() {
