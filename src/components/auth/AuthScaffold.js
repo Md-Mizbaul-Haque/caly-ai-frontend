@@ -6,7 +6,7 @@ import BottomCTA from './BottomCTA';
 export default function AuthScaffold({ title, titleColor = '#000', subtitle, onBack, ctaLabel, onCta, ctaDisabled, bottomNote, children }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-[#F2F2F2]">
       <ScrollView
         className="flex-1 px-6 pt-6"
         contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
@@ -14,7 +14,7 @@ export default function AuthScaffold({ title, titleColor = '#000', subtitle, onB
       >
         {onBack && (
           <Pressable onPress={onBack} testID="auth-back" accessibilityRole="button"
-            className="w-12 h-12 rounded-2xl border border-black/20 bg-white items-center justify-center mb-6">
+            className="w-12 h-12 rounded-2xl border border-black/20 bg-[#F2F2F2] items-center justify-center mb-6">
             <ChevronLeft size={26} color="#1A1A1A" />
           </Pressable>
         )}
