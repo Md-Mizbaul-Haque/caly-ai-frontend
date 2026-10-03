@@ -22,7 +22,7 @@ import SplashOverlay from './src/components/SplashOverlay';
 import { useIsOnline } from './src/lib/useIsOnline';
 import { fetchWeek, createMeal, deleteMealById } from './src/lib/mealsApi';
 import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from './src/lib/weightsApi';
-import { login, register, verifyEmail, resendCode, fetchMe } from './src/lib/authApi';
+import { login, register, verifyEmail, resendCode, skipVerification, fetchMe } from './src/lib/authApi';
 import { getToken, setSessionExpiredHandler } from './src/lib/tokenStore';
 import WeightLogSheet from './src/components/WeightLogSheet';
 import { calcTotals } from './src/utils/totals';
@@ -268,6 +268,26 @@ export default function App() {
     }
   }
 
+  async function handleSkip(email) {
+    setAuthBusy(true);
+    try {
+      const data = await skipVerification(email);
+      if (verifyNext === 'onboarding') {
+        setAuthStage('onboarding');
+      } else {
+        setAuthStage('welcome');
+        setUser(data.user);
+        if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
+        loadWeek();
+        toastSuccess('Welcome', 'Signed in');
+      }
+    } catch (e) {
+      toastError('Could not skip', e.message);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
   const todayRemaining = Math.max(
     0,
     calcTotals(meals.filter(m => dateKey(m.loggedAt) === dateKey(new Date())), goal).remaining
@@ -307,6 +327,7 @@ export default function App() {
           onBack={() => setAuthStage('welcome')}
           onVerify={handleVerify}
           onResend={handleResend}
+          onSkip={handleSkip}
           busy={authBusy}
         />
       )}

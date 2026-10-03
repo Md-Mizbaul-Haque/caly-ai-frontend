@@ -31,6 +31,12 @@ export async function resendCode(email) {
   return apiPost('/api/auth/resend-code', { email });
 }
 
+export async function skipVerification(email) {
+  const data = await apiPost('/api/auth/skip-verification', { email });
+  await setToken(data.token);
+  return data; // { token, user }
+}
+
 export async function forgotPassword(email) {
   return apiPost('/api/auth/forgot-password', { email });
 }
