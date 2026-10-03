@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomCTA from '../../components/auth/BottomCTA';
@@ -38,6 +38,7 @@ export default function PaywallScreen({ onDone }) {
   }
   return (
     <View className="flex-1 bg-white">
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 12, flexGrow: 1 }}>
       <View className="items-end px-6 pt-6">
         <Pressable onPress={dismiss} testID="paywall-close" accessibilityRole="button" hitSlop={12}>
           <X size={28} color="#000" />
@@ -57,7 +58,7 @@ export default function PaywallScreen({ onDone }) {
           <Pressable onPress={() => toastSuccess('Terms', 'Coming soon')}><Text className="text-[15px] text-black/50">Terms</Text></Pressable>
         </View>
       </View>
-      <View style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }} />
+      </ScrollView>
       {offer && <DiscountModal onAccept={onDone} onClose={onDone} />}
     </View>
   );

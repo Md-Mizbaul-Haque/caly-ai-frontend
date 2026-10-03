@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Check, ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomCTA from '../../components/auth/BottomCTA';
 import MacroDots from '../../components/auth/MacroDots';
@@ -31,6 +31,7 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
   const insets = useSafeAreaInsets();
   const { state } = useOnboarding();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   const age = calcAge(state.birthDate);
   const plan = calcPlan({ gender: state.gender, weightKg: state.weightKg, heightCm: state.heightCm, age, activityLevel: state.activityLevel });
   const label = goalLabel(state.weightKg, state.targetWeightKg);
@@ -41,6 +42,7 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
 
   async function finish() {
     setBusy(true);
+    setFailed(false);
     try {
       await apiPut('/api/auth/profile', {
         gender: state.gender,
@@ -52,17 +54,22 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
         dailyGoalKcal: plan.amr,
         onboardingCompleted: true,
       });
+      onNext();
     } catch (e) {
+      setFailed(true);
       toastError('Could not save plan', e.message);
     } finally {
       setBusy(false);
     }
-    onNext();
   }
 
   return (
     <View className="flex-1 bg-[#F2F2F2]">
       <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 16 }}>
+        <Pressable onPress={onBack} testID="plan-back" accessibilityRole="button"
+          className="w-12 h-12 rounded-2xl border border-black/20 items-center justify-center mb-4">
+          <ChevronLeft size={26} color="#1A1A1A" />
+        </Pressable>
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-[26px] font-extrabold text-black">Your Nutrition Plan</Text>
           <View className="w-9 h-9 rounded-full border-2 border-[#2D9CDB] items-center justify-center">
@@ -97,7 +104,7 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
         </View>
       </ScrollView>
       <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}>
-        <BottomCTA label={busy ? 'Saving…' : "Let's Get Started"} onPress={finish} disabled={busy} testID="plan-done" />
+        <BottomCTA label={busy ? 'Saving…' : failed ? 'Retry' : "Let's Get Started"} onPress={finish} disabled={busy} testID="plan-done" />
       </View>
     </View>
   );

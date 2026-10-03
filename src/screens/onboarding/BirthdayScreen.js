@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import AuthScaffold from '../../components/auth/AuthScaffold';
 import RulerSlider from '../../components/auth/RulerSlider';
 import { useOnboarding } from './OnboardingContext';
+import { calcAge } from '../../utils/nutrition';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -21,7 +22,7 @@ export default function BirthdayScreen({ onNext, onBack }) {
   }
   return (
     <AuthScaffold title="When were you born?" subtitle="Please select your birthday so we can learn more about you!"
-      onBack={onBack} ctaLabel="Next" onCta={onNext}>
+      onBack={onBack} ctaLabel="Next" ctaDisabled={calcAge(state.birthDate) < 13} onCta={onNext}>
       <Text className="text-center text-[22px] font-semibold text-black mb-6">{MONTHS[m - 1]} {day} {y}</Text>
       <Text className="text-[15px] text-black/50 mb-1 ml-1">Month</Text>
       <RulerSlider min={1} max={12} step={1} value={m} onChange={(v) => setParts(y, v, day)} testID="birth-month" />

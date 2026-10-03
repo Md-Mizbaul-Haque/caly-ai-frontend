@@ -324,7 +324,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top']} className="flex-1 bg-cream">
       <View className="flex-1">
         {showScan && !scanResult && (
           <PictureUploadScreen onClose={() => setShowScan(false)} onResult={handleCapture} />

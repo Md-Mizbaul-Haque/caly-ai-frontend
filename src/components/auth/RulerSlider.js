@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Dimensions, ScrollView, Text, View } from 'react-native';
 import { snapToStep } from '../../utils/nutrition';
 
 const TICK_W = 12;
@@ -9,10 +9,14 @@ export default function RulerSlider({ min, max, step, value, onChange, testID = 
   const count = Math.floor((max - min) / step) + 1;
   const ticks = Array.from({ length: count }, (_, i) => min + i * step);
   const safeValue = Math.min(max, Math.max(min, value ?? min));
+  const halfWidth = Dimensions.get('window').width / 2;
+  function commitOffset(x) {
+    const idx = Math.round(x / TICK_W);
+    onChange(snapToStep(min + idx * step, min, step));
+  }
   useEffect(() => {
     ref.current?.scrollTo({ x: ((safeValue - min) / step) * TICK_W, animated: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [safeValue, min, step]);
   return (
     <View testID={testID}>
       <View className="items-center mb-2">
@@ -24,11 +28,9 @@ export default function RulerSlider({ min, max, step, value, onChange, testID = 
         showsHorizontalScrollIndicator={false}
         snapToInterval={TICK_W}
         decelerationRate="fast"
-        contentContainerStyle={{ paddingHorizontal: 160 }}
-        onMomentumScrollEnd={(e) => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / TICK_W);
-          onChange(snapToStep(min + idx * step, min, step));
-        }}
+        contentContainerStyle={{ paddingHorizontal: halfWidth }}
+        onMomentumScrollEnd={(e) => commitOffset(e.nativeEvent.contentOffset.x)}
+        onScrollEndDrag={(e) => commitOffset(e.nativeEvent.contentOffset.x)}
       >
         {ticks.map((t, i) => {
           const major = i % 10 === 0;
