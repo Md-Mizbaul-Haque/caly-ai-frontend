@@ -24,7 +24,7 @@ export default function SplashOverlay({ done }) {
       pointerEvents={done ? 'none' : 'auto'}
     >
       <Image
-        source={require('../../assets/caly-logo.png')}
+        source={require('../../../assets/caly-logo.png')}
         style={styles.logo}
         resizeMode="contain"
       />

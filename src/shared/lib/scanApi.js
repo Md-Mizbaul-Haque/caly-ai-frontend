@@ -1,4 +1,4 @@
-import { authedFetch } from '../../lib/api';
+import { authedFetch } from './api';
 
 /**
  * POST /api/scan — multipart photo upload, returns { items: [{name,kcal,protein,carbs,fat}] }

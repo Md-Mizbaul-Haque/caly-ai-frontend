@@ -1,6 +1,6 @@
 // Caly AI API client - point to your backend
 // Set EXPO_PUBLIC_API_URL in .env, e.g. http://localhost:5000
-import { getToken, handleUnauthorized } from '../src/lib/tokenStore';
+import { getToken, handleUnauthorized } from './tokenStore';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 

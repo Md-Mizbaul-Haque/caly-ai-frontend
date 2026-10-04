@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
-import Card from '../components/ui/Card';
-import PrimaryButton from '../components/ui/Button';
-import { toastSuccess, toastError } from '../utils/toast';
-import { updateProfile } from '../lib/authApi';
-import { API_URL } from '../../lib/api';
+import Card from '../shared/components/ui/Card';
+import PrimaryButton from '../shared/components/ui/Button';
+import { toastSuccess, toastError } from '../shared/utils/toast';
+import { updateProfile } from '../shared/lib/authApi';
+import { API_URL } from '../shared/lib/api';
 export default function ProfileScreen({ goal, setGoal }) {
   const [draft, setDraft] = useState(String(goal));
   const [busy, setBusy] = useState(false);

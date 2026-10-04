@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { OnboardingProvider } from './OnboardingContext';
-import { fetchMe, logout } from '../../lib/authApi';
-import { toastError } from '../../utils/toast';
+import { fetchMe, logout } from '../../shared/lib/authApi';
+import { toastError } from '../../shared/utils/toast';
 import GenderScreen from './GenderScreen';
 import PlanIntroScreen from './PlanIntroScreen';
 import BirthdayScreen from './BirthdayScreen';

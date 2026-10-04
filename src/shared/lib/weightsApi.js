@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete, apiPut } from '../../lib/api';
+import { apiGet, apiPost, apiDelete, apiPut } from './api';
 
 export async function fetchWeights(from, to) {
   const query = from && to ? `?from=${from}&to=${to}` : '';

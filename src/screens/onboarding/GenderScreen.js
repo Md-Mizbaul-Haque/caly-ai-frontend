@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { Circle, CircleUser, User, UserRound } from 'lucide-react-native';
-import AuthScaffold from '../../components/auth/AuthScaffold';
-import OptionCard from '../../components/auth/OptionCard';
+import AuthScaffold from '../../shared/components/auth/AuthScaffold';
+import OptionCard from '../../shared/components/auth/OptionCard';
 import { useOnboarding } from './OnboardingContext';
 
 const OPTIONS = [

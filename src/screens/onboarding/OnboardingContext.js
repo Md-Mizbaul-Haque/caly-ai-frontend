@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useState } from 'react';
-import { apiPut } from '../../../lib/api';
-import { toastError } from '../../utils/toast';
-import { ftInToCm, lbToKg } from '../../utils/nutrition';
+import { apiPut } from '../../shared/lib/api';
+import { toastError } from '../../shared/utils/toast';
+import { ftInToCm, lbToKg } from '../../shared/utils/nutrition';
 
 export function initialOnboarding(email) {
   return {

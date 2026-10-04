@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
-import AuthScaffold from '../../components/auth/AuthScaffold';
-import UnitToggle from '../../components/auth/UnitToggle';
-import RulerSlider from '../../components/auth/RulerSlider';
+import AuthScaffold from '../../shared/components/auth/AuthScaffold';
+import UnitToggle from '../../shared/components/auth/UnitToggle';
+import RulerSlider from '../../shared/components/auth/RulerSlider';
 import { useOnboarding } from './OnboardingContext';
-import { CM_PER_IN, cmToFtIn } from '../../utils/nutrition';
+import { CM_PER_IN, cmToFtIn } from '../../shared/utils/nutrition';
 
 export default function HeightScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();

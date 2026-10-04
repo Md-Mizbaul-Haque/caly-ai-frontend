@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getToken, setSessionExpiredHandler } from '../../lib/tokenStore';
-import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail } from '../../lib/authApi';
-import { toastError, toastSuccess } from '../../utils/toast';
+import { getToken, setSessionExpiredHandler } from '../../shared/lib/tokenStore';
+import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail } from '../../shared/lib/authApi';
+import { toastError, toastSuccess } from '../../shared/utils/toast';
 
 const AuthSessionContext = createContext(null);
 

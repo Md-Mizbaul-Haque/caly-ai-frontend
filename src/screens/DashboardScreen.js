@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, View, Text, ActivityIndicator } from 'react-native';
-import { Beef, Wheat, Droplet } from '../components/ui/icons';
-import Card from '../components/ui/Card';
-import ProgressRing from '../components/ui/ProgressRing';
-import MacroCard from '../components/ui/MacroCard';
-import EmptyState from '../components/ui/EmptyState';
-import DaySelector from '../components/dashboard/DaySelector';
-import MealRow from '../components/dashboard/MealRow';
-import { calcTotals } from '../utils/totals';
-import { dateKey } from '../utils/format';
-import PrimaryButton from '../components/ui/Button';
-const tokens = require('../theme/tokens.js');
+import { Beef, Wheat, Droplet } from '../shared/components/ui/icons';
+import Card from '../shared/components/ui/Card';
+import ProgressRing from '../shared/components/ui/ProgressRing';
+import MacroCard from '../shared/components/ui/MacroCard';
+import EmptyState from '../shared/components/ui/EmptyState';
+import DaySelector from '../shared/components/dashboard/DaySelector';
+import MealRow from '../shared/components/dashboard/MealRow';
+import { calcTotals } from '../shared/utils/totals';
+import { dateKey } from '../shared/utils/format';
+import PrimaryButton from '../shared/components/ui/Button';
+const tokens = require('../shared/theme/tokens.js');
 
 function macroTargets(goal) {
   return [

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from '../../lib/api';
+import { apiGet, apiPost, apiPut } from './api';
 import { setToken } from './tokenStore';
 
 // Every function throws Error with the server's message (err.status available)

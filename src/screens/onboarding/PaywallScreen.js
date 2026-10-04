@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import BottomCTA from '../../components/auth/BottomCTA';
-import { toastSuccess } from '../../utils/toast';
+import BottomCTA from '../../shared/components/auth/BottomCTA';
+import { toastSuccess } from '../../shared/utils/toast';
 
 function DiscountModal({ onAccept, onClose }) {
   const modalInsets = useSafeAreaInsets();

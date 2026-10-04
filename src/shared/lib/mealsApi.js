@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from '../../lib/api';
+import { apiGet, apiPost, apiDelete } from './api';
 import { dateKey } from '../utils/format';
 
 export function weekRange(reference) {

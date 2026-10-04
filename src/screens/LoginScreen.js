@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import AuthScaffold from '../components/auth/AuthScaffold';
-import AuthInput from '../components/auth/AuthInput';
-import PasswordInput from '../components/auth/PasswordInput';
+import AuthScaffold from '../shared/components/auth/AuthScaffold';
+import AuthInput from '../shared/components/auth/AuthInput';
+import PasswordInput from '../shared/components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

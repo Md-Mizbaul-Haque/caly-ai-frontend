@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { Target } from 'lucide-react-native';
-import AuthScaffold from '../../components/auth/AuthScaffold';
+import AuthScaffold from '../../shared/components/auth/AuthScaffold';
 
 export default function PlanIntroScreen({ onNext, onBack }) {
   return (

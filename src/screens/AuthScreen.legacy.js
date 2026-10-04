@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Card from '../components/ui/Card';
-import PrimaryButton from '../components/ui/Button';
-import Chip from '../components/ui/Chip';
-import { register, login, verifyEmail, resendCode, forgotPassword, resetPassword } from '../lib/authApi';
-import { toastSuccess, toastError } from '../utils/toast';
+import Card from '../shared/components/ui/Card';
+import PrimaryButton from '../shared/components/ui/Button';
+import Chip from '../shared/components/ui/Chip';
+import { register, login, verifyEmail, resendCode, forgotPassword, resetPassword } from '../shared/lib/authApi';
+import { toastSuccess, toastError } from '../shared/utils/toast';
 
 const MODES = ['login', 'register', 'verify', 'forgot', 'reset'];
 

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ScrollView, TextInput, Text, View, Image, Pressable } from 'react-native';
-import { X } from '../components/ui/icons';
-import Card from '../components/ui/Card';
-import Chip from '../components/ui/Chip';
-import PrimaryButton from '../components/ui/Button';
+import { X } from '../shared/components/ui/icons';
+import Card from '../shared/components/ui/Card';
+import Chip from '../shared/components/ui/Chip';
+import PrimaryButton from '../shared/components/ui/Button';
 const TYPES = ['Breakfast','Lunch','Dinner','Snack'];
 export default function LogFoodScreen({ onSave, photo = null, onRemovePhoto }) {
   const [name, setName] = useState('');
