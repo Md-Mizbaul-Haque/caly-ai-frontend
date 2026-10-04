@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const tokens = require('./src/theme/tokens.js');
+const tokens = require('./src/shared/theme/tokens.js');
 module.exports = {
   content: ["./App.js", "./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
