@@ -69,7 +69,7 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
   }
 
   return (
-    <ScrollView className="flex-1 bg-cream px-4 pt-12" contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView className="flex-1 bg-white px-4 pt-12" contentContainerStyle={{ paddingBottom: 40 }}>
       <View className="flex-row items-center mb-4">
         <Pressable onPress={onClose} accessibilityLabel="Back" hitSlop={8} className="mr-3">
           <ChevronLeft size={26} color="#1A1A1A" />

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Bike, Dumbbell, Footprints, Sofa } from 'lucide-react-native';
 import AuthScaffold from '../../components/auth/AuthScaffold';
@@ -13,15 +14,29 @@ const OPTIONS = [
 
 export default function ActivityScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
+  const [busy, setBusy] = useState(false);
+  async function goNext() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await savePartial({ activityLevel: state.activityLevel });
+      onNext();
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <AuthScaffold title="Lifestyle Activity" subtitle="This step will adjust targets based on your daily caloric burn."
-      onBack={onBack} ctaLabel="Next" ctaDisabled={!state.activityLevel}
-      onCta={async () => { await savePartial({ activityLevel: state.activityLevel }); onNext(); }}>
-      <View style={{ gap: 16 }}>
-        {OPTIONS.map(({ key, title, subtitle, Icon }) => (
-          <OptionCard key={key} title={title} subtitle={subtitle} selected={state.activityLevel === key}
-            onPress={() => update({ activityLevel: key })} icon={<Icon size={34} color="#000" />} testID={`activity-${key}`} />
-        ))}
+      onBack={onBack} ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={!state.activityLevel || busy}
+      onCta={goNext}>
+      <View style={{ gap: 12 }}>
+        {OPTIONS.map(({ key, title, subtitle, Icon }) => {
+          const selected = state.activityLevel === key;
+          return (
+            <OptionCard key={key} title={title} subtitle={subtitle} selected={selected}
+              onPress={() => update({ activityLevel: key })} icon={<Icon size={28} color={selected ? '#FF6B35' : '#1A1A1A'} />} testID={`activity-${key}`} />
+          );
+        })}
       </View>
     </AuthScaffold>
   );

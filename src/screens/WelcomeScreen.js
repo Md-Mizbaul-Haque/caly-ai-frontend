@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function WelcomeScreen({ onLogin, onRegister }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="flex-1 bg-[#F2F2F2] px-6" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+    <View className="flex-1 bg-white px-6" style={{ paddingBottom: Math.max(insets.bottom, 32) + 12 }}>
       <View className="flex-1 items-center justify-center">
         <Image
           source={require('../../assets/caly-logo.png')}
@@ -23,6 +23,7 @@ export default function WelcomeScreen({ onLogin, onRegister }) {
           testID="welcome-login"
           accessibilityRole="button"
           className="rounded-btn bg-primary items-center justify-center py-3"
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
         >
           <Text className="text-white text-lg font-bold">Login</Text>
         </Pressable>
@@ -31,6 +32,7 @@ export default function WelcomeScreen({ onLogin, onRegister }) {
           testID="welcome-register"
           accessibilityRole="button"
           className="rounded-btn items-center justify-center bg-white border border-[#F1E8E0] py-3"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
           <Text className="text-ink text-lg font-bold">Register</Text>
         </Pressable>

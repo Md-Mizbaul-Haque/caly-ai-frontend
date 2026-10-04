@@ -14,7 +14,7 @@ export default function LogFoodScreen({ onSave, photo = null, onRemovePhoto }) {
   const [type, setType] = useState('Snack');
   const canSave = name.trim().length > 0 && Number(kcal) > 0;
   return (
-    <ScrollView className="flex-1 bg-cream px-4 pt-12">
+    <ScrollView className="flex-1 bg-white px-4 pt-12">
       <Text className="text-2xl font-bold text-ink mb-4">Log food</Text>
       {photo && (
         <View className="mb-4">

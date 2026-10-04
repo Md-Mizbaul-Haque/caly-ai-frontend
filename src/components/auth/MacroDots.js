@@ -11,8 +11,8 @@ export default function MacroDots({ proteinG, fatG, carbsG }) {
       {items.map((m) => (
         <View key={m.label} className="items-center">
           <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: m.dot }} />
-          <Text className="text-[22px] font-semibold text-black mt-2">{m.amount}</Text>
-          <Text className="text-[16px] text-black/60">{m.label}</Text>
+          <Text className="text-[22px] font-semibold text-[#1A1A1A] mt-2">{m.amount}</Text>
+          <Text className="text-[16px] text-[#8A8A8A]">{m.label}</Text>
         </View>
       ))}
     </View>

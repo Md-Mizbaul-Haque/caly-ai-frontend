@@ -27,7 +27,7 @@ export default function LoginScreen({ onBack, onSubmit, onForgot, onSwitchRegist
     >
       <AuthInput value={email} onChangeText={setEmail} placeholder="Enter your email" keyboardType="email-address" testID="login-email" />
       <PasswordInput value={password} onChangeText={setPassword} placeholder="Enter your password" testID="login-password" />
-      <Pressable onPress={onForgot} className="self-end mt-1"><Text className="text-[16px] text-black/60">Forgot Password?</Text></Pressable>
+      <Pressable onPress={onForgot} className="self-end mt-1 "><Text className="text-[16px] text-black/60">Forgot Password?</Text></Pressable>
     </AuthScaffold>
   );
 }

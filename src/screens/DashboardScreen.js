@@ -44,7 +44,7 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
 
   return (
     <ScrollView
-      className="flex-1 bg-cream"
+      className="flex-1 bg-white"
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 }}
     >
       <View style={{ width: '100%', maxWidth: 480, alignSelf: 'center' }}>

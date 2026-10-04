@@ -11,6 +11,8 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import VerifyScreen from './src/screens/VerifyScreen';
 import ForgotScreen from './src/screens/ForgotScreen';
 import OnboardingWizard from './src/screens/onboarding/OnboardingWizard';
+import GenderScreen from './src/screens/onboarding/GenderScreen';
+import { OnboardingProvider } from './src/screens/onboarding/OnboardingContext';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import PictureUploadScreen from './src/screens/PictureUploadScreen';
 import ScanResultScreen from './src/screens/ScanResultScreen';
@@ -29,10 +31,25 @@ import { calcTotals } from './src/utils/totals';
 import { dateKey } from './src/utils/format';
 import { toastSuccess, toastError } from './src/utils/toast';
 
+// DEV ONLY preview — false = normal auth flow (unauthorized → welcome).
+const DEV_PREVIEW_GENDER = false;
+
 const SPLASH_MIN_MS = 600;
 const SPLASH_MAX_MS = 4000;
 
 export default function App() {
+  if (DEV_PREVIEW_GENDER) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView edges={['top']} className="flex-1 bg-white">
+          <OnboardingProvider email="dev@preview.local">
+            <GenderScreen onNext={() => {}} onBack={() => {}} />
+          </OnboardingProvider>
+          <ThemedToast />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
   const [tab, setTab] = useState('dashboard');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [navHeight, setNavHeight] = useState(0);
@@ -85,7 +102,7 @@ export default function App() {
       if (!t) { if (alive) setAuthChecked(true); return; }
       try {
         const data = await fetchMe();
-        if (alive) {
+        if (alive && !resumeOnboardingIfNeeded(data.user)) {
           setUser(data.user);
           if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
         }
@@ -201,10 +218,24 @@ export default function App() {
     }
   }
 
+  // Incomplete onboarding always resumes first — homepage only after completion.
+  function resumeOnboardingIfNeeded(user) {
+    if (user && !user.onboardingCompleted) {
+      setStageEmail(user.email);
+      setAuthStage('onboarding');
+      return true;
+    }
+    return false;
+  }
+
   async function handleLogin(email, password) {
     setAuthBusy(true);
     try {
       const data = await login(email, password);
+      if (resumeOnboardingIfNeeded(data.user)) {
+        toastSuccess('Welcome back', "Let's finish setting up your plan");
+        return;
+      }
       setAuthStage('welcome');
       setUser(data.user);
       if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
@@ -245,6 +276,8 @@ export default function App() {
       const data = await verifyEmail(email, code);
       if (verifyNext === 'onboarding') {
         setAuthStage('onboarding');
+      } else if (resumeOnboardingIfNeeded(data.user)) {
+        toastSuccess('Verified', "Let's finish setting up your plan");
       } else {
         setAuthStage('welcome');
         setUser(data.user);
@@ -274,6 +307,8 @@ export default function App() {
       const data = await skipVerification(email);
       if (verifyNext === 'onboarding') {
         setAuthStage('onboarding');
+      } else if (resumeOnboardingIfNeeded(data.user)) {
+        toastSuccess('Welcome back', "Let's finish setting up your plan");
       } else {
         setAuthStage('welcome');
         setUser(data.user);
@@ -296,7 +331,7 @@ export default function App() {
   if (!authChecked) return null;
   if (!user) return (
     <SafeAreaProvider>
-    <SafeAreaView edges={['top']} className="flex-1 bg-[#F2F2F2]">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
       <OfflineBanner />
       {authStage === 'welcome' && (
         <WelcomeScreen onLogin={() => setAuthStage('login')} onRegister={() => setAuthStage('register')} />
@@ -319,12 +354,13 @@ export default function App() {
           onSwitchLogin={() => setAuthStage('login')}
           busy={authBusy}
           online={online}
+          prefillEmail={stageEmail}
         />
       )}
       {authStage === 'verify' && (
         <VerifyScreen
           email={stageEmail}
-          onBack={() => setAuthStage('welcome')}
+          onBack={() => setAuthStage(verifyNext === 'onboarding' ? 'register' : 'login')}
           onVerify={handleVerify}
           onResend={handleResend}
           onSkip={handleSkip}
@@ -351,7 +387,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-    <SafeAreaView edges={['top']} className="flex-1 bg-cream">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white">
       <OfflineBanner />
       <View className="flex-1">
         {showScan && !scanResult && (

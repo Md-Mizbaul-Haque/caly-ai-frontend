@@ -21,8 +21,8 @@ const GOAL_CARD = {
 function Row({ label, value }) {
   return (
     <View className="flex-row justify-between items-center py-3">
-      <Text className="text-[18px] text-black/60">{label}</Text>
-      <Text className="text-[18px] font-medium text-black">{value}</Text>
+      <Text className="text-[18px] text-[#8A8A8A]">{label}</Text>
+      <Text className="text-[18px] font-medium text-[#1A1A1A]">{value}</Text>
     </View>
   );
 }
@@ -64,31 +64,32 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
   }
 
   return (
-    <View className="flex-1 bg-[#F2F2F2]">
+    <View className="flex-1 bg-white">
       <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 16 }}>
         <Pressable onPress={onBack} testID="plan-back" accessibilityRole="button"
-          className="w-12 h-12 rounded-2xl border border-black/20 items-center justify-center mb-4">
+          className="w-12 h-12 rounded-2xl border border-[#F1E8E0] bg-white items-center justify-center mb-4"
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <ChevronLeft size={26} color="#1A1A1A" />
         </Pressable>
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-[26px] font-extrabold text-black">Your Nutrition Plan</Text>
-          <View className="w-9 h-9 rounded-full border-2 border-[#2D9CDB] items-center justify-center">
-            <Check size={20} color="#2D9CDB" />
+          <Text className="text-[26px] font-extrabold text-[#1A1A1A]">Your Nutrition Plan</Text>
+          <View className="w-9 h-9 rounded-full border-2 border-[#FF6B35] bg-[#FFF1E9] items-center justify-center">
+            <Check size={20} color="#FF6B35" />
           </View>
         </View>
-        <Text className="text-[22px] font-bold text-black mb-2">Your Goal</Text>
-        <View className="bg-white rounded-3xl p-5 mb-5">
-          <Text className="text-[20px] font-semibold text-black mb-1">{goal.title}</Text>
-          <Text className="text-[16px] text-black/60">{goal.body}</Text>
+        <Text className="text-[22px] font-bold text-[#1A1A1A] mb-2">Your Goal</Text>
+        <View className="bg-white rounded-3xl p-5 mb-5 border border-[#F1E8E0]">
+          <Text className="text-[20px] font-semibold text-[#1A1A1A] mb-1">{goal.title}</Text>
+          <Text className="text-[16px] text-[#8A8A8A]">{goal.body}</Text>
         </View>
-        <Text className="text-[22px] font-bold text-black mb-1">Daily Targets</Text>
-        <Text className="text-[15px] text-black/60 mb-3">Your personalized nutrition plan. You can adjust these targets later.</Text>
-        <View className="bg-white rounded-3xl p-5 mb-5">
-          <Text className="text-[40px] font-extrabold text-black">{plan.amr} <Text className="text-[20px] font-normal text-black/60">calories</Text></Text>
+        <Text className="text-[22px] font-bold text-[#1A1A1A] mb-1">Daily Targets</Text>
+        <Text className="text-[15px] text-[#8A8A8A] mb-3">Your personalized nutrition plan. You can adjust these targets later.</Text>
+        <View className="bg-white rounded-3xl p-5 mb-5 border border-[#F1E8E0]">
+          <Text className="text-[40px] font-extrabold text-[#1A1A1A]">{plan.amr} <Text className="text-[20px] font-normal text-[#8A8A8A]">calories</Text></Text>
           <MacroDots proteinG={plan.proteinG} fatG={plan.fatG} carbsG={plan.carbsG} />
         </View>
-        <Text className="text-[22px] font-bold text-black mb-2">Details</Text>
-        <View className="bg-white rounded-3xl px-5 py-2 mb-4">
+        <Text className="text-[22px] font-bold text-[#1A1A1A] mb-2">Details</Text>
+        <View className="bg-white rounded-3xl px-5 py-2 mb-4 border border-[#F1E8E0]">
           <Row label="Age" value={`${age} years`} />
           <Row label="Height" value={heightStr} />
           <Row label="Weight" value={weightStr} />
@@ -97,13 +98,13 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
           <Row label="AMR (Active Rate)" value={`${plan.amr} cal`} />
         </View>
         <View className="flex-row mb-2">
-          <View className="w-6 h-6 rounded-full bg-black items-center justify-center mr-2 mt-0.5">
+          <View className="w-6 h-6 rounded-full bg-[#FF6B35] items-center justify-center mr-2 mt-0.5">
             <Text className="text-white text-[13px] font-bold">!</Text>
           </View>
-          <Text className="flex-1 text-[13px] italic text-black/50">Dietary guidance is for informational purposes only. Consult your healthcare provider before making changes, especially with existing health conditions.</Text>
+          <Text className="flex-1 text-[13px] italic text-[#8A8A8A]">Dietary guidance is for informational purposes only. Consult your healthcare provider before making changes, especially with existing health conditions.</Text>
         </View>
       </ScrollView>
-      <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}>
+      <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 32) + 20 }}>
         <BottomCTA label={busy ? 'Saving…' : failed ? 'Retry' : "Let's Get Started"} onPress={finish} disabled={busy} testID="plan-done" />
       </View>
     </View>

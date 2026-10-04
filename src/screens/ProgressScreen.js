@@ -150,7 +150,7 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
 
   return (
     <ScrollView
-      className="flex-1 bg-cream px-4 pt-12"
+      className="flex-1 bg-white px-4 pt-12"
       contentContainerStyle={{ paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >

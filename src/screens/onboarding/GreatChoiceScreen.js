@@ -1,4 +1,5 @@
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
+import { PartyPopper } from 'lucide-react-native';
 import AuthScaffold from '../../components/auth/AuthScaffold';
 import { useOnboarding } from './OnboardingContext';
 import { goalLabel } from '../../utils/nutrition';
@@ -23,10 +24,15 @@ export default function GreatChoiceScreen({ onNext, onBack }) {
   const label = goalLabel(state.weightKg, state.targetWeightKg);
   const copy = COPY[label];
   return (
-    <AuthScaffold title="Great choice!" titleColor="#2D9CDB" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
-      <Text className="text-[24px] font-semibold text-black leading-[32px] mb-5">{copy.head}</Text>
-      <Text className="text-[19px] text-black leading-[28px] mb-5">{copy.mid}</Text>
-      <Text className="text-[19px] text-black leading-[28px]">Consistency is key to long-term success.</Text>
+    <AuthScaffold title="Great choice!" titleColor="#FF6B35" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
+      <View className="items-center mt-2 mb-6">
+        <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
+          <PartyPopper size={44} color="#FF6B35" />
+        </View>
+      </View>
+      <Text className="text-[24px] font-semibold text-[#1A1A1A] leading-[32px] mb-5">{copy.head}</Text>
+      <Text className="text-[19px] text-[#1A1A1A] leading-[28px] mb-5">{copy.mid}</Text>
+      <Text className="text-[19px] text-[#1A1A1A] leading-[28px]">Consistency is key to long-term success.</Text>
     </AuthScaffold>
   );
 }

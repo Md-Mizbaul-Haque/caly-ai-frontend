@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Scale } from 'lucide-react-native';
 import AuthScaffold from '../../components/auth/AuthScaffold';
@@ -10,6 +11,7 @@ function round1(n) { return Math.round(n * 10) / 10; }
 
 export default function TargetWeightScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
+  const [busy, setBusy] = useState(false);
   const unit = state.targetUnit;
   const slider = unit === 'lb'
     ? { min: 66, max: 550, step: 1, value: Math.round(kgToLb(state.targetWeightKg)) }
@@ -19,17 +21,17 @@ export default function TargetWeightScreen({ onNext, onBack }) {
   const label = goalLabel(state.weightKg, state.targetWeightKg);
   return (
     <AuthScaffold title="What is your target weight?" subtitle="This helps us determine your nutrition goals."
-      onBack={onBack} ctaLabel="Next"
-      onCta={async () => { await savePartial({ targetWeightKg: round1(state.targetWeightKg) }); onNext(); }}>
+      onBack={onBack} ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
+      onCta={async () => { if (busy) return; setBusy(true); try { await savePartial({ targetWeightKg: round1(state.targetWeightKg) }); onNext(); } finally { setBusy(false); } }}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={(v) => update({ targetUnit: v })} testID="target-unit" />
-      <Text className="text-center text-[64px] font-extrabold text-black">{display}</Text>
+      <Text className="text-center text-[64px] font-extrabold text-[#1A1A1A]">{display}</Text>
       <View className="flex-row items-center justify-center mt-2 mb-8">
-        <Scale size={28} color="#000" />
-        <Text className="text-[22px] font-medium text-black ml-2">{label}</Text>
+        <Scale size={28} color="#FF6B35" />
+        <Text className="text-[22px] font-medium text-[#1A1A1A] ml-2">{label}</Text>
       </View>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="target-ruler"
         onChange={(v) => update({ targetWeightKg: unit === 'lb' ? lbToKg(v) : v })} />
-      <Text className="text-center text-[20px] text-black mt-6">Current: {current}</Text>
+      <Text className="text-center text-[20px] text-[#1A1A1A] mt-6">Current: {current}</Text>
     </AuthScaffold>
   );
 }

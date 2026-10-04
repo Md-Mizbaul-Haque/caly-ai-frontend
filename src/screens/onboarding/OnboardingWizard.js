@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Animated } from 'react-native';
 import { OnboardingProvider } from './OnboardingContext';
 import { fetchMe, logout } from '../../lib/authApi';
 import { toastError } from '../../utils/toast';
@@ -31,6 +32,17 @@ function StepHost({ step, onNext, onBack, onDone }) {
   }
 }
 
+function FadeStep({ stepKey, children }) {
+  const [opacity] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    opacity.setValue(0);
+    const anim = Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true });
+    anim.start();
+    return () => anim.stop();
+  }, [stepKey, opacity]);
+  return <Animated.View style={{ flex: 1, opacity }}>{children}</Animated.View>;
+}
+
 export default function OnboardingWizard({ email, onComplete, onExit }) {
   const [index, setIndex] = useState(0);
   async function finish() {
@@ -46,12 +58,14 @@ export default function OnboardingWizard({ email, onComplete, onExit }) {
   }
   return (
     <OnboardingProvider email={email}>
-      <StepHost
-        step={STEPS[index]}
-        onNext={() => setIndex((i) => Math.min(i + 1, STEPS.length - 1))}
-        onBack={() => (index === 0 ? exit() : setIndex((i) => i - 1))}
-        onDone={finish}
-      />
+      <FadeStep stepKey={STEPS[index]}>
+        <StepHost
+          step={STEPS[index]}
+          onNext={() => setIndex((i) => Math.min(i + 1, STEPS.length - 1))}
+          onBack={() => (index === 0 ? exit() : setIndex((i) => i - 1))}
+          onDone={finish}
+        />
+      </FadeStep>
     </OnboardingProvider>
   );
 }

@@ -11,7 +11,7 @@ export default function ProfileScreen({ goal, setGoal }) {
   const parsed = Number(draft);
   const valid = draft.trim().length > 0 && Number.isFinite(parsed) && parsed >= 500 && parsed <= 10000;
   return (
-    <ScrollView className="flex-1 bg-cream px-4 pt-12">
+    <ScrollView className="flex-1 bg-white px-4 pt-12">
       <Text className="text-2xl font-bold text-ink mb-4">Profile</Text>
       <Card>
         <Text className="font-bold mb-2">Daily goal (kcal)</Text>
