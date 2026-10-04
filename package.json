@@ -1,13 +1,16 @@
 {
   "name": "caly-ai-frontend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "dependencies": {
     "@expo/ngrok": "^4.1.0",
     "@react-native-community/netinfo": "12.0.1",
     "expo": "~57.0.26",
     "expo-camera": "~57.0.6",
+    "expo-constants": "~57.0.20",
+    "expo-dev-client": "~57.0.19",
     "expo-image-picker": "~57.0.20",
+    "expo-linking": "~57.0.11",
     "expo-router": "~57.0.24",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",

@@ -1,3 +1,4 @@
+import '../../global.css';
 import { useEffect } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, usePathname, useSegments } from 'expo-router';
@@ -36,7 +37,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthSessionProvider>
-        <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#FFFFFF' }} className="flex-1 bg-white">
           <OfflineBanner />
           <Stack screenOptions={{ headerShown: false }} />
           <RouteGuard />
