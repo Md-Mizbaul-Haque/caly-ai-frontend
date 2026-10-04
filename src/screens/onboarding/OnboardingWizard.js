@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
-import { OnboardingProvider } from './OnboardingContext';
+import { OnboardingProvider } from '../../features/onboarding/OnboardingContext';
 import { fetchMe, logout } from '../../shared/lib/authApi';
 import { toastError } from '../../shared/utils/toast';
-import GenderScreen from './GenderScreen';
-import PlanIntroScreen from './PlanIntroScreen';
-import BirthdayScreen from './BirthdayScreen';
-import CurrentWeightScreen from './CurrentWeightScreen';
-import ActivityScreen from './ActivityScreen';
-import TargetWeightScreen from './TargetWeightScreen';
-import HeightScreen from './HeightScreen';
-import GreatChoiceScreen from './GreatChoiceScreen';
-import NutritionPlanScreen from './NutritionPlanScreen';
-import PaywallScreen from './PaywallScreen';
+import GenderScreen from '../../features/onboarding/screens/GenderScreen';
+import PlanIntroScreen from '../../features/onboarding/screens/PlanIntroScreen';
+import BirthdayScreen from '../../features/onboarding/screens/BirthdayScreen';
+import CurrentWeightScreen from '../../features/onboarding/screens/CurrentWeightScreen';
+import ActivityScreen from '../../features/onboarding/screens/ActivityScreen';
+import TargetWeightScreen from '../../features/onboarding/screens/TargetWeightScreen';
+import HeightScreen from '../../features/onboarding/screens/HeightScreen';
+import GreatChoiceScreen from '../../features/onboarding/screens/GreatChoiceScreen';
+import NutritionPlanScreen from '../../features/onboarding/screens/NutritionPlanScreen';
+import PaywallScreen from '../../features/onboarding/screens/PaywallScreen';
 
 const STEPS = ['gender', 'planIntro', 'birthday', 'currentWeight', 'activity', 'targetWeight', 'height', 'greatChoice', 'nutritionPlan', 'paywall'];
 

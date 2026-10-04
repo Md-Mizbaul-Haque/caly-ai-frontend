@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import AuthScaffold from '../shared/components/auth/AuthScaffold';
-import AuthInput from '../shared/components/auth/AuthInput';
-import PasswordInput from '../shared/components/auth/PasswordInput';
-import { sanitizeCode } from '../shared/utils/nutrition';
-import { forgotPassword, resetPassword } from '../shared/lib/authApi';
-import { toastSuccess, toastError } from '../shared/utils/toast';
+import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
+import AuthInput from '../../../shared/components/auth/AuthInput';
+import PasswordInput from '../../../shared/components/auth/PasswordInput';
+import { sanitizeCode } from '../../../shared/utils/nutrition';
+import { forgotPassword, resetPassword } from '../../../shared/lib/authApi';
+import { toastSuccess, toastError } from '../../../shared/utils/toast';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

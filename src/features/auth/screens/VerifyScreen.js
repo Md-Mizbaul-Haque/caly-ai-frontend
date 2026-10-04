@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import AuthScaffold from '../shared/components/auth/AuthScaffold';
-import AuthInput from '../shared/components/auth/AuthInput';
-import { sanitizeCode } from '../shared/utils/nutrition';
+import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
+import AuthInput from '../../../shared/components/auth/AuthInput';
+import { sanitizeCode } from '../../../shared/utils/nutrition';
 
 export default function VerifyScreen({ email, onBack, onVerify, onResend, onSkip, busy }) {
   const [code, setCode] = useState('');

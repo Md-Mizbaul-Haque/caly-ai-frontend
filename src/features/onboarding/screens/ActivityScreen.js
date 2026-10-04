@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Bike, Dumbbell, Footprints, Sofa } from 'lucide-react-native';
-import AuthScaffold from '../../shared/components/auth/AuthScaffold';
-import OptionCard from '../../shared/components/auth/OptionCard';
-import { useOnboarding } from './OnboardingContext';
+import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
+import OptionCard from '../../../shared/components/auth/OptionCard';
+import { useOnboarding } from '../OnboardingContext';
 
 const OPTIONS = [
   { key: 'sedentary', title: 'Sedentary', subtitle: 'Little or no exercise, desk job', Icon: Sofa },

@@ -7,7 +7,7 @@ export default function WelcomeScreen({ onLogin, onRegister }) {
     <View className="flex-1 bg-white px-6" style={{ paddingBottom: Math.max(insets.bottom, 32) + 12 }}>
       <View className="flex-1 items-center justify-center">
         <Image
-          source={require('../../assets/caly-logo.png')}
+          source={require('../../../../assets/caly-logo.png')}
           style={{ width: 200, height: 200 }}
           resizeMode="contain"
           accessibilityLabel="Caly AI logo"

@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, ChevronLeft, UserRound } from 'lucide-react-native';
-import BottomCTA from '../../shared/components/auth/BottomCTA';
-import WheelPicker, { WHEEL_ITEM_H } from '../../shared/components/auth/WheelPicker';
-import { useOnboarding } from './OnboardingContext';
-import { calcAge } from '../../shared/utils/nutrition';
+import BottomCTA from '../../../shared/components/auth/BottomCTA';
+import WheelPicker, { WHEEL_ITEM_H } from '../../../shared/components/auth/WheelPicker';
+import { useOnboarding } from '../OnboardingContext';
+import { calcAge } from '../../../shared/utils/nutrition';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MIN_YEAR = 1930;

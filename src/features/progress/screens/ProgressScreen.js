@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
-import Card from '../shared/components/ui/Card';
-import Chip from '../shared/components/ui/Chip';
-import PrimaryButton from '../shared/components/ui/Button';
-import WeightChart from '../shared/components/WeightChart';
-import { ArrowRight, Flame, Pencil, Scale, Target, TrendingDown, TrendingUp } from '../shared/components/ui/icons';
-import { fetchMeals } from '../shared/lib/mealsApi';
-import { dateKey } from '../shared/utils/format';
+import Card from '../../../shared/components/ui/Card';
+import Chip from '../../../shared/components/ui/Chip';
+import PrimaryButton from '../../../shared/components/ui/Button';
+import WeightChart from '../../../shared/components/WeightChart';
+import { ArrowRight, Flame, Pencil, Scale, Target, TrendingDown, TrendingUp } from '../../../shared/components/ui/icons';
+import { fetchMeals } from '../../../shared/lib/mealsApi';
+import { dateKey } from '../../../shared/utils/format';
 
 const RANGES = [
   { key: '90D', days: 90 },

@@ -1,8 +1,8 @@
 import { Text, View } from 'react-native';
 import { PartyPopper } from 'lucide-react-native';
-import AuthScaffold from '../../shared/components/auth/AuthScaffold';
-import { useOnboarding } from './OnboardingContext';
-import { goalLabel } from '../../shared/utils/nutrition';
+import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
+import { useOnboarding } from '../OnboardingContext';
+import { goalLabel } from '../../../shared/utils/nutrition';
 
 const COPY = {
   'Maintain Weight': {

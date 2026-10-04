@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Scale } from 'lucide-react-native';
-import AuthScaffold from '../../shared/components/auth/AuthScaffold';
-import UnitToggle from '../../shared/components/auth/UnitToggle';
-import RulerSlider from '../../shared/components/auth/RulerSlider';
-import { useOnboarding } from './OnboardingContext';
-import { goalLabel, kgToLb, lbToKg } from '../../shared/utils/nutrition';
+import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
+import UnitToggle from '../../../shared/components/auth/UnitToggle';
+import RulerSlider from '../../../shared/components/auth/RulerSlider';
+import { useOnboarding } from '../OnboardingContext';
+import { goalLabel, kgToLb, lbToKg } from '../../../shared/utils/nutrition';
 
 function round1(n) { return Math.round(n * 10) / 10; }
 

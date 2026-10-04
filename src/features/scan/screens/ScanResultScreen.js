@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
-import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../shared/components/ui/icons';
-import Card from '../shared/components/ui/Card';
-import PrimaryButton from '../shared/components/ui/Button';
-import Chip from '../shared/components/ui/Chip';
+import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
+import Card from '../../../shared/components/ui/Card';
+import PrimaryButton from '../../../shared/components/ui/Button';
+import Chip from '../../../shared/components/ui/Chip';
 
 const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 

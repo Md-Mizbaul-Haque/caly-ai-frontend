@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Image, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { X, CircleQuestionMark, Zap, ZapOff, ScanLine, ScanBarcode, FileText, Images } from '../shared/components/ui/icons';
-import { scanImage, lookupBarcode } from '../shared/lib/scanApi';
+import { X, CircleQuestionMark, Zap, ZapOff, ScanLine, ScanBarcode, FileText, Images } from '../../../shared/components/ui/icons';
+import { scanImage, lookupBarcode } from '../../../shared/lib/scanApi';
 
 const MODES = [
   { key: 'scan', label: 'Scan Food', icon: ScanLine },

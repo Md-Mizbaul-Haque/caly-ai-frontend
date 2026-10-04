@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Check, ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import BottomCTA from '../../shared/components/auth/BottomCTA';
-import MacroDots from '../../shared/components/auth/MacroDots';
-import { useOnboarding } from './OnboardingContext';
-import { apiPut } from '../../shared/lib/api';
-import { toastError } from '../../shared/utils/toast';
-import { calcAge, calcPlan, cmToFtIn, goalLabel, kgToLb } from '../../shared/utils/nutrition';
+import BottomCTA from '../../../shared/components/auth/BottomCTA';
+import MacroDots from '../../../shared/components/auth/MacroDots';
+import { useOnboarding } from '../OnboardingContext';
+import { apiPut } from '../../../shared/lib/api';
+import { toastError } from '../../../shared/utils/toast';
+import { calcAge, calcPlan, cmToFtIn, goalLabel, kgToLb } from '../../../shared/utils/nutrition';
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
