@@ -24,12 +24,11 @@ import SplashOverlay from './src/components/SplashOverlay';
 import { useIsOnline } from './src/lib/useIsOnline';
 import { fetchWeek, createMeal, deleteMealById } from './src/lib/mealsApi';
 import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from './src/lib/weightsApi';
-import { login, register, verifyEmail, resendCode, skipVerification, fetchMe } from './src/lib/authApi';
-import { getToken, setSessionExpiredHandler } from './src/lib/tokenStore';
 import WeightLogSheet from './src/components/WeightLogSheet';
 import { calcTotals } from './src/utils/totals';
 import { dateKey } from './src/utils/format';
 import { toastSuccess, toastError } from './src/utils/toast';
+import { AuthSessionProvider, useSession } from './src/features/auth/session';
 
 // DEV ONLY preview — false = normal auth flow (unauthorized → welcome).
 const DEV_PREVIEW_GENDER = false;
@@ -50,6 +49,19 @@ export default function App() {
       </SafeAreaProvider>
     );
   }
+  return (
+    <AuthSessionProvider>
+      <AppShell />
+    </AuthSessionProvider>
+  );
+}
+
+function AppShell() {
+  const {
+    user, setUser, authChecked, goal, setGoal,
+    authStage, setAuthStage, stageEmail, setStageEmail, verifyNext, authBusy,
+    handleLogin, handleRegister, handleVerify, handleResend, handleSkip,
+  } = useSession();
   const [tab, setTab] = useState('dashboard');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [navHeight, setNavHeight] = useState(0);
@@ -59,18 +71,11 @@ export default function App() {
   const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [goal, setGoal] = useState(2000);
   const [weights, setWeights] = useState([]);
-  const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
   const [weightGoal, setWeightGoalState] = useState(null);
   const [logWeightOpen, setLogWeightOpen] = useState(false);
   const [splashMin, setSplashMin] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
-  const [authStage, setAuthStage] = useState('welcome');
-  const [stageEmail, setStageEmail] = useState('');
-  const [verifyNext, setVerifyNext] = useState('app');
-  const [authBusy, setAuthBusy] = useState(false);
   const online = useIsOnline();
   const snapshotRef = useRef([]);
 
@@ -86,31 +91,7 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    setSessionExpiredHandler(() => {
-      setUser(null);
-      setAuthStage('welcome');
-    });
-  }, []);
-
   useEffect(() => { if (authChecked && user) loadWeek(); }, [authChecked, user, loadWeek]);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const t = await getToken();
-      if (!t) { if (alive) setAuthChecked(true); return; }
-      try {
-        const data = await fetchMe();
-        if (alive && !resumeOnboardingIfNeeded(data.user)) {
-          setUser(data.user);
-          if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
-        }
-      } catch { if (alive) setUser(null); }
-      finally { if (alive) setAuthChecked(true); }
-    })();
-    return () => { alive = false; };
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -215,111 +196,6 @@ export default function App() {
     } catch (e) {
       setWeights(prev);
       toastError("Couldn't delete", e.message);
-    }
-  }
-
-  // Incomplete onboarding always resumes first — homepage only after completion.
-  function resumeOnboardingIfNeeded(user) {
-    if (user && !user.onboardingCompleted) {
-      setStageEmail(user.email);
-      setAuthStage('onboarding');
-      return true;
-    }
-    return false;
-  }
-
-  async function handleLogin(email, password) {
-    setAuthBusy(true);
-    try {
-      const data = await login(email, password);
-      if (resumeOnboardingIfNeeded(data.user)) {
-        toastSuccess('Welcome back', "Let's finish setting up your plan");
-        return;
-      }
-      setAuthStage('welcome');
-      setUser(data.user);
-      if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
-      loadWeek();
-      toastSuccess('Welcome', 'Signed in');
-    } catch (e) {
-      if (e.needsVerification) {
-        setStageEmail(email);
-        setVerifyNext('app');
-        setAuthStage('verify');
-        toastSuccess('Check email', 'Verify your email to continue');
-      } else {
-        toastError('Login failed', e.message);
-      }
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function handleRegister(name, email, password) {
-    setAuthBusy(true);
-    try {
-      await register(name, email, password);
-      setStageEmail(email);
-      setVerifyNext('onboarding');
-      setAuthStage('verify');
-      toastSuccess('Check email', 'Enter the verification code');
-    } catch (e) {
-      toastError('Registration failed', e.message);
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function handleVerify(email, code) {
-    setAuthBusy(true);
-    try {
-      const data = await verifyEmail(email, code);
-      if (verifyNext === 'onboarding') {
-        setAuthStage('onboarding');
-      } else if (resumeOnboardingIfNeeded(data.user)) {
-        toastSuccess('Verified', "Let's finish setting up your plan");
-      } else {
-        setAuthStage('welcome');
-        setUser(data.user);
-        if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
-        loadWeek();
-        toastSuccess('Welcome', 'Verified');
-      }
-    } catch (e) {
-      toastError('Verification failed', e.message);
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function handleResend(email) {
-    try {
-      await resendCode(email);
-      toastSuccess('Code resent', 'Check your email');
-    } catch (e) {
-      toastError('Could not resend', e.message);
-    }
-  }
-
-  async function handleSkip(email) {
-    setAuthBusy(true);
-    try {
-      const data = await skipVerification(email);
-      if (verifyNext === 'onboarding') {
-        setAuthStage('onboarding');
-      } else if (resumeOnboardingIfNeeded(data.user)) {
-        toastSuccess('Welcome back', "Let's finish setting up your plan");
-      } else {
-        setAuthStage('welcome');
-        setUser(data.user);
-        if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
-        loadWeek();
-        toastSuccess('Welcome', 'Signed in');
-      }
-    } catch (e) {
-      toastError('Could not skip', e.message);
-    } finally {
-      setAuthBusy(false);
     }
   }
 
