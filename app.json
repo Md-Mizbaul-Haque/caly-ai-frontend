@@ -43,7 +43,8 @@
           "cameraPermission": "Allow Caly AI to access your camera to scan your meals"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-router"
     ]
   }
 }
