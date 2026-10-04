@@ -2,6 +2,7 @@
   "expo": {
     "name": "Caly AI",
     "slug": "caly-ai-frontend",
+    "scheme": "calyai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/caly-logo.png",
@@ -44,7 +45,7 @@
         }
       ],
       "expo-secure-store",
-      "expo-router"
+      ["expo-router", { "root": "./src/app" }]
     ]
   }
 }
