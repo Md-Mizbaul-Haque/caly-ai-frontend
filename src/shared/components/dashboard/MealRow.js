@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { Beef, Droplet, Flame, Trash, Wheat } from '../ui/icons';
 import { formatTime } from '../../utils/format';
-const tokens = require('../../theme/tokens.js');
-
 const MACROS = [
   { key: 'protein', label: 'Protein', color: '#f2470c', Icon: Beef },
   { key: 'carbs', label: 'Carbs', color: '#FACC15', Icon: Wheat },
@@ -35,12 +33,12 @@ export default function MealRow({ meal, onDelete }) {
           <Text className="text-[11px] text-muted-foreground ml-2">{formatTime(meal.loggedAt)}</Text>
           {onDelete ? (
             <Pressable onPress={() => onDelete(meal.id)} hitSlop={8} className="ml-2">
-              <Trash size={14} color={tokens.colors.muted} strokeWidth={2} />
+              <Trash size={14} color={'#8A8A8A'} strokeWidth={2} />
             </Pressable>
           ) : null}
         </View>
         <View className="flex-row items-center mt-0.5">
-          <Flame size={14} color={tokens.colors.primary} strokeWidth={2.5} fill={tokens.colors.primary} />
+          <Flame size={14} color={'#f2470c'} strokeWidth={2.5} fill={'#f2470c'} />
           <Text className="text-sm font-semibold text-ink ml-1">
             {Math.max(Number(meal.kcal) || 0, 0)} <Text className="font-normal text-muted-foreground">Calories</Text>
           </Text>

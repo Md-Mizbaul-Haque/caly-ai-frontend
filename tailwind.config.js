@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const tokens = require('./src/shared/theme/tokens.js');
+// Theme source of truth: global.css (:root HSL vars). Values below mirror it – do not edit theme here.
 const { hairlineWidth } = require('nativewind/theme');
 
 module.exports = {
@@ -48,17 +48,17 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Caly custom tokens (preserved for existing screens)
-        ink: tokens.colors.ink,
-        cream: tokens.colors.cream,
-        success: tokens.colors.success,
+        // Caly custom colors (mirror global.css theme – edit global.css only)
+        ink: '#1A1A1A',
+        cream: '#FFF8F2',
+        success: '#22C55E',
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
-        card: `${tokens.radii.card}px`,
-        btn: `${tokens.radii.button}px`,
+        card: '18px',
+        btn: '14px',
       },
       borderWidth: {
         hairline: hairlineWidth(),

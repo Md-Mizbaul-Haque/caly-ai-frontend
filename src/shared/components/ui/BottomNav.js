@@ -3,8 +3,6 @@ import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { House, ChartColumn, Settings, Plus, X } from './icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-const tokens = require('../../theme/tokens.js');
-
 const ITEMS = [
   { key: 'dashboard', label: 'Home', Icon: House },
   { key: 'history', label: 'Progress', Icon: ChartColumn },
@@ -19,8 +17,8 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
       style={{
         paddingBottom: Math.max(insets.bottom, 10),
         borderTopWidth: 1,
-        borderTopColor: tokens.colors.border,
-        shadowColor: tokens.colors.ink,
+        borderTopColor: '#F1E8E0',
+        shadowColor: '#1A1A1A',
         shadowOpacity: 0.06,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: -4 },
@@ -33,7 +31,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
           <Pressable key={item.key} onPress={() => onChange(item.key)} className="flex-1 items-center py-1.5" hitSlop={4}>
             <item.Icon
               size={22}
-              color={isActive ? tokens.colors.primary : tokens.colors.muted}
+              color={isActive ? '#f2470c' : '#8A8A8A'}
               strokeWidth={isActive ? 2.5 : 2}
             />
             <Text className={cn('text-[11px] mt-1', isActive ? 'text-primary font-semibold' : 'text-muted-foreground')}>
@@ -48,7 +46,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
         className={cn('w-12 h-12 rounded-full bg-primary items-center justify-center ml-2')}
         style={{
           elevation: 4,
-          shadowColor: tokens.colors.primary,
+          shadowColor: '#f2470c',
           shadowOpacity: 0.35,
           shadowRadius: 10,
           shadowOffset: { width: 0, height: 4 },

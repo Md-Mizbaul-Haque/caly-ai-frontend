@@ -4,8 +4,6 @@ import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import AuthInput from '../../../shared/components/auth/AuthInput';
 import PasswordInput from '../../../shared/components/auth/PasswordInput';
 
-const tokens = require('../../../shared/theme/tokens.js');
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, online = true, prefillEmail }) {
@@ -20,7 +18,7 @@ export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, 
       onBack={onBack}
       ctaLabel={busy ? 'Creating…' : 'Register'}
       ctaDisabled={!valid || busy || !online}
-      ctaBorderRadius={tokens.radii.button}
+      ctaBorderRadius={14}
       onCta={() => onSubmit(name.trim(), email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">

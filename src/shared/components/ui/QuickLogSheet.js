@@ -3,8 +3,6 @@ import { Animated, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Camera, Scale, Plus } from './icons';
-const tokens = require('../../theme/tokens.js');
-
 const QUICK_ACTIONS = [
   { key: 'food', label: 'Log Food', Icon: Plus },
   { key: 'scan', label: 'Scan', Icon: Camera },
@@ -55,7 +53,7 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
           bottom: bottomOffset,
           opacity: progress,
           transform: [{ translateY }],
-          shadowColor: tokens.colors.ink,
+          shadowColor: '#1A1A1A',
           shadowOpacity: 0.1,
           shadowRadius: 16,
           shadowOffset: { width: 0, height: -6 },

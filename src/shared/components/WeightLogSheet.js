@@ -5,8 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { X } from './ui/icons';
-const tokens = require('../theme/tokens.js');
-
 /**
  * Docked sheet for logging weight. Weight (lbs) is required; goal weight
  * prefills from the saved goal and only updates when changed.
@@ -76,7 +74,7 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
           bottom: bottomOffset,
           opacity: progress,
           transform: [{ translateY }],
-          shadowColor: tokens.colors.ink,
+          shadowColor: '#1A1A1A',
           shadowOpacity: 0.1,
           shadowRadius: 16,
           shadowOffset: { width: 0, height: -6 },
@@ -86,7 +84,7 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
         <View className="flex-row items-center justify-between mb-4">
           <Text className={cn('text-lg font-bold text-foreground')}>Log Weight</Text>
           <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
-            <X size={20} color={tokens.colors.ink} />
+            <X size={20} color={'#1A1A1A'} />
           </Pressable>
         </View>
 

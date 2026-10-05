@@ -1,8 +1,6 @@
 import { Pressable, Text } from 'react-native';
 
-const tokens = require('../../theme/tokens.js');
-
-export default function BottomCTA({ label, onPress, disabled, testID, borderRadius = tokens.radii.chip }) {
+export default function BottomCTA({ label, onPress, disabled, testID, borderRadius = 999 }) {
   return (
     <Pressable
       onPress={onPress}

@@ -10,8 +10,6 @@ import MealRow from '../../../shared/components/dashboard/MealRow';
 import { calcTotals } from '../../../shared/utils/totals';
 import { dateKey } from '../../../shared/utils/format';
 import PrimaryButton from '../../../shared/components/ui/Button';
-const tokens = require('../../../shared/theme/tokens.js');
-
 function macroTargets(goal) {
   return [
     { key: 'protein', label: 'Protein', target: Math.round(goal * 0.25 / 4), color: '#f2470c', icon: Beef },
@@ -55,7 +53,7 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
 
         {loading && meals.length === 0 && (
           <View className="items-center justify-center py-16">
-            <ActivityIndicator size="large" color={tokens.colors.primary} />
+            <ActivityIndicator size="large" color={'#f2470c'} />
             <Text className="text-sm text-muted-foreground mt-3">Loading your week…</Text>
           </View>
         )}

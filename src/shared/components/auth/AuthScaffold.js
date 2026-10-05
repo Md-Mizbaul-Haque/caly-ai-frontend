@@ -3,9 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import BottomCTA from './BottomCTA';
 
-const tokens = require('../../theme/tokens.js');
-
-export default function AuthScaffold({ title, titleColor = '#1A1A1A', titleSize = 32, subtitle, onBack, ctaLabel, onCta, ctaDisabled, ctaBorderRadius = tokens.radii.chip, bottomNote, children }) {
+export default function AuthScaffold({ title, titleColor = '#1A1A1A', titleSize = 32, subtitle, onBack, ctaLabel, onCta, ctaDisabled, ctaBorderRadius = 999, bottomNote, children }) {
   const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 bg-white">

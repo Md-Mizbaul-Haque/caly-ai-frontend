@@ -1,8 +1,6 @@
 import { ScrollView, Pressable, Text, View } from 'react-native';
 import { dateKey } from '../../utils/format';
 import ProgressRing from '../ui/ProgressRing';
-const tokens = require('../../theme/tokens.js');
-
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function buildWeek(reference) {
@@ -38,8 +36,8 @@ export default function DaySelector({ selected, onSelect, totalsByDate = {}, goa
                 goal={goal}
                 size={36}
                 strokeWidth={4}
-                color={isSelected ? '#FFFFFF' : tokens.colors.primary}
-                trackColor={isSelected ? 'rgba(255,255,255,0.35)' : tokens.colors.border}
+                color={isSelected ? '#FFFFFF' : '#f2470c'}
+                trackColor={isSelected ? 'rgba(255,255,255,0.35)' : '#F1E8E0'}
               />
             </View>
           </Pressable>

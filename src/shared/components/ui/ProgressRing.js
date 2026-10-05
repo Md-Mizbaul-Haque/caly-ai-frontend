@@ -1,15 +1,13 @@
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { cn } from '@/lib/utils';
-const tokens = require('../../theme/tokens.js');
-
 export default function ProgressRing({
   eaten = 0,
   goal = 1,
   size = 96,
   strokeWidth = 10,
-  color = tokens.colors.primary,
-  trackColor = tokens.colors.border,
+  color = '#f2470c',
+  trackColor = '#F1E8E0',
   children,
 }) {
   const safeGoal = Math.max(Number(goal) || 0, 1);
