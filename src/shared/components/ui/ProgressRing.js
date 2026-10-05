@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { cn } from '@/lib/utils';
 const tokens = require('../../theme/tokens.js');
 
 export default function ProgressRing({
@@ -16,7 +17,7 @@ export default function ProgressRing({
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
   return (
-    <View style={{ width: size, height: size }} className="items-center justify-center">
+    <View style={{ width: size, height: size }} className={cn('items-center justify-center')}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={trackColor} strokeWidth={strokeWidth} fill="none" />
         <Circle

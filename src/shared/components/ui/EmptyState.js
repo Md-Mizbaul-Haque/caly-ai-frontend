@@ -1,4 +1,6 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 const SKELETON = {
   square: '#EFE6DC',
@@ -50,7 +52,7 @@ export default function EmptyState({ caption = 'Tap + to log a meal', onCta }) {
         </View>
       </View>
 
-      <Text className="text-[15px] text-muted mt-3">{caption}</Text>
+      <Text className={cn('text-[15px] text-muted-foreground mt-3')}>{caption}</Text>
     </View>
   );
 

@@ -60,3 +60,4 @@ export {
   Pencil,
   Target,
 };
+export { Icon } from '@/components/ui/icon';
