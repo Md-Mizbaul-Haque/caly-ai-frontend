@@ -27,7 +27,7 @@ export default function GenderScreen({ onNext, onBack }) {
           return (
             <View key={key} className="flex-1">
               <OptionCard layout="vertical" title={title} selected={selected} onPress={() => update({ gender: key })}
-                icon={<Icon size={26} color={selected ? '#FF6B35' : '#1A1A1A'} />} testID={`gender-${key}`} />
+                icon={<Icon size={26} color={selected ? '#f2470c' : '#1A1A1A'} />} testID={`gender-${key}`} />
             </View>
           );
         })}
@@ -35,7 +35,7 @@ export default function GenderScreen({ onNext, onBack }) {
       <View className="mt-4">
         <OptionCard title="Prefer Not To Say" selected={state.gender === 'prefer_not_to_say'}
           onPress={() => update({ gender: 'prefer_not_to_say' })}
-          icon={<CircleUser size={22} color={state.gender === 'prefer_not_to_say' ? '#FF6B35' : '#1A1A1A'} />} testID="gender-prefer" />
+          icon={<CircleUser size={22} color={state.gender === 'prefer_not_to_say' ? '#f2470c' : '#1A1A1A'} />} testID="gender-prefer" />
       </View>
     </AuthScaffold>
   );

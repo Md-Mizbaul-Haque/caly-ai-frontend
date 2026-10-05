@@ -14,7 +14,7 @@ const tokens = require('../../../shared/theme/tokens.js');
 
 function macroTargets(goal) {
   return [
-    { key: 'protein', label: 'Protein', target: Math.round(goal * 0.25 / 4), color: '#FF6B35', icon: Beef },
+    { key: 'protein', label: 'Protein', target: Math.round(goal * 0.25 / 4), color: '#f2470c', icon: Beef },
     { key: 'carbs', label: 'Carbs', target: Math.round(goal * 0.50 / 4), color: '#FACC15', icon: Wheat },
     { key: 'fat', label: 'Fat', target: Math.round(goal * 0.25 / 9), color: '#22C55E', icon: Droplet },
   ];
@@ -56,13 +56,13 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
         {loading && meals.length === 0 && (
           <View className="items-center justify-center py-16">
             <ActivityIndicator size="large" color={tokens.colors.primary} />
-            <Text className="text-sm text-muted mt-3">Loading your week…</Text>
+            <Text className="text-sm text-muted-foreground mt-3">Loading your week…</Text>
           </View>
         )}
         {error && meals.length === 0 && !loading && (
           <Card style={{ marginTop: 4 }}>
             <Text className="font-bold text-ink mb-1">{"Couldn't load meals"}</Text>
-            <Text className="text-sm text-muted mb-3">{error}</Text>
+            <Text className="text-sm text-muted-foreground mb-3">{error}</Text>
             <PrimaryButton title="Retry" onPress={onRetry} />
           </Card>
         )}
@@ -76,9 +76,9 @@ export default function DashboardScreen({ meals = [], goal = 2000, loading = fal
             <View className="flex-1 pr-2">
               <View className="flex-row items-baseline">
                 <Text className="text-5xl font-extrabold text-ink">{t.eaten}</Text>
-                <Text className="text-lg font-semibold text-muted">/{goal}</Text>
+                <Text className="text-lg font-semibold text-muted-foreground">/{goal}</Text>
               </View>
-              <Text className="text-sm text-muted mt-1">Calories eaten</Text>
+              <Text className="text-sm text-muted-foreground mt-1">Calories eaten</Text>
             </View>
             <ProgressRing eaten={t.eaten} goal={goal} size={92} strokeWidth={10}>
               <Text className="text-2xl">🔥</Text>

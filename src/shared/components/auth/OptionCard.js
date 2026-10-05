@@ -7,7 +7,7 @@ export default function OptionCard({ title, subtitle, selected, onPress, icon, t
       onPress={onPress}
       testID={testID}
       accessibilityRole="button"
-      className={`rounded-3xl ${isVertical ? 'flex-col items-center justify-center py-5 px-3' : 'flex-row items-center p-4'} ${selected ? 'bg-[#FFF1E9] border-[#FF6B35]' : 'bg-white border-[#F1E8E0]'}`}
+      className={`rounded-3xl ${isVertical ? 'flex-col items-center justify-center py-5 px-3' : 'flex-row items-center p-4'} ${selected ? 'bg-[#FFF1E9] border-[#f2470c]' : 'bg-white border-[#F1E8E0]'}`}
       style={({ pressed }) => [
         { opacity: pressed ? 0.75 : 1 },
         { borderWidth: 2, minHeight: isVertical ? 112 : undefined, flex: isVertical ? 1 : undefined },

@@ -26,7 +26,7 @@ export default function TargetWeightScreen({ onNext, onBack }) {
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={(v) => update({ targetUnit: v })} testID="target-unit" />
       <Text className="text-center text-[64px] font-extrabold text-[#1A1A1A]">{display}</Text>
       <View className="flex-row items-center justify-center mt-2 mb-8">
-        <Scale size={28} color="#FF6B35" />
+        <Scale size={28} color="#f2470c" />
         <Text className="text-[22px] font-medium text-[#1A1A1A] ml-2">{label}</Text>
       </View>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="target-ruler"

@@ -17,7 +17,7 @@ export default function ProfileScreen({ goal, setGoal }) {
         <Text className="font-bold mb-2">Daily goal (kcal)</Text>
         <TextInput value={draft} onChangeText={setDraft} keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
         {!valid && <Text className="text-red-500 mb-2">Enter 500–10000 kcal</Text>}
-        <Text className="text-muted text-sm mb-2">API: {API_URL}</Text>
+        <Text className="text-muted-foreground text-sm mb-2">API: {API_URL}</Text>
         <PrimaryButton
           title={busy ? 'Saving…' : 'Save goal'}
           disabled={!valid || busy}
@@ -35,7 +35,7 @@ export default function ProfileScreen({ goal, setGoal }) {
           }}
         />
       </Card>
-      <View className="mt-4 mb-24"><Card><Text className="text-muted">Units: metric (v1) • Notifications: off (v1)</Text></Card></View>
+      <View className="mt-4 mb-24"><Card><Text className="text-muted-foreground">Units: metric (v1) • Notifications: off (v1)</Text></Card></View>
     </ScrollView>
   );
 }

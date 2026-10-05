@@ -54,7 +54,7 @@ export default function BirthdayScreen({ onNext, onBack }) {
         )}
         <View className="items-center mt-2 mb-3">
           <View style={{ width: 112, height: 112, borderRadius: 30, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
-            <CalendarDays size={52} color="#FF6B35" />
+            <CalendarDays size={52} color="#f2470c" />
             <View style={{ position: 'absolute', top: 10, left: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}>
               <UserRound size={18} color="#fff" />
             </View>
@@ -100,7 +100,7 @@ export default function BirthdayScreen({ onNext, onBack }) {
           </View>
         </View>
         {!valid && (
-          <Text className="text-center text-[13px] font-medium text-[#FF6B35] mt-3">
+          <Text className="text-center text-[13px] font-medium text-[#f2470c] mt-3">
             You must be at least 13 years old to use Caly AI.
           </Text>
         )}

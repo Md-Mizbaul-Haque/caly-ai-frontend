@@ -30,7 +30,7 @@ export default function DaySelector({ selected, onSelect, totalsByDate = {}, goa
               isSelected ? 'bg-primary' : isToday ? 'bg-white border border-[#F1E8E0]' : 'bg-transparent'
             }`}
           >
-            <Text className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-muted'}`}>{DAY_LABELS[d.getDay()]}</Text>
+            <Text className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>{DAY_LABELS[d.getDay()]}</Text>
             <Text className={`text-sm font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-ink'}`}>{d.getDate()}</Text>
             <View className="mt-1.5">
               <ProgressRing

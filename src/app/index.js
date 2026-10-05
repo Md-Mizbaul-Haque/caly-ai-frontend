@@ -27,7 +27,7 @@ export default function Index() {
   if (!authChecked) {
     return (
       <SafeAreaView edges={['top']} className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#FF6B35" />
+        <ActivityIndicator size="large" color="#f2470c" />
         <Text className="mt-4 text-[16px] text-black/60">Loading Caly AI…</Text>
       </SafeAreaView>
     );

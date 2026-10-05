@@ -61,7 +61,7 @@ export default function RulerSlider({ min, max, step, value, onChange, testID = 
   return (
     <View testID={testID}>
       <View className="items-center mb-2">
-        <View style={{ width: 3, height: 56, backgroundColor: '#FF6B35', borderRadius: 2 }} />
+        <View style={{ width: 3, height: 56, backgroundColor: '#f2470c', borderRadius: 2 }} />
       </View>
       <ScrollView
         ref={ref}

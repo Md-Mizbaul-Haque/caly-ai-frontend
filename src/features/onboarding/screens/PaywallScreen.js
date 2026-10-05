@@ -17,9 +17,9 @@ function DiscountModal({ onAccept, onClose }) {
           </View>
           <View className="flex-row items-center mb-2">
             <Text className="text-[16px] text-[#1A1A1A] line-through mr-3">BDT11,000.00 per year</Text>
-            <Text className="text-[18px] font-bold text-[#FF6B35]">BDT2,200.00 per year</Text>
+            <Text className="text-[18px] font-bold text-[#f2470c]">BDT2,200.00 per year</Text>
           </View>
-          <View className="self-start bg-[#FF6B35] rounded-full px-4 py-1 mb-3">
+          <View className="self-start bg-[#f2470c] rounded-full px-4 py-1 mb-3">
             <Text className="text-white text-[16px] font-bold">80% OFF</Text>
           </View>
           <Text className="text-[16px] text-[#1A1A1A] mb-4">✓ No commitment, cancel anytime</Text>

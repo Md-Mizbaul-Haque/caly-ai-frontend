@@ -33,7 +33,7 @@
 ### Task 1: Install RNR primitives
 
 **Files:**
-- Create: `components/ui/button.tsx`, `components/ui/text.tsx`, `components/ui/card.tsx`, `components/ui/badge.tsx`, `components/ui/input.tsx`, `components/ui/textarea.tsx`, `components/ui/label.tsx`, `components/ui/avatar.tsx`, `components/ui/progress.tsx`, `components/ui/dialog.tsx`, `components/ui/sheet.tsx`, `components/ui/sonner.tsx`, `components/ui/separator.tsx`, `components/ui/skeleton.tsx`, `components/ui/switch.tsx`
+- Create: `components/ui/button.tsx`, `components/ui/text.tsx`, `components/ui/card.tsx`, `components/ui/badge.tsx`, `components/ui/input.tsx`, `components/ui/textarea.tsx`, `components/ui/label.tsx`, `components/ui/avatar.tsx`, `components/ui/progress.tsx`, `components/ui/dialog.tsx`, `components/ui/separator.tsx`, `components/ui/skeleton.tsx`, `components/ui/switch.tsx` (note: `sheet`/`sonner`/`toast` not in nativewind registry – custom docked sheets + toast wrapper used, see Task 7/8 rulings)
 - Modify: `package.json`
 - Test: `C:\Users\ASUS\AppData\Local\Temp\opencode\verify-rnr.js` (temp script, delete after)
 
@@ -61,7 +61,7 @@ Expected: FAIL missing: components/ui/button.tsx,...
 
 - [ ] **Step 3: Install via CLI**
 
-Run: `npx @react-native-reusables/cli@latest add button card badge input textarea text label avatar progress dialog sheet sonner separator skeleton switch -y --cwd "E:\Caly Ai\caly-ai-frontend"`
+Run: `npx @react-native-reusables/cli@latest add button card badge input textarea text label avatar progress dialog separator skeleton switch -y --cwd "E:\Caly Ai\caly-ai-frontend"`
 Expected: creates `components/ui/*`, installs `@rn-primitives/*` deps via expo
 
 - [ ] **Step 4: Verify doctor + test passes**

@@ -24,10 +24,10 @@ export default function GreatChoiceScreen({ onNext, onBack }) {
   const label = goalLabel(state.weightKg, state.targetWeightKg);
   const copy = COPY[label];
   return (
-    <AuthScaffold title="Great choice!" titleColor="#FF6B35" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
+    <AuthScaffold title="Great choice!" titleColor="#f2470c" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
-          <PartyPopper size={44} color="#FF6B35" />
+          <PartyPopper size={44} color="#f2470c" />
         </View>
       </View>
       <Text className="text-[24px] font-semibold text-[#1A1A1A] leading-[32px] mb-5">{copy.head}</Text>

@@ -73,8 +73,8 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
         </Pressable>
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-[26px] font-extrabold text-[#1A1A1A]">Your Nutrition Plan</Text>
-          <View className="w-9 h-9 rounded-full border-2 border-[#FF6B35] bg-[#FFF1E9] items-center justify-center">
-            <Check size={20} color="#FF6B35" />
+          <View className="w-9 h-9 rounded-full border-2 border-[#f2470c] bg-[#FFF1E9] items-center justify-center">
+            <Check size={20} color="#f2470c" />
           </View>
         </View>
         <Text className="text-[22px] font-bold text-[#1A1A1A] mb-2">Your Goal</Text>
@@ -98,7 +98,7 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
           <Row label="AMR (Active Rate)" value={`${plan.amr} cal`} />
         </View>
         <View className="flex-row mb-2">
-          <View className="w-6 h-6 rounded-full bg-[#FF6B35] items-center justify-center mr-2 mt-0.5">
+          <View className="w-6 h-6 rounded-full bg-[#f2470c] items-center justify-center mr-2 mt-0.5">
             <Text className="text-white text-[13px] font-bold">!</Text>
           </View>
           <Text className="flex-1 text-[13px] italic text-[#8A8A8A]">Dietary guidance is for informational purposes only. Consult your healthcare provider before making changes, especially with existing health conditions.</Text>

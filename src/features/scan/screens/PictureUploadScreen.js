@@ -132,7 +132,7 @@ export default function PictureUploadScreen({ onClose, onResult }) {
       {/* Scanning overlay */}
       {scanning && (
         <View className="absolute inset-0 bg-black/70 items-center justify-center z-10">
-          <ActivityIndicator size="large" color="#FF6B35" />
+          <ActivityIndicator size="large" color="#f2470c" />
           <Text className="text-white mt-4 text-base">Analyzing your food…</Text>
           {previewUri && (
             <Image source={{ uri: previewUri }} className="w-40 h-40 rounded-2xl mt-6" resizeMode="cover" />

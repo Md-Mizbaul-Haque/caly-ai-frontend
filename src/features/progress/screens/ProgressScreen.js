@@ -167,14 +167,14 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
       <Card style={{ marginBottom: 12 }}>
         <View className="flex-row items-center">
           <View className="flex-1">
-            <Text className="text-xs text-muted mb-1">Your Weight</Text>
+            <Text className="text-xs text-muted-foreground mb-1">Your Weight</Text>
             <View className="flex-row items-baseline">
               <Text className="text-3xl font-extrabold text-ink">{latest ? latest.value : '—'}</Text>
-              {latest && <Text className="text-sm text-muted ml-1">lbs</Text>}
+              {latest && <Text className="text-sm text-muted-foreground ml-1">lbs</Text>}
             </View>
             <Pressable onPress={onLogWeight} hitSlop={6} className="flex-row items-center mt-1">
               <Target size={12} color="#8A8A8A" />
-              <Text className="text-xs text-muted ml-1">
+              <Text className="text-xs text-muted-foreground ml-1">
                 Goal: {weightGoal != null ? `${weightGoal} lbs` : 'not set'}
               </Text>
               <Pencil size={11} color="#8A8A8A" style={{ marginLeft: 4 }} />
@@ -200,15 +200,15 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
       <Card style={{ marginBottom: 12 }}>
         <View className="flex-row items-center mb-3">
           <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-            <Flame size={20} color="#FF6B35" fill="#FF6B35" />
+            <Flame size={20} color="#f2470c" fill="#f2470c" />
           </View>
           <View className="ml-3 flex-row items-baseline">
             {loading ? (
-              <ActivityIndicator color="#FF6B35" />
+              <ActivityIndicator color="#f2470c" />
             ) : (
               <>
                 <Text className="text-2xl font-extrabold text-ink">{streak}</Text>
-                <Text className="text-sm text-muted ml-1.5">Day Streak</Text>
+                <Text className="text-sm text-muted-foreground ml-1.5">Day Streak</Text>
               </>
             )}
           </View>
@@ -219,12 +219,12 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
               <View
                 className="w-3 h-3 rounded-full"
                 style={{
-                  backgroundColor: d.logged ? '#FF6B35' : '#F1E8E0',
+                  backgroundColor: d.logged ? '#f2470c' : '#F1E8E0',
                   borderWidth: d.isToday && !d.logged ? 1.5 : 0,
-                  borderColor: '#FF6B35',
+                  borderColor: '#f2470c',
                 }}
               />
-              <Text className={`text-[10px] mt-1.5 ${d.isToday ? 'text-ink font-bold' : 'text-muted'}`}>
+              <Text className={`text-[10px] mt-1.5 ${d.isToday ? 'text-ink font-bold' : 'text-muted-foreground'}`}>
                 {d.label}
               </Text>
             </View>
@@ -261,7 +261,7 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
         {rangeEntries.length < 2 && (
           <View className="items-center justify-center py-10">
             <Scale size={22} color="#8A8A8A" />
-            <Text className="text-muted text-sm mt-2 text-center">
+            <Text className="text-muted-foreground text-sm mt-2 text-center">
               Log your weight at least twice{'\n'}to see your trend.
             </Text>
           </View>
@@ -277,19 +277,19 @@ export default function ProgressScreen({ weights = [], weightGoal = null, onLogW
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
             <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-              <Flame size={20} color="#FF6B35" />
+              <Flame size={20} color="#f2470c" />
             </View>
-            <Text className="text-sm text-muted ml-3">Daily Average{'\n'}Calories</Text>
+            <Text className="text-sm text-muted-foreground ml-3">Daily Average{'\n'}Calories</Text>
           </View>
           <View className="items-end">
             {loading ? (
-              <ActivityIndicator color="#FF6B35" />
+              <ActivityIndicator color="#f2470c" />
             ) : average.curDays === 0 ? (
-              <Text className="text-sm text-muted">No meals this period</Text>
+              <Text className="text-sm text-muted-foreground">No meals this period</Text>
             ) : (
               <View className="flex-row items-baseline">
                 <Text className="text-2xl font-extrabold text-ink">{average.avg}</Text>
-                <Text className="text-sm text-muted ml-1">kcal</Text>
+                <Text className="text-sm text-muted-foreground ml-1">kcal</Text>
                 {average.trend != null && (
                   <View className="flex-row items-center ml-2">
                     {average.trend >= 0 ? (
