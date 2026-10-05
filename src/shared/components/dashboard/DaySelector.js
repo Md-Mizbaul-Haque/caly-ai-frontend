@@ -4,29 +4,37 @@ import { dateKey } from '../../utils/format';
 import ProgressRing from '../ui/ProgressRing';
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function buildWeek(reference) {
-  const start = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - reference.getDay());
-  return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+function buildDays(reference) {
+  const day = reference.getDate();
+  const weekStart = new Date(reference.getFullYear(), reference.getMonth(), day - reference.getDay());
+  const weekEnd = new Date(reference.getFullYear(), reference.getMonth(), day - reference.getDay() + 6);
+  const early = new Date(reference.getFullYear(), reference.getMonth(), day - 3);
+  const late = new Date(reference.getFullYear(), reference.getMonth(), day + 3);
+  const start = early < weekStart ? early : weekStart;
+  const end = late > weekEnd ? late : weekEnd;
+  const count = Math.round((end - start) / 86400000) + 1;
+  return Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
 }
 
 export default function DaySelector({ selected, onSelect, totalsByDate = {}, goal = 2000 }) {
   const today = new Date();
-  const days = buildWeek(today);
   const todayKey = dateKey(today);
+  const days = buildDays(today);
   const selectedKey = dateKey(selected);
   const scrollRef = useRef(null);
   const containerWidth = useRef(0);
-  const itemX = useRef({});
+  const itemLayout = useRef({});
+  const didInit = useRef(false);
 
-  function scrollToKey(key) {
+  function scrollToKey(key, animated) {
     const scroller = scrollRef.current;
-    if (!scroller) return;
-    const x = itemX.current[key];
-    if (x == null) return;
-    // Center selected day: offset item center to container center, clamped at 0.
-    const target = Math.max(0, x - containerWidth.current / 2 + 26);
-    scroller.scrollTo({ x: target, animated: true });
+    const item = itemLayout.current[key];
+    if (!scroller || !item || !containerWidth.current) return;
+    // Center the day: offset item center to container center, clamped at 0.
+    const target = Math.max(0, item.x + item.w / 2 - containerWidth.current / 2);
+    scroller.scrollTo({ x: target, animated });
   }
+
   return (
     <ScrollView
       ref={scrollRef}
@@ -34,7 +42,10 @@ export default function DaySelector({ selected, onSelect, totalsByDate = {}, goa
       showsHorizontalScrollIndicator={false}
       onLayout={e => {
         containerWidth.current = e.nativeEvent.layout.width;
-        scrollToKey(selectedKey);
+        if (!didInit.current) {
+          didInit.current = true;
+          scrollToKey(selectedKey, false);
+        }
       }}
       contentContainerStyle={{ gap: 8, paddingVertical: 2, flexGrow: 1, justifyContent: 'center' }}
     >
@@ -46,10 +57,13 @@ export default function DaySelector({ selected, onSelect, totalsByDate = {}, goa
         return (
           <Pressable
             key={key}
-            onPress={() => onSelect(d)}
+            onPress={() => {
+              onSelect(d);
+              scrollToKey(key, true);
+            }}
             onLayout={e => {
-              itemX.current[key] = e.nativeEvent.layout.x;
-              if (key === selectedKey) scrollToKey(key);
+              itemLayout.current[key] = { x: e.nativeEvent.layout.x, w: e.nativeEvent.layout.width };
+              if (key === selectedKey && didInit.current) scrollToKey(key, false);
             }}
             accessibilityRole="button"
             accessibilityLabel={`${DAY_LABELS[d.getDay()]} ${d.getDate()}${isToday ? ', today' : ''}${isSelected ? ', selected' : ''}`}
