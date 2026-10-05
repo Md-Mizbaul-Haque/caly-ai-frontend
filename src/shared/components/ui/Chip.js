@@ -1,8 +1,13 @@
-import { Pressable, Text } from 'react-native';
+import { Pressable } from 'react-native';
+import { Badge } from '@/components/ui/badge';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 export default function Chip({ label, active, onPress }) {
   return (
-    <Pressable onPress={onPress} className={`px-4 py-2 rounded-full mr-2 ${active ? 'bg-primary' : 'bg-white border border-[#F1E8E0]'}`}>
-      <Text className={`text-sm ${active ? 'text-white font-bold' : 'text-ink'}`}>{label}</Text>
-    </Pressable>
+    <Badge variant={active ? 'default' : 'outline'} asChild className={cn('px-4 py-2 mr-2', active ? 'bg-primary' : 'bg-card')}>
+      <Pressable onPress={onPress}>
+        <Text className={cn('text-sm', active ? 'text-primary-foreground font-bold' : 'text-foreground')}>{label}</Text>
+      </Pressable>
+    </Badge>
   );
 }
