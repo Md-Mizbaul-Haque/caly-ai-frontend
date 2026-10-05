@@ -1,7 +1,9 @@
 import { View } from 'react-native';
 import Toast, { BaseToast } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { cn } from '@/lib/utils';
 const tokens = require('../../theme/tokens.js');
+// RNR sonner/toast not in nativewind registry – keep react-native-toast-message themed to f2470c via tokens + cn.
 
 function layout(accent) {
   return function ThemedToastLayout(props) {
@@ -30,11 +32,12 @@ const toastConfig = {
   info: layout(tokens.colors.primary),
 };
 
-export default function ThemedToast() {
+export default function ThemedToast({ className }) {
   const insets = useSafeAreaInsets();
   return (
     <View
       pointerEvents="box-none"
+      className={cn(className)}
       style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
     >
       <Toast topOffset={insets.top + 10} config={toastConfig} />

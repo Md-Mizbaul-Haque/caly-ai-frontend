@@ -1,4 +1,6 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { House, ChartColumn, Settings, Plus, X } from './icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const tokens = require('../../theme/tokens.js');
@@ -13,7 +15,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
   const insets = useSafeAreaInsets();
   return (
     <View
-      className="bg-white flex-row items-center pl-1 pr-4 pt-2"
+      className={cn('bg-card flex-row items-center pl-1 pr-4 pt-2')}
       style={{
         paddingBottom: Math.max(insets.bottom, 10),
         borderTopWidth: 1,
@@ -34,7 +36,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
               color={isActive ? tokens.colors.primary : tokens.colors.muted}
               strokeWidth={isActive ? 2.5 : 2}
             />
-            <Text className={`text-[11px] mt-1 ${isActive ? 'text-primary font-semibold' : 'text-muted'}`}>
+            <Text className={cn('text-[11px] mt-1', isActive ? 'text-primary font-semibold' : 'text-muted-foreground')}>
               {item.label}
             </Text>
           </Pressable>
@@ -43,7 +45,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
       <Pressable
         onPress={onToggleSheet}
         accessibilityLabel={sheetOpen ? 'Close quick log' : 'Log food'}
-        className="w-12 h-12 rounded-full bg-primary items-center justify-center ml-2"
+        className={cn('w-12 h-12 rounded-full bg-primary items-center justify-center ml-2')}
         style={{
           elevation: 4,
           shadowColor: tokens.colors.primary,
