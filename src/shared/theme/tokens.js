@@ -1,6 +1,6 @@
 module.exports = {
   colors: {
-    primary: '#FF6B35',
+    primary: '#f2470c',
     primaryDark: '#E85A24',
     ink: '#1A1A1A',
     muted: '#8A8A8A',
