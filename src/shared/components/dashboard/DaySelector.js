@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { ScrollView, Pressable, Text, View } from 'react-native';
 import { dateKey } from '../../utils/format';
 import ProgressRing from '../ui/ProgressRing';
@@ -13,8 +14,30 @@ export default function DaySelector({ selected, onSelect, totalsByDate = {}, goa
   const days = buildWeek(today);
   const todayKey = dateKey(today);
   const selectedKey = dateKey(selected);
+  const scrollRef = useRef(null);
+  const containerWidth = useRef(0);
+  const itemX = useRef({});
+
+  function scrollToKey(key) {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const x = itemX.current[key];
+    if (x == null) return;
+    // Center selected day: offset item center to container center, clamped at 0.
+    const target = Math.max(0, x - containerWidth.current / 2 + 26);
+    scroller.scrollTo({ x: target, animated: true });
+  }
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      onLayout={e => {
+        containerWidth.current = e.nativeEvent.layout.width;
+        scrollToKey(selectedKey);
+      }}
+      contentContainerStyle={{ gap: 8, paddingVertical: 2, flexGrow: 1, justifyContent: 'center' }}
+    >
       {days.map(d => {
         const key = dateKey(d);
         const isSelected = key === selectedKey;
@@ -24,6 +47,13 @@ export default function DaySelector({ selected, onSelect, totalsByDate = {}, goa
           <Pressable
             key={key}
             onPress={() => onSelect(d)}
+            onLayout={e => {
+              itemX.current[key] = e.nativeEvent.layout.x;
+              if (key === selectedKey) scrollToKey(key);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`${DAY_LABELS[d.getDay()]} ${d.getDate()}${isToday ? ', today' : ''}${isSelected ? ', selected' : ''}`}
+            accessibilityState={{ selected: isSelected }}
             className={`items-center rounded-card px-3 py-2 min-w-[44px] ${
               isSelected ? 'bg-primary' : isToday ? 'bg-white border border-[#F1E8E0]' : 'bg-transparent'
             }`}

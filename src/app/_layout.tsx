@@ -41,7 +41,36 @@ export default function RootLayout() {
       <AuthSessionProvider>
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#FFFFFF' }} className="flex-1 bg-white">
           <OfflineBanner />
-          <Stack screenOptions={{ headerShown: false }} />
+          {/* Unauthenticated stack (welcome/login/register/forgot/verify) lives
+              at the root, OUTSIDE the main (tabs) navigator, so the tab bar
+              (BottomNav, rendered only by (tabs)/_layout) can never cover
+              auth CTAs. tabBarStyle display none is set defensively on each
+              auth route. */}
+          <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen
+              name="welcome"
+              options={{ tabBarStyle: { display: 'none' } as any }}
+            />
+            <Stack.Screen
+              name="login"
+              options={{ tabBarStyle: { display: 'none' } as any }}
+            />
+            <Stack.Screen
+              name="register"
+              options={{ tabBarStyle: { display: 'none' } as any }}
+            />
+            <Stack.Screen
+              name="forgot"
+              options={{ tabBarStyle: { display: 'none' } as any }}
+            />
+            <Stack.Screen
+              name="verify"
+              options={{ tabBarStyle: { display: 'none' } as any }}
+            />
+            <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
           <RouteGuard />
           <ThemedToast />
           <PortalHost />
