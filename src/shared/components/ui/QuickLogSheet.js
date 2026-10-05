@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { Camera, Scale, Plus } from './icons';
 const tokens = require('../../theme/tokens.js');
 
@@ -45,7 +47,7 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
       </Animated.View>
 
       <Animated.View
-        className="bg-white rounded-t-[24px] px-4 pt-4 pb-4"
+        className={cn('bg-card rounded-t-[24px] px-4 pt-4 pb-4 border-t border-border')}
         style={{
           position: 'absolute',
           left: 0,
@@ -66,16 +68,16 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
               key={key}
               onPress={() => dismiss(key === 'food' ? onLogFood : key === 'scan' ? onScan : onLogWeight)}
               accessibilityLabel={label}
-              className="flex-1 bg-primary rounded-2xl py-3 items-center"
+              className={cn('flex-1 bg-primary rounded-2xl py-3 items-center')}
             >
               <Icon size={20} color="#FFFFFF" strokeWidth={2.2} />
-              <Text className="text-white text-xs font-semibold mt-1.5">{label}</Text>
+              <Text className={cn('text-primary-foreground text-xs font-semibold mt-1.5')}>{label}</Text>
             </Pressable>
           ))}
         </View>
 
-        <View className="mt-3 bg-cream rounded-2xl px-4 py-2.5">
-          <Text className="text-muted text-xs text-center">{remaining} kcal remaining today</Text>
+        <View className={cn('mt-3 bg-muted rounded-2xl px-4 py-2.5')}>
+          <Text className={cn('text-muted-foreground text-xs text-center')}>{remaining} kcal remaining today</Text>
         </View>
       </Animated.View>
     </View>

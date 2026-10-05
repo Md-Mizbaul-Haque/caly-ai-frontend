@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Alert, Animated, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, Pressable, View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { X } from './ui/icons';
 const tokens = require('../theme/tokens.js');
 
@@ -64,7 +68,7 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
       </Animated.View>
 
       <Animated.View
-        className="bg-white rounded-t-[24px] px-4 pt-4 pb-6"
+        className={cn('bg-card rounded-t-[24px] px-4 pt-4 pb-6 border-t border-border')}
         style={{
           position: 'absolute',
           left: 0,
@@ -80,41 +84,41 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
         }}
       >
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-lg font-bold text-ink">Log Weight</Text>
+          <Text className={cn('text-lg font-bold text-foreground')}>Log Weight</Text>
           <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
             <X size={20} color={tokens.colors.ink} />
           </Pressable>
         </View>
 
-        <Text className="text-xs text-muted mb-1">Weight (lbs)</Text>
-        <TextInput
+        <Text className={cn('text-xs text-muted-foreground mb-1')}>Weight (lbs)</Text>
+        <Input
           value={weight}
           onChangeText={v => setWeight(v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
           placeholder="e.g. 132.1"
           autoFocus
-          className="bg-cream rounded-xl px-4 py-3 text-base text-ink mb-3"
+          className={cn('bg-muted rounded-xl px-4 py-3 text-base text-foreground mb-3')}
         />
 
-        <Text className="text-xs text-muted mb-1">Goal weight (lbs)</Text>
-        <TextInput
+        <Text className={cn('text-xs text-muted-foreground mb-1')}>Goal weight (lbs)</Text>
+        <Input
           value={goal}
           onChangeText={v => setGoal(v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
           placeholder="e.g. 140"
-          className="bg-cream rounded-xl px-4 py-3 text-base text-ink mb-4"
+          className={cn('bg-muted rounded-xl px-4 py-3 text-base text-foreground mb-4')}
         />
 
-        <Pressable
+        <Button
           onPress={handleSave}
           disabled={busy}
-          className={`rounded-btn py-3.5 items-center ${busy ? 'bg-[#E5E5E5]' : 'bg-ink'}`}
+          className={cn(busy ? 'bg-muted' : 'bg-primary')}
           accessibilityLabel="Save weight"
         >
-          <Text className={`font-bold ${busy ? 'text-muted' : 'text-white'}`}>
+          <Text className={cn('font-bold', busy ? 'text-muted-foreground' : 'text-primary-foreground')}>
             {busy ? 'Saving…' : 'Save'}
           </Text>
-        </Pressable>
+        </Button>
       </Animated.View>
     </View>
   );
