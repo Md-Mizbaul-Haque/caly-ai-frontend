@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { Bike, Dumbbell, Footprints, Sofa } from 'lucide-react-native';
+import { Bike, Dumbbell, Footprints, Sofa } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import OptionCard from '../../../shared/components/auth/OptionCard';
 import { useOnboarding } from '../OnboardingContext';
@@ -19,8 +19,8 @@ export default function ActivityScreen({ onNext, onBack }) {
     if (busy) return;
     setBusy(true);
     try {
-      await savePartial({ activityLevel: state.activityLevel });
-      onNext();
+      const ok = await savePartial({ activityLevel: state.activityLevel });
+      if (ok) onNext();
     } finally {
       setBusy(false);
     }
@@ -34,7 +34,7 @@ export default function ActivityScreen({ onNext, onBack }) {
           const selected = state.activityLevel === key;
           return (
             <OptionCard key={key} title={title} subtitle={subtitle} selected={selected}
-              onPress={() => update({ activityLevel: key })} icon={<Icon size={28} color={selected ? '#FF6B35' : '#1A1A1A'} />} testID={`activity-${key}`} />
+              onPress={() => update({ activityLevel: key })} icon={<Icon size={28} color={selected ? '#f2470c' : '#1A1A1A'} />} testID={`activity-${key}`} />
           );
         })}
       </View>

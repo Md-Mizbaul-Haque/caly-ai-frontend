@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
 import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
@@ -18,20 +18,6 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
     result.kind === 'barcode' ? [result.item] : result.items
   );
   const [type, setType] = useState('Snack');
-
-  const totals = useMemo(
-    () =>
-      items.reduce(
-        (acc, i) => ({
-          kcal: acc.kcal + (Number(i.kcal) || 0),
-          protein: acc.protein + (Number(i.protein) || 0),
-          carbs: acc.carbs + (Number(i.carbs) || 0),
-          fat: acc.fat + (Number(i.fat) || 0),
-        }),
-        { kcal: 0, protein: 0, carbs: 0, fat: 0 }
-      ),
-    [items]
-  );
 
   function updateItem(idx, field, value) {
     setItems(prev => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
@@ -104,7 +90,7 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
           </Pressable>
           <View className="flex-row mt-2" style={{ gap: 8 }}>
             <View className="flex-1">
-              <Text className="text-xs text-muted mb-1">kcal</Text>
+              <Text className="text-xs text-muted-foreground mb-1">kcal</Text>
               <TextInput
                 value={String(item.kcal ?? '')}
                 onChangeText={v => updateItem(idx, 'kcal', v.replace(/[^0-9.]/g, ''))}
@@ -113,7 +99,7 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-xs text-muted mb-1">protein g</Text>
+              <Text className="text-xs text-muted-foreground mb-1">protein g</Text>
               <TextInput
                 value={String(item.protein ?? '')}
                 onChangeText={v => updateItem(idx, 'protein', v.replace(/[^0-9.]/g, ''))}
@@ -122,7 +108,7 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-xs text-muted mb-1">carbs g</Text>
+              <Text className="text-xs text-muted-foreground mb-1">carbs g</Text>
               <TextInput
                 value={String(item.carbs ?? '')}
                 onChangeText={v => updateItem(idx, 'carbs', v.replace(/[^0-9.]/g, ''))}
@@ -131,7 +117,7 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-xs text-muted mb-1">fat g</Text>
+              <Text className="text-xs text-muted-foreground mb-1">fat g</Text>
               <TextInput
                 value={String(item.fat ?? '')}
                 onChangeText={v => updateItem(idx, 'fat', v.replace(/[^0-9.]/g, ''))}
@@ -147,24 +133,24 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
         <Text className="font-bold text-ink mb-2">Totals (editable above)</Text>
         <View className="flex-row justify-between">
           <View className="items-center">
-            <Flame size={18} color="#FF6B35" />
+            <Flame size={18} color="#f2470c" />
             <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.kcal)}</Text>
-            <Text className="text-xs text-muted">kcal</Text>
+            <Text className="text-xs text-muted-foreground">kcal</Text>
           </View>
           <View className="items-center">
-            <Beef size={18} color="#FF6B35" />
+            <Beef size={18} color="#f2470c" />
             <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.protein)}g</Text>
-            <Text className="text-xs text-muted">protein</Text>
+            <Text className="text-xs text-muted-foreground">protein</Text>
           </View>
           <View className="items-center">
             <Wheat size={18} color="#FACC15" />
             <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.carbs)}g</Text>
-            <Text className="text-xs text-muted">carbs</Text>
+            <Text className="text-xs text-muted-foreground">carbs</Text>
           </View>
           <View className="items-center">
             <Droplet size={18} color="#22C55E" />
             <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.fat)}g</Text>
-            <Text className="text-xs text-muted">fat</Text>
+            <Text className="text-xs text-muted-foreground">fat</Text>
           </View>
         </View>
       </Card>
@@ -184,6 +170,11 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
           disabled={activeTotals.kcal <= 0}
           onPress={handleSave}
         />
+        {activeTotals.kcal <= 0 && (
+          <Text className="text-xs text-muted-foreground text-center mt-2">
+            Totals are zero — enter estimates in the fields above to save.
+          </Text>
+        )}
       </View>
     </ScrollView>
   );

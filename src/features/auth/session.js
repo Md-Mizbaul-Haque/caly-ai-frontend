@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import { getToken, setSessionExpiredHandler } from '../../shared/lib/tokenStore';
 import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail } from '../../shared/lib/authApi';
 import { toastError, toastSuccess } from '../../shared/utils/toast';
+import { readCache, writeCache, clearAppCache } from '../../shared/lib/appCache';
 
 const AuthSessionContext = createContext(null);
 
@@ -9,41 +11,54 @@ export function AuthSessionProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [goal, setGoal] = useState(2000);
-  const [authStage, setAuthStage] = useState('welcome');
   const [stageEmail, setStageEmail] = useState('');
   const [verifyNext, setVerifyNext] = useState('app');
   const [authBusy, setAuthBusy] = useState(false);
 
-  // Incomplete onboarding always resumes first — homepage only after completion.
-  function resumeOnboardingIfNeeded(u) {
-    if (u && !u.onboardingCompleted) {
-      setStageEmail(u.email);
-      setAuthStage('onboarding');
-      return true;
-    }
-    return false;
+  // True when the account exists but onboarding was never finished.
+  // Callers show a "finish setup" toast; route guards own the redirect.
+  function needsOnboarding(u) {
+    return !!u && !u.onboardingCompleted;
+  }
+
+  function applyUser(u) {
+    setUser(u);
+    if (u) writeCache('user', u);
+    if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal);
   }
 
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setUser(null);
-      setAuthStage('welcome');
+      setStageEmail('');
+      clearAppCache();
     });
   }, []);
 
   useEffect(() => {
     let alive = true;
+    // Cache-first startup: a returning user sees their data instantly while
+    // the token is revalidated in the background. Only a real 401 (revoked
+    // session) signs them out; network blips must not.
     (async () => {
+      const cached = await readCache('user');
+      if (!alive) return;
+      if (cached) {
+        applyUser(cached);
+        setAuthChecked(true);
+      }
       const t = await getToken();
-      if (!t) { if (alive) setAuthChecked(true); return; }
+      if (!t) { if (alive) { setUser(null); setAuthChecked(true); } return; }
       try {
         const data = await fetchMe();
-        if (alive && !resumeOnboardingIfNeeded(data.user)) {
-          setUser(data.user);
-          if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
-        }
-      } catch { if (alive) setUser(null); }
-      finally { if (alive) setAuthChecked(true); }
+        if (alive) applyUser(data.user);
+      } catch (e) {
+        if (!alive) return;
+        if (e?.status === 401) { setUser(null); clearAppCache(); }
+        // Offline/other errors: keep whatever we have (cached or null).
+      } finally {
+        if (alive) setAuthChecked(true);
+      }
     })();
     return () => { alive = false; };
   }, []);
@@ -52,19 +67,17 @@ export function AuthSessionProvider({ children }) {
     setAuthBusy(true);
     try {
       const data = await login(email, password);
-      if (resumeOnboardingIfNeeded(data.user)) {
+      applyUser(data.user);
+      if (needsOnboarding(data.user)) {
         toastSuccess('Welcome back', "Let's finish setting up your plan");
-        return;
+      } else {
+        toastSuccess('Welcome', 'Signed in');
       }
-      setAuthStage('welcome');
-      setUser(data.user);
-      if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
-      toastSuccess('Welcome', 'Signed in');
     } catch (e) {
       if (e.needsVerification) {
         setStageEmail(email);
         setVerifyNext('app');
-        setAuthStage('verify');
+        router.replace('/verify');
         toastSuccess('Check email', 'Verify your email to continue');
       } else {
         toastError('Login failed', e.message);
@@ -80,7 +93,7 @@ export function AuthSessionProvider({ children }) {
       await register(name, email, password);
       setStageEmail(email);
       setVerifyNext('onboarding');
-      setAuthStage('verify');
+      router.replace('/verify');
       toastSuccess('Check email', 'Enter the verification code');
     } catch (e) {
       toastError('Registration failed', e.message);
@@ -94,13 +107,12 @@ export function AuthSessionProvider({ children }) {
     try {
       const data = await verifyEmail(email, code);
       if (verifyNext === 'onboarding') {
-        setAuthStage('onboarding');
-      } else if (resumeOnboardingIfNeeded(data.user)) {
+        setStageEmail(data.user.email);
+      }
+      applyUser(data.user);
+      if (needsOnboarding(data.user)) {
         toastSuccess('Verified', "Let's finish setting up your plan");
       } else {
-        setAuthStage('welcome');
-        setUser(data.user);
-        if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
         toastSuccess('Welcome', 'Verified');
       }
     } catch (e) {
@@ -124,13 +136,12 @@ export function AuthSessionProvider({ children }) {
     try {
       const data = await skipVerification(email);
       if (verifyNext === 'onboarding') {
-        setAuthStage('onboarding');
-      } else if (resumeOnboardingIfNeeded(data.user)) {
+        setStageEmail(data.user.email);
+      }
+      applyUser(data.user);
+      if (needsOnboarding(data.user)) {
         toastSuccess('Welcome back', "Let's finish setting up your plan");
       } else {
-        setAuthStage('welcome');
-        setUser(data.user);
-        if (data.user && data.user.dailyGoalKcal) setGoal(data.user.dailyGoalKcal);
         toastSuccess('Welcome', 'Signed in');
       }
     } catch (e) {
@@ -145,12 +156,14 @@ export function AuthSessionProvider({ children }) {
       await logout();
     } finally {
       setUser(null);
+      setStageEmail('');
+      clearAppCache();
     }
   }
 
   async function refreshUser() {
     const { user: u } = await fetchMe();
-    setUser(u);
+    applyUser(u);
     return u;
   }
 
@@ -160,12 +173,11 @@ export function AuthSessionProvider({ children }) {
     authChecked,
     goal,
     setGoal,
-    authStage,
-    setAuthStage,
     stageEmail,
     setStageEmail,
     verifyNext,
     authBusy,
+    needsOnboarding,
     handleLogin,
     handleRegister,
     handleVerify,

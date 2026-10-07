@@ -14,7 +14,7 @@ export default function WelcomeScreen({ onLogin, onRegister }) {
         />
         <Text style={{ fontSize: 52, fontWeight: '800', letterSpacing: -1, marginTop: 12 }}>
           <Text style={{ color: '#000000' }}>CALY</Text>
-          <Text style={{ color: '#FF6B35' }}> AI</Text>
+          <Text style={{ color: '#f2470c' }}> AI</Text>
         </Text>
       </View>
       <View style={{ gap: 16, paddingBottom: 12 }}>

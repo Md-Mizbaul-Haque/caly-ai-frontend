@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Alert, Animated, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { X } from './ui/icons';
-const tokens = require('../theme/tokens.js');
-
 /**
- * Docked sheet for logging weight. Weight (lbs) is required; goal weight
- * prefills from the saved goal and only updates when changed.
+ * Docked sheet for logging weight. Weight (lbs) is required and prefills with
+ * the latest entry; goal weight prefills from the saved goal and only updates
+ * when changed. onSave({ value, goal? }) talks to the real /api/weights
+ * endpoints (same-day re-log replaces the existing entry) and must throw on
+ * failure so the sheet can surface the error instead of silently closing.
  */
-export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, onClose, onSave }) {
+export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, latestWeight = null, onClose, onSave }) {
   const [progress] = useState(() => new Animated.Value(0));
-  const [weight, setWeight] = useState('');
-  const [goal, setGoal] = useState(currentGoal ? String(currentGoal) : '');
+  const [weight, setWeight] = useState(latestWeight != null ? String(latestWeight) : '');
+  const [goal, setGoal] = useState(currentGoal != null ? String(currentGoal) : '');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    return () => Keyboard.dismiss();
   }, [progress]);
 
   function dismiss(after = onClose) {
@@ -33,12 +39,15 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
     }
     const goalValue = parseFloat(goal);
     const payload = { value };
-    if (Number.isFinite(goalValue) && goalValue >= 20 && goalValue <= 1000) {
+    // Only send the goal when it actually changed — avoids a redundant PUT
+    // on every weight log when the prefilled goal was left untouched.
+    if (Number.isFinite(goalValue) && goalValue >= 20 && goalValue <= 1000 && goalValue !== Number(currentGoal)) {
       payload.goal = goalValue;
     }
     setBusy(true);
     try {
       await onSave(payload);
+      Keyboard.dismiss();
       dismiss();
     } catch (e) {
       Alert.alert('Could not save', e.message || 'Try again.');
@@ -63,16 +72,19 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
         <Pressable className="flex-1" onPress={() => dismiss()} accessibilityLabel="Close log weight" />
       </Animated.View>
 
+      {/* iOS only: the keyboard would otherwise cover the inputs (Android
+          shrinks the window via adjustResize). behavior undefined elsewhere
+          renders a plain View with zero visual change. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: bottomOffset }}
+      >
       <Animated.View
-        className="bg-white rounded-t-[24px] px-4 pt-4 pb-6"
+        className={cn('bg-card rounded-t-[24px] px-4 pt-4 pb-6 border-t border-border')}
         style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: bottomOffset,
           opacity: progress,
           transform: [{ translateY }],
-          shadowColor: tokens.colors.ink,
+          shadowColor: '#1A1A1A',
           shadowOpacity: 0.1,
           shadowRadius: 16,
           shadowOffset: { width: 0, height: -6 },
@@ -80,42 +92,44 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
         }}
       >
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-lg font-bold text-ink">Log Weight</Text>
+          <Text className={cn('text-lg font-bold text-foreground')}>Log Weight</Text>
           <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
-            <X size={20} color={tokens.colors.ink} />
+            <X size={20} color={'#1A1A1A'} />
           </Pressable>
         </View>
 
-        <Text className="text-xs text-muted mb-1">Weight (lbs)</Text>
-        <TextInput
+        <Text className={cn('text-xs text-muted-foreground mb-1')}>Weight (lbs)</Text>
+        <Input
           value={weight}
           onChangeText={v => setWeight(v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
-          placeholder="e.g. 132.1"
+          placeholder={latestWeight != null ? String(latestWeight) : 'e.g. 132.1'}
           autoFocus
-          className="bg-cream rounded-xl px-4 py-3 text-base text-ink mb-3"
+          selectTextOnFocus
+          className={cn('bg-muted rounded-xl px-4 py-3 text-base text-foreground mb-3')}
         />
 
-        <Text className="text-xs text-muted mb-1">Goal weight (lbs)</Text>
-        <TextInput
+        <Text className={cn('text-xs text-muted-foreground mb-1')}>Goal weight (lbs)</Text>
+        <Input
           value={goal}
           onChangeText={v => setGoal(v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
           placeholder="e.g. 140"
-          className="bg-cream rounded-xl px-4 py-3 text-base text-ink mb-4"
+          className={cn('bg-muted rounded-xl px-4 py-3 text-base text-foreground mb-4')}
         />
 
-        <Pressable
+        <Button
           onPress={handleSave}
           disabled={busy}
-          className={`rounded-btn py-3.5 items-center ${busy ? 'bg-[#E5E5E5]' : 'bg-ink'}`}
+          className={cn(busy ? 'bg-muted' : 'bg-primary')}
           accessibilityLabel="Save weight"
         >
-          <Text className={`font-bold ${busy ? 'text-muted' : 'text-white'}`}>
+          <Text className={cn('font-bold', busy ? 'text-muted-foreground' : 'text-primary-foreground')}>
             {busy ? 'Saving…' : 'Save'}
           </Text>
-        </Pressable>
+        </Button>
       </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

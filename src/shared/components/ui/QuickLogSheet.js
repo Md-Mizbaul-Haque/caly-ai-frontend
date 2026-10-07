@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { Camera, Scale, Plus } from './icons';
-const tokens = require('../../theme/tokens.js');
-
+import { useCameraPermissions, requestPermission } from 'expo-camera';
 const QUICK_ACTIONS = [
   { key: 'food', label: 'Log Food', Icon: Plus },
   { key: 'scan', label: 'Scan', Icon: Camera },
@@ -45,7 +46,7 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
       </Animated.View>
 
       <Animated.View
-        className="bg-white rounded-t-[24px] px-4 pt-4 pb-4"
+        className={cn('bg-card rounded-t-[24px] px-4 pt-4 pb-4 border-t border-border')}
         style={{
           position: 'absolute',
           left: 0,
@@ -53,11 +54,11 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
           bottom: bottomOffset,
           opacity: progress,
           transform: [{ translateY }],
-          shadowColor: tokens.colors.ink,
-          shadowOpacity: 0.1,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: -6 },
-          elevation: 12,
+          // No shadow/elevation: the panel docks flush above BottomNav, and
+          // Android elevation draws on all sides so it bled downward over the
+          // nav as a gray strip. The nav's own top border is the separator.
+          shadowOpacity: 0,
+          elevation: 0,
         }}
       >
         <View className="flex-row" style={{ gap: 12 }}>
@@ -66,16 +67,16 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
               key={key}
               onPress={() => dismiss(key === 'food' ? onLogFood : key === 'scan' ? onScan : onLogWeight)}
               accessibilityLabel={label}
-              className="flex-1 bg-primary rounded-2xl py-3 items-center"
+              className={cn('flex-1 bg-primary rounded-2xl py-3 items-center')}
             >
-              <Icon size={20} color="#FFFFFF" strokeWidth={2.2} />
-              <Text className="text-white text-xs font-semibold mt-1.5">{label}</Text>
+               <Icon size={20} color="#FFFFFF" />
+              <Text className={cn('text-primary-foreground text-xs font-semibold mt-1.5')}>{label}</Text>
             </Pressable>
           ))}
         </View>
 
-        <View className="mt-3 bg-cream rounded-2xl px-4 py-2.5">
-          <Text className="text-muted text-xs text-center">{remaining} kcal remaining today</Text>
+        <View className={cn('mt-3 bg-muted rounded-2xl px-4 py-2.5')}>
+          <Text className={cn('text-muted-foreground text-xs text-center')}>{remaining} kcal remaining today</Text>
         </View>
       </Animated.View>
     </View>

@@ -1,8 +1,8 @@
 import { Text, View } from 'react-native';
-import { PartyPopper } from 'lucide-react-native';
+import { PartyPopper } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import { useOnboarding } from '../OnboardingContext';
-import { goalLabel } from '../../../shared/utils/nutrition';
+import { goalLabel, snapWeightKg } from '../../../shared/utils/nutrition';
 
 const COPY = {
   'Maintain Weight': {
@@ -21,13 +21,18 @@ const COPY = {
 
 export default function GreatChoiceScreen({ onNext, onBack }) {
   const { state } = useOnboarding();
-  const label = goalLabel(state.weightKg, state.targetWeightKg);
+  // Label from the same snapped grid values the rulers display, so the copy
+  // can never contradict the numbers the user just saw.
+  const label = goalLabel(
+    snapWeightKg(state.weightKg, state.weightUnit),
+    snapWeightKg(state.targetWeightKg, state.targetUnit)
+  );
   const copy = COPY[label];
   return (
-    <AuthScaffold title="Great choice!" titleColor="#FF6B35" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
+    <AuthScaffold title="Great choice!" titleColor="#f2470c" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
-          <PartyPopper size={44} color="#FF6B35" />
+          <PartyPopper size={44} color="#f2470c" />
         </View>
       </View>
       <Text className="text-[24px] font-semibold text-[#1A1A1A] leading-[32px] mb-5">{copy.head}</Text>

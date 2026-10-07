@@ -16,7 +16,11 @@
         "foregroundImage": "./assets/caly-logo.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.mizba.calyaifrontend"
+      "package": "com.mizba.calyaifrontend",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,7 +49,22 @@
         }
       ],
       "expo-secure-store",
-      ["expo-router", { "root": "./src/app" }]
-    ]
+      [
+        "expo-router",
+        {
+          "root": "./src/app"
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "extra": {
+      "router": {
+        "root": "./src/app"
+      },
+      "eas": {
+        "projectId": "1fa709d1-fcee-4cd9-8c42-c77a05375180"
+      }
+    },
+    "owner": "mizba"
   }
 }

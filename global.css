@@ -1,3 +1,71 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 99%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 99%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 15 91% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 0 0% 3%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 32%;
+    --accent: 16 100% 96%;
+    --accent-foreground: 16 95% 41%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 14% 92%;
+    --input: 0 0% 92%;
+    --ring: 15 91% 50%;
+    --radius: 1.375rem;
+    --ink: 0 0% 10%;
+    --cream: 18 100% 97%;
+    --success: 142 71% 45%;
+    --chart-1: 15 91% 50%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --font-sans: Plus Jakarta Sans;
+    --font-serif: Lora;
+    --font-mono: IBM Plex Mono;
+  }
+
+  .dark:root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 94%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 94%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 94%;
+    --primary: 15 91% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 15 78% 32%;
+    --secondary-foreground: 0 0% 94%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 59%;
+    --accent: 15 86% 23%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 71% 66%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 12%;
+    --input: 0 0% 23%;
+    --ring: 15 91% 50%;
+    --ink: 0 0% 10%;
+    --cream: 18 100% 97%;
+    --success: 142 71% 45%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+
