@@ -26,7 +26,7 @@ function connectionError(id, method, path) {
   // Host only (no tokens/bodies): tells us instantly whether the phone is
   // pointed at a LAN URL it can't reach vs a real internet outage.
   console.info(`[api #${id}] target ${API_URL} (check same-WiFi + backend running)`);
-  const err = new Error(`Couldn't connect to the server. Check your internet connection and try again. (Ref #${id})`);
+  const err = new Error(`Couldn't connect to the server at ${API_URL}. Check your internet connection and try again. (Ref #${id})`);
   err.network = true;
   err.reportId = id;
   return err;
