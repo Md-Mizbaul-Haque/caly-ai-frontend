@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Animated, Pressable, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Camera, Scale, Plus } from './icons';
+import { useCameraPermissions, requestPermission } from 'expo-camera';
 const QUICK_ACTIONS = [
   { key: 'food', label: 'Log Food', Icon: Plus },
   { key: 'scan', label: 'Scan', Icon: Camera },
@@ -53,11 +54,11 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
           bottom: bottomOffset,
           opacity: progress,
           transform: [{ translateY }],
-          shadowColor: '#1A1A1A',
-          shadowOpacity: 0.1,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: -6 },
-          elevation: 12,
+          // No shadow/elevation: the panel docks flush above BottomNav, and
+          // Android elevation draws on all sides so it bled downward over the
+          // nav as a gray strip. The nav's own top border is the separator.
+          shadowOpacity: 0,
+          elevation: 0,
         }}
       >
         <View className="flex-row" style={{ gap: 12 }}>
@@ -68,7 +69,7 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
               accessibilityLabel={label}
               className={cn('flex-1 bg-primary rounded-2xl py-3 items-center')}
             >
-              <Icon size={20} color="#FFFFFF" strokeWidth={2.2} />
+               <Icon size={20} color="#FFFFFF" />
               <Text className={cn('text-primary-foreground text-xs font-semibold mt-1.5')}>{label}</Text>
             </Pressable>
           ))}

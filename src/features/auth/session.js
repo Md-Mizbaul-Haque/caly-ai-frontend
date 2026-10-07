@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { getToken, setSessionExpiredHandler } from '../../shared/lib/tokenStore';
 import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail } from '../../shared/lib/authApi';
 import { toastError, toastSuccess } from '../../shared/utils/toast';
+import { readCache, writeCache, clearAppCache } from '../../shared/lib/appCache';
 
 const AuthSessionContext = createContext(null);
 
@@ -22,6 +23,7 @@ export function AuthSessionProvider({ children }) {
 
   function applyUser(u) {
     setUser(u);
+    if (u) writeCache('user', u);
     if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal);
   }
 
@@ -29,19 +31,34 @@ export function AuthSessionProvider({ children }) {
     setSessionExpiredHandler(() => {
       setUser(null);
       setStageEmail('');
+      clearAppCache();
     });
   }, []);
 
   useEffect(() => {
     let alive = true;
+    // Cache-first startup: a returning user sees their data instantly while
+    // the token is revalidated in the background. Only a real 401 (revoked
+    // session) signs them out; network blips must not.
     (async () => {
+      const cached = await readCache('user');
+      if (!alive) return;
+      if (cached) {
+        applyUser(cached);
+        setAuthChecked(true);
+      }
       const t = await getToken();
-      if (!t) { if (alive) setAuthChecked(true); return; }
+      if (!t) { if (alive) { setUser(null); setAuthChecked(true); } return; }
       try {
         const data = await fetchMe();
         if (alive) applyUser(data.user);
-      } catch { if (alive) setUser(null); }
-      finally { if (alive) setAuthChecked(true); }
+      } catch (e) {
+        if (!alive) return;
+        if (e?.status === 401) { setUser(null); clearAppCache(); }
+        // Offline/other errors: keep whatever we have (cached or null).
+      } finally {
+        if (alive) setAuthChecked(true);
+      }
     })();
     return () => { alive = false; };
   }, []);
@@ -140,6 +157,7 @@ export function AuthSessionProvider({ children }) {
     } finally {
       setUser(null);
       setStageEmail('');
+      clearAppCache();
     }
   }
 

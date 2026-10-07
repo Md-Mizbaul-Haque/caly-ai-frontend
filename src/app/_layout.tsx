@@ -15,7 +15,7 @@ function RouteGuard() {
   const pathname = usePathname();
   const { authChecked, user, stageEmail } = useSession();
   useEffect(() => {
-    if (!authChecked || pathname === '/') return;
+    if (!authChecked || !pathname || pathname === '/') return;
     const group = segments[0];
     const inTabs = group === '(tabs)';
     const inOnboarding = group === '(onboarding)';
@@ -24,8 +24,25 @@ function RouteGuard() {
     const onboardingActive = !!stageEmail || (authed && !completed);
     if (!authed && (inTabs || (inOnboarding && !onboardingActive))) {
       router.replace('/welcome');
-    } else if (authed && completed && !inTabs) {
-      router.replace('/(tabs)/dashboard');
+    } else if (authed && completed && !inTabs && !inOnboarding) {
+      // Allow specific routes when authenticated and completed, outside of tabs and onboarding
+      const allowedRoutes = [
+        '/profile',
+        '/settings',
+        '/weight-tracker',
+        '/notifications',
+        '/referral-code',
+        '/whats-new',
+        '/snappy-early-access',
+        '/help',
+        '/upgrade-membership',
+        '/calorie-macro-targets',
+        '/favorites',
+        '/find-recipes',
+      ];
+      if (!allowedRoutes.includes(pathname)) {
+        router.replace('/(tabs)/dashboard');
+      }
     } else if (authed && !completed && !inOnboarding) {
       router.replace('/(onboarding)/gender');
     } else if (!authed && onboardingActive && inTabs) {

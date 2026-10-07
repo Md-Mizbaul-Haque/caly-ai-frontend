@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff } from '../../../shared/components/ui/icons';
 import { cn } from '@/lib/utils';
 import AuthInput from './AuthInput';
 

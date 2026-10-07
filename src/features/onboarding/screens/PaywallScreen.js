@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { X } from 'lucide-react-native';
+import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { X } from '../../../shared/components/ui/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
 import { toastSuccess } from '../../../shared/utils/toast';
 
 function DiscountModal({ onAccept, onClose }) {
   const modalInsets = useSafeAreaInsets();
+  // Plain-object style only (see BottomCTA): function-form style merged with
+  // className is never called, so pressed state is tracked manually.
+  const [pressed, setPressed] = useState(false);
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: Math.max(modalInsets.bottom, 32) + 20 }}>
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-[20px] font-bold text-[#1A1A1A] flex-1">Want a discount? We get it.</Text>
-            <Pressable onPress={onClose} testID="discount-close" hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}><X size={24} color="#1A1A1A" /></Pressable>
+            <Pressable onPress={onClose} testID="discount-close" accessibilityRole="button" accessibilityLabel="Close offer" hitSlop={12}
+              onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} style={{ opacity: pressed ? 0.6 : 1 }}><X size={24} color="#1A1A1A" /></Pressable>
           </View>
           <View className="flex-row items-center mb-2">
             <Text className="text-[16px] text-[#1A1A1A] line-through mr-3">BDT11,000.00 per year</Text>
@@ -33,6 +37,13 @@ function DiscountModal({ onAccept, onClose }) {
 export default function PaywallScreen({ onDone }) {
   const insets = useSafeAreaInsets();
   const [offer, setOffer] = useState(false);
+  // Plain-object styles only (see BottomCTA): pressed state tracked manually.
+  const [pressedKey, setPressedKey] = useState(null);
+  const pressable = (key) => ({
+    onPressIn: () => setPressedKey(key),
+    onPressOut: () => setPressedKey(null),
+    style: { opacity: pressedKey === key ? 0.6 : 1 },
+  });
   function dismiss() {
     if (!offer) setOffer(true);
     else onDone();
@@ -41,23 +52,28 @@ export default function PaywallScreen({ onDone }) {
     <View className="flex-1 bg-white">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 32) + 20, flexGrow: 1 }}>
       <View className="items-end px-6 pt-6">
-        <Pressable onPress={dismiss} testID="paywall-close" accessibilityRole="button" hitSlop={12}
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <Pressable onPress={dismiss} testID="paywall-close" accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}
+          {...pressable('close')}>
           <X size={28} color="#1A1A1A" />
         </Pressable>
       </View>
-      <Text className="text-[28px] font-extrabold text-[#1A1A1A] text-center px-8 mt-2 mb-5">Unlock SnapCalorie Premium to reach your goals faster.</Text>
+      <Text className="text-[28px] font-extrabold text-[#1A1A1A] text-center px-8 mt-2 mb-5">Unlock Caly AI Premium to reach your goals faster.</Text>
       <View className="bg-[#F1E8E0] mx-0 items-center justify-center" style={{ height: 220 }}>
-        <Text className="text-[16px] text-[#8A8A8A]">Premium meals photo</Text>
+        <Image
+          source={require('../../../../assets/caly-logo.png')}
+          style={{ width: 140, height: 140 }}
+          resizeMode="contain"
+          accessibilityLabel="Caly AI logo"
+        />
       </View>
       <View className="px-6 mt-5">
         <Text className="text-[18px] font-semibold text-[#1A1A1A] mb-4">✓ No Commitment - Cancel Anytime</Text>
-        <BottomCTA label="Start 7 day free trial!" onPress={onDone} testID="paywall-trial" />
+        <BottomCTA label="Start 7-Day Free Trial!" onPress={onDone} testID="paywall-trial" />
         <Text className="text-center text-[14px] text-[#8A8A8A] mt-3">7 days free, then BDT11,000.00 per year (BDT916.66/mo)</Text>
         <View className="flex-row justify-around mt-4">
-          <Pressable onPress={() => toastSuccess('Privacy', 'Coming soon')} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}><Text className="text-[15px] text-[#8A8A8A]">Privacy</Text></Pressable>
-          <Pressable onPress={() => toastSuccess('Restore', 'Coming soon')} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}><Text className="text-[15px] text-[#8A8A8A]">Restore Purchase</Text></Pressable>
-          <Pressable onPress={() => toastSuccess('Terms', 'Coming soon')} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}><Text className="text-[15px] text-[#8A8A8A]">Terms</Text></Pressable>
+          <Pressable onPress={() => toastSuccess('Privacy', 'Coming soon')} {...pressable('privacy')}><Text className="text-[15px] text-[#8A8A8A]">Privacy</Text></Pressable>
+          <Pressable onPress={() => toastSuccess('Restore', 'Coming soon')} {...pressable('restore')}><Text className="text-[15px] text-[#8A8A8A]">Restore Purchase</Text></Pressable>
+          <Pressable onPress={() => toastSuccess('Terms', 'Coming soon')} {...pressable('terms')}><Text className="text-[15px] text-[#8A8A8A]">Terms</Text></Pressable>
         </View>
       </View>
       </ScrollView>

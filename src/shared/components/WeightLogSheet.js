@@ -1,22 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Alert, Animated, Pressable, View } from 'react-native';
+import { Alert, Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { X } from './ui/icons';
 /**
- * Docked sheet for logging weight. Weight (lbs) is required; goal weight
- * prefills from the saved goal and only updates when changed.
+ * Docked sheet for logging weight. Weight (lbs) is required and prefills with
+ * the latest entry; goal weight prefills from the saved goal and only updates
+ * when changed. onSave({ value, goal? }) talks to the real /api/weights
+ * endpoints (same-day re-log replaces the existing entry) and must throw on
+ * failure so the sheet can surface the error instead of silently closing.
  */
-export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, onClose, onSave }) {
+export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, latestWeight = null, onClose, onSave }) {
   const [progress] = useState(() => new Animated.Value(0));
-  const [weight, setWeight] = useState('');
-  const [goal, setGoal] = useState(currentGoal ? String(currentGoal) : '');
+  const [weight, setWeight] = useState(latestWeight != null ? String(latestWeight) : '');
+  const [goal, setGoal] = useState(currentGoal != null ? String(currentGoal) : '');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    return () => Keyboard.dismiss();
   }, [progress]);
 
   function dismiss(after = onClose) {
@@ -35,12 +39,15 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
     }
     const goalValue = parseFloat(goal);
     const payload = { value };
-    if (Number.isFinite(goalValue) && goalValue >= 20 && goalValue <= 1000) {
+    // Only send the goal when it actually changed — avoids a redundant PUT
+    // on every weight log when the prefilled goal was left untouched.
+    if (Number.isFinite(goalValue) && goalValue >= 20 && goalValue <= 1000 && goalValue !== Number(currentGoal)) {
       payload.goal = goalValue;
     }
     setBusy(true);
     try {
       await onSave(payload);
+      Keyboard.dismiss();
       dismiss();
     } catch (e) {
       Alert.alert('Could not save', e.message || 'Try again.');
@@ -65,13 +72,16 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
         <Pressable className="flex-1" onPress={() => dismiss()} accessibilityLabel="Close log weight" />
       </Animated.View>
 
+      {/* iOS only: the keyboard would otherwise cover the inputs (Android
+          shrinks the window via adjustResize). behavior undefined elsewhere
+          renders a plain View with zero visual change. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: bottomOffset }}
+      >
       <Animated.View
         className={cn('bg-card rounded-t-[24px] px-4 pt-4 pb-6 border-t border-border')}
         style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: bottomOffset,
           opacity: progress,
           transform: [{ translateY }],
           shadowColor: '#1A1A1A',
@@ -93,8 +103,9 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
           value={weight}
           onChangeText={v => setWeight(v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
-          placeholder="e.g. 132.1"
+          placeholder={latestWeight != null ? String(latestWeight) : 'e.g. 132.1'}
           autoFocus
+          selectTextOnFocus
           className={cn('bg-muted rounded-xl px-4 py-3 text-base text-foreground mb-3')}
         />
 
@@ -118,6 +129,7 @@ export default function WeightLogSheet({ bottomOffset = 0, currentGoal = null, o
           </Text>
         </Button>
       </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarDays, ChevronLeft, UserRound } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, UserRound } from '../../../shared/components/ui/icons';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
 import WheelPicker, { WHEEL_ITEM_H } from '../../../shared/components/auth/WheelPicker';
+import { useCompactAuth } from '../../../shared/components/auth/useCompact';
 import { useOnboarding } from '../OnboardingContext';
 import { calcAge } from '../../../shared/utils/nutrition';
 
@@ -17,6 +18,8 @@ function daysInMonth(year, month1) {
 
 export default function BirthdayScreen({ onNext, onBack }) {
   const insets = useSafeAreaInsets();
+  const compact = useCompactAuth();
+  const [backPressed, setBackPressed] = useState(false);
   const { state, update } = useOnboarding();
   const d = state.birthDate;
   const y = d.getFullYear();
@@ -41,18 +44,20 @@ export default function BirthdayScreen({ onNext, onBack }) {
   return (
     <View className="flex-1 bg-white">
       <ScrollView
-        className="flex-1 px-6 pt-6"
+        className={`flex-1 px-6 ${compact ? 'pt-4' : 'pt-6'}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
       >
         {onBack && (
-          <Pressable onPress={onBack} testID="auth-back" accessibilityRole="button"
+          <Pressable onPress={onBack} testID="auth-back" accessibilityRole="button" accessibilityLabel="Go back"
+            onPressIn={() => setBackPressed(true)}
+            onPressOut={() => setBackPressed(false)}
             className="w-12 h-12 rounded-2xl border border-[#F1E8E0] bg-white items-center justify-center mb-2"
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            style={{ opacity: backPressed ? 0.6 : 1 }}>
             <ChevronLeft size={26} color="#1A1A1A" />
           </Pressable>
         )}
-        <View className="items-center mt-2 mb-3">
+        <View className={`items-center ${compact ? 'mt-1 mb-2' : 'mt-2 mb-3'}`}>
           <View style={{ width: 112, height: 112, borderRadius: 30, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
             <CalendarDays size={52} color="#f2470c" />
             <View style={{ position: 'absolute', top: 10, left: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}>
@@ -66,7 +71,7 @@ export default function BirthdayScreen({ onNext, onBack }) {
         >
           Enter your birth date
         </Text>
-        <Text className="text-center text-[15px] text-[#8A8A8A] mt-2 mb-5">Don&apos;t worry, we&apos;ll keep it private.</Text>
+        <Text className={`text-center text-[15px] text-[#8A8A8A] mt-2 ${compact ? 'mb-3' : 'mb-5'}`}>Don&apos;t worry, we&apos;ll keep it private.</Text>
         <View style={{ height: WHEEL_ITEM_H * 5 }}>
           {/* Fixed selection band, like a native picker: bolted to the middle,
               never moves, never intercepts touches (no elevation + pointer
@@ -88,9 +93,9 @@ export default function BirthdayScreen({ onNext, onBack }) {
             }}
           >
             <View style={{ flex: 1.4 }} />
-            <View style={{ width: 1, height: 24, backgroundColor: '#EAD9CC' }} />
+            <View style={{ width: 1, height: 24, backgroundColor: '#F1E8E0' }} />
             <View style={{ flex: 0.7 }} />
-            <View style={{ width: 1, height: 24, backgroundColor: '#EAD9CC' }} />
+            <View style={{ width: 1, height: 24, backgroundColor: '#F1E8E0' }} />
             <View style={{ flex: 1 }} />
           </View>
           <View style={{ flexDirection: 'row', flex: 1 }}>

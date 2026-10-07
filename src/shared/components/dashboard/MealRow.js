@@ -33,12 +33,12 @@ export default function MealRow({ meal, onDelete }) {
           <Text className="text-[11px] text-muted-foreground ml-2">{formatTime(meal.loggedAt)}</Text>
           {onDelete ? (
             <Pressable onPress={() => onDelete(meal.id)} hitSlop={8} className="ml-2">
-              <Trash size={14} color={'#8A8A8A'} strokeWidth={2} />
+               <Trash size={14} color={'#8A8A8A'} />
             </Pressable>
           ) : null}
         </View>
         <View className="flex-row items-center mt-0.5">
-          <Flame size={14} color={'#f2470c'} strokeWidth={2.5} fill={'#f2470c'} />
+           <Flame size={14} color={'#f2470c'} fill={'#f2470c'} />
           <Text className="text-sm font-semibold text-ink ml-1">
             {Math.max(Number(meal.kcal) || 0, 0)} <Text className="font-normal text-muted-foreground">Calories</Text>
           </Text>
@@ -46,7 +46,7 @@ export default function MealRow({ meal, onDelete }) {
         <View className="flex-row flex-wrap mt-1.5" style={{ gap: 6 }}>
           {MACROS.map(({ key, label, color, Icon }) => (
             <View key={key} className="flex-row items-center bg-white border border-[#F1E8E0] rounded-full px-2 py-0.5">
-              <Icon size={12} color={color} strokeWidth={2.5} />
+               <Icon size={12} color={color} />
               <Text className="text-[10px] font-semibold text-ink ml-1">
                 {Number(meal[key]) || 0}g <Text className="font-normal text-muted-foreground">{label}</Text>
               </Text>

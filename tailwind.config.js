@@ -48,10 +48,10 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Caly custom colors (mirror global.css theme – edit global.css only)
-        ink: '#1A1A1A',
-        cream: '#FFF8F2',
-        success: '#22C55E',
+        // Caly custom colors – values live in global.css, mapped here like a real shadcn app
+        ink: 'hsl(var(--ink))',
+        cream: 'hsl(var(--cream))',
+        success: 'hsl(var(--success))',
       },
       borderRadius: {
         lg: 'var(--radius)',

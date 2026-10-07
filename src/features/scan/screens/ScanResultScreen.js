@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
 import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
@@ -18,20 +18,6 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
     result.kind === 'barcode' ? [result.item] : result.items
   );
   const [type, setType] = useState('Snack');
-
-  const totals = useMemo(
-    () =>
-      items.reduce(
-        (acc, i) => ({
-          kcal: acc.kcal + (Number(i.kcal) || 0),
-          protein: acc.protein + (Number(i.protein) || 0),
-          carbs: acc.carbs + (Number(i.carbs) || 0),
-          fat: acc.fat + (Number(i.fat) || 0),
-        }),
-        { kcal: 0, protein: 0, carbs: 0, fat: 0 }
-      ),
-    [items]
-  );
 
   function updateItem(idx, field, value) {
     setItems(prev => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
@@ -184,6 +170,11 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
           disabled={activeTotals.kcal <= 0}
           onPress={handleSave}
         />
+        {activeTotals.kcal <= 0 && (
+          <Text className="text-xs text-muted-foreground text-center mt-2">
+            Totals are zero — enter estimates in the fields above to save.
+          </Text>
+        )}
       </View>
     </ScrollView>
   );

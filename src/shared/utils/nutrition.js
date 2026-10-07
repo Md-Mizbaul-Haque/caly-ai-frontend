@@ -9,23 +9,38 @@ function cmToFtIn(cm) {
   return { ft: Math.floor(totalIn / 12), inch: totalIn % 12 };
 }
 function calcAge(birthDate, now = new Date()) {
-  let age = now.getFullYear() - birthDate.getFullYear();
-  const m = now.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birthDate.getDate())) age -= 1;
+  const b = birthDate instanceof Date ? birthDate : new Date(birthDate);
+  if (Number.isNaN(b.getTime())) return NaN;
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age -= 1;
   return age;
 }
+// Mean of male (+5) / female (-161) so non-binary / prefer-not-to-say never
+// silently gets one sex's formula (a "wrong plan for this user" bug).
 function mifflinBmr({ gender, weightKg, heightCm, age }) {
-  return Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161));
+  const c = gender === 'male' ? 5 : gender === 'female' ? -161 : -78;
+  return Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + c);
 }
 function activityFactor(level) {
   return { sedentary: 1.2, light: 1.375, moderate: 1.55, high: 1.725 }[level] ?? 1.375;
 }
-function calcPlan({ gender, weightKg, heightCm, age, activityLevel }) {
+function calcPlan({ gender, weightKg, heightCm, age, activityLevel, targetWeightKg }) {
   const bmr = mifflinBmr({ gender, weightKg, heightCm, age });
   const amr = Math.round(bmr * activityFactor(activityLevel));
-  const proteinG = Math.round(2.5 * weightKg);
+  // Evidence-based protein (matches backend service): 2.0 g/kg for loss,
+  // else 1.8 — never the old 2.5 (excess renal/GI load, no added benefit).
+  // Needs target to pick the rate; defaults to 1.8 when unknown (preview).
+  let goal = null;
+  try {
+    if (typeof weightKg === 'number' && typeof targetWeightKg === 'number') goal = goalLabel(weightKg, targetWeightKg);
+  } catch { goal = null; }
+  const perKg = goal === 'Lose Weight' ? 2.0 : 1.8;
+  const proteinG = Math.round(perKg * weightKg);
   const fatG = Math.round((0.3 * amr) / 9);
-  const carbsG = Math.round((amr - proteinG * 4 - fatG * 9) / 4);
+  // Clamp: extreme inputs (very high weight, very low budget) can otherwise
+  // drive carbs negative, which would render as e.g. "-100g" on the plan.
+  const carbsG = Math.max(0, Math.round((amr - proteinG * 4 - fatG * 9) / 4));
   return { bmr, amr, proteinG, fatG, carbsG };
 }
 function goalLabel(currentKg, targetKg) {
@@ -36,6 +51,43 @@ function goalLabel(currentKg, targetKg) {
 function snapToStep(value, min, step) {
   return Math.max(min, Math.round(value / step) * step);
 }
+// Grid-snapped display value for a canonical-kg weight in the given unit.
+// The ruler only ever rests on these exact values, so the big displayed
+// number MUST be derived from this (never from the raw float) — otherwise
+// the center tick and the number can disagree (e.g. ruler on 70, text 69.9).
+function snapWeight(kg, unit) {
+  return unit === 'lb' ? Math.round(kgToLb(kg)) : Math.round(kg * 2) / 2;
+}
+// Snapped value converted back to canonical kg (for goal labels / saves).
+function snapWeightKg(kg, unit) {
+  const s = snapWeight(kg, unit);
+  return unit === 'lb' ? lbToKg(s) : s;
+}
 function sanitizeCode(raw) { return (raw || '').replace(/\D/g, '').slice(0, 6); }
 
-module.exports = { LB_PER_KG, CM_PER_IN, lbToKg, kgToLb, ftInToCm, cmToFtIn, calcAge, mifflinBmr, activityFactor, calcPlan, goalLabel, snapToStep, sanitizeCode };
+// Accepts Date or ISO string (server round-trips dates as strings).
+function normalizeBirthDate(v) {
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  if (typeof v === 'string' && v) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+// Completeness gate — plan is created ONLY when every field is present and
+// sane. Returns [] when complete, else the missing/invalid field names so the
+// UI can name exactly what to fix (never a generic "didn't work").
+function missingOnboardingFields(s = {}) {
+  const missing = [];
+  if (!['male', 'female', 'nonbinary', 'prefer_not_to_say'].includes(s.gender)) missing.push('gender');
+  if (!normalizeBirthDate(s.birthDate)) missing.push('birthDate');
+  else if (calcAge(normalizeBirthDate(s.birthDate)) < 13) missing.push('birthDate');
+  if (typeof s.heightCm !== 'number' || !(s.heightCm >= 100 && s.heightCm <= 250)) missing.push('heightCm');
+  if (typeof s.weightKg !== 'number' || !(s.weightKg >= 25 && s.weightKg <= 350)) missing.push('weightKg');
+  if (typeof s.targetWeightKg !== 'number' || !(s.targetWeightKg >= 25 && s.targetWeightKg <= 350)) missing.push('targetWeightKg');
+  if (!['sedentary', 'light', 'moderate', 'high'].includes(s.activityLevel)) missing.push('activityLevel');
+  return missing;
+}
+
+module.exports = { LB_PER_KG, CM_PER_IN, lbToKg, kgToLb, ftInToCm, cmToFtIn, calcAge, mifflinBmr, activityFactor, calcPlan, goalLabel, snapToStep, sanitizeCode, snapWeight, snapWeightKg, normalizeBirthDate, missingOnboardingFields };

@@ -8,7 +8,8 @@ import { authedFetch } from './api';
 export async function scanImage(imageUri) {
   const form = new FormData();
   form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
-  const res = await authedFetch('/api/scan', { method: 'POST', body: form });
+  // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
+  const res = await authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000 });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 503) {
@@ -29,7 +30,8 @@ export async function scanImage(imageUri) {
  * GET /api/barcode/:code — returns { item: {name,kcal,protein,carbs,fat} }
  */
 export async function lookupBarcode(code) {
-  const res = await authedFetch(`/api/scan/barcode/${encodeURIComponent(code)}`);
+  // OpenFoodFacts lookup can be slow on mobile networks.
+  const res = await authedFetch(`/api/scan/barcode/${encodeURIComponent(code)}`, { timeoutMs: 30000 });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `barcode lookup failed: ${res.status}`);
   return data; // { item }

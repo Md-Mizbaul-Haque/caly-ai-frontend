@@ -39,3 +39,15 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Git safety — never lose code (2 separate repos)
+
+This folder `caly-ai-frontend/` is its own git repo. There is NO root git — NEVER run git commands in parent `E:\Caly Ai\`.
+
+After EVERY feature, update, delete, or rename — BEFORE running `npx expo start`, lint/typecheck, or declaring done:
+
+1. `git status --short --branch` (must run inside `caly-ai-frontend/`)
+2. `git add .` (respects `.gitignore` — never `git add -f .env* *.key *.pem *.p12 test-token.txt`)
+3. `git status` again to confirm everything is staged (`A`/`M`/`D`, no unexpected `??` except ignored files)
+
+Do NOT use `git checkout .`, `git reset --hard`, `git clean -fd`, or `git stash` unless the user explicitly asked — those lose unstaged work.

@@ -17,7 +17,7 @@ export default function MacroCard({ label, grams = 0, target = 1, color, icon: I
         <Text className="text-xs font-medium text-muted-foreground mt-0.5 mb-2">{label}</Text>
         <View className="items-center">
           <ProgressRing eaten={safeGrams} goal={safeTarget} size={54} strokeWidth={6} color={color}>
-            <Icon size={18} color={color} strokeWidth={2} />
+             <Icon size={18} color={color} />
           </ProgressRing>
         </View>
       </CardContent>

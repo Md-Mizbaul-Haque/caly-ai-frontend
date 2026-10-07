@@ -1,12 +1,12 @@
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
-import { House, ChartColumn, Settings, Plus, X } from './icons';
+import { House, ChartColumn, Ellipsis, Plus, X } from './icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const ITEMS = [
   { key: 'dashboard', label: 'Home', Icon: House },
   { key: 'history', label: 'Progress', Icon: ChartColumn },
-  { key: 'profile', label: 'Settings', Icon: Settings },
+  { key: 'more', label: 'More', Icon: Ellipsis },
 ];
 
 export default function BottomNav({ active, onChange, sheetOpen = false, onToggleSheet }) {
@@ -32,7 +32,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
             <item.Icon
               size={22}
               color={isActive ? '#f2470c' : '#8A8A8A'}
-              strokeWidth={isActive ? 2.5 : 2}
+               strokeWidth={isActive ? 1.8 : 1.5}
             />
             <Text className={cn('text-[11px] mt-1', isActive ? 'text-primary font-semibold' : 'text-muted-foreground')}>
               {item.label}
@@ -53,8 +53,8 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
         }}
       >
         {sheetOpen
-          ? <X size={26} color="white" strokeWidth={2.5} />
-          : <Plus size={26} color="white" strokeWidth={2.5} />}
+           ? <X size={26} color="white" strokeWidth={1.8} />
+           : <Plus size={26} color="white" strokeWidth={1.8} />}
       </Pressable>
     </View>
   );

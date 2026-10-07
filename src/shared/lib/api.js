@@ -100,14 +100,17 @@ export async function apiDelete(path) {
 }
 
 // Multipart/form-data and other raw requests still need the auth header.
+// timeoutMs is per-call: AI scan uploads + model inference can exceed the
+// default 15 s on slow mobile networks, so scanApi passes a longer budget.
 export async function authedFetch(path, options = {}) {
   const id = newReportId();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS);
   let res;
+  const { timeoutMs: _timeoutMs, ...fetchOptions } = options;
   try {
     res = await fetch(`${API_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers: { ...(await authHeaders()), ...(options.headers || {}) },
       signal: ctrl.signal,
     });

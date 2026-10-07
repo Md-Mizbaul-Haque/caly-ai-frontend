@@ -31,7 +31,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+test-token.txt
+*.log
+lint_output.txt
 
 # typescript
 *.tsbuildinfo
@@ -43,3 +47,10 @@ yarn-error.*
 # superpowers execution scratch (ledger, briefs, review packages)
 /.superpowers/
 .superpowers/
+
+# IDE + temp (never commit)
+/.idea/
+.idea/
+tmp/
+lint_output.txt
+analyze-logo.js

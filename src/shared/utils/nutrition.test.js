@@ -3,13 +3,37 @@ const assert = require('node:assert/strict');
 const N = require('./nutrition');
 
 describe('screenshot persona', () => {
-  it('reproduces 1696 / 2332 / 175 / 78 / 233', () => {
-    const p = N.calcPlan({ gender: 'male', weightKg: 70, heightCm: 173, age: 18, activityLevel: 'light' });
+  it('reproduces 1696 / 2332 / 126 / 78 / 282 (1.8g/kg evidence-based protein)', () => {
+    const p = N.calcPlan({ gender: 'male', weightKg: 70, heightCm: 173, age: 18, activityLevel: 'light', targetWeightKg: 70 });
     assert.equal(p.bmr, 1696);
     assert.equal(p.amr, 2332);
-    assert.equal(p.proteinG, 175);
+    assert.equal(p.proteinG, 126);
     assert.equal(p.fatG, 78);
-    assert.equal(p.carbsG, 233);
+    assert.equal(p.carbsG, 282);
+  });
+  it('lose path uses 2.0g/kg', () => {
+    const p = N.calcPlan({ gender: 'male', weightKg: 80, heightCm: 180, age: 30, activityLevel: 'moderate', targetWeightKg: 70 });
+    assert.equal(p.proteinG, 160);
+  });
+  it('nonbinary uses mean sex constant (-78), never silently female', () => {
+    const nb = N.mifflinBmr({ gender: 'nonbinary', weightKg: 70, heightCm: 173, age: 18 });
+    const male = N.mifflinBmr({ gender: 'male', weightKg: 70, heightCm: 173, age: 18 });
+    const female = N.mifflinBmr({ gender: 'female', weightKg: 70, heightCm: 173, age: 18 });
+    assert.equal(nb, Math.round((male + female) / 2));
+  });
+});
+
+describe('completeness gate', () => {
+  it('empty state reports all six fields missing', () => {
+    assert.deepEqual(N.missingOnboardingFields({}), ['gender', 'birthDate', 'heightCm', 'weightKg', 'targetWeightKg', 'activityLevel']);
+  });
+  it('complete state reports none missing', () => {
+    assert.deepEqual(N.missingOnboardingFields({ gender: 'male', birthDate: new Date('2000-01-01'), heightCm: 173, weightKg: 70, targetWeightKg: 70, activityLevel: 'light' }), []);
+  });
+  it('accepts ISO strings (hydrated) and rejects garbage/under-13', () => {
+    assert.ok(N.normalizeBirthDate('2000-01-15') instanceof Date);
+    assert.equal(N.normalizeBirthDate('bad'), null);
+    assert.deepEqual(N.missingOnboardingFields({ gender: 'male', birthDate: 'bad', heightCm: 173, weightKg: 70, targetWeightKg: 70, activityLevel: 'light' }), ['birthDate']);
   });
 });
 
