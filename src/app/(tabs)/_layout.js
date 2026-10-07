@@ -245,21 +245,30 @@ export default function TabsLayout() {
             }}
           />
         )}
-        {showScan && <PictureUploadScreen 
-          onCancel={() => setShowScan(false)}
-          onResult={(result) => {
-            setScanResult(result);
-            setShowScan(false);
-          }}
-        />}
-        {!showScan && scanResult && <ScanResultScreen
-          result={scanResult}
-          onSave={async (meal) => {
-            await handleSave(meal);
-            setScanResult(null);
-          }}
-          onDone={() => setScanResult(null)}
-        />}
+        {showScan && (
+          <View className="absolute inset-0" style={{ zIndex: 50 }}>
+            <PictureUploadScreen
+              onClose={() => setShowScan(false)}
+              cameraPermission={cameraPermission}
+              onResult={(result) => {
+                setScanResult(result);
+                setShowScan(false);
+              }}
+            />
+          </View>
+        )}
+        {!showScan && scanResult && (
+          <View className="absolute inset-0" style={{ zIndex: 50 }}>
+            <ScanResultScreen
+              result={scanResult}
+              onSave={async (meal) => {
+                await handleSave(meal);
+                setScanResult(null);
+              }}
+              onDone={() => setScanResult(null)}
+            />
+          </View>
+        )}
         {logWeightOpen && <WeightLogSheet 
           onClose={() => setLogWeightOpen(false)}
           onWeightLogged={handleWeightLogged}

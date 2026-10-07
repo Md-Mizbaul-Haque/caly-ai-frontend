@@ -20,14 +20,13 @@ const MODES = [
  * - Food Label: capture a nutrition label photo (same AI pipeline).
  * - Library: pick an existing photo from the gallery.
  */
-export default function PictureUploadScreen({ onClose, onResult, cameraPermission }) {
-    const [permission, setPermission] = useState(cameraPermission);
-  const [requestPermission] = useState(() => {}); // Not used when cameraPermission is provided
-  useEffect(() => {
-    if (cameraPermission !== undefined) {
-      setPermission(cameraPermission);
-    }
-  }, [cameraPermission]);
+export default function PictureUploadScreen({ onClose, onCancel, onResult, cameraPermission: cameraPermissionProp }) {
+  const [hookPermission, requestPermission] = useCameraPermissions();
+  // Parent may pass an already-loaded permission (tabs layout pre-asks on
+  // mount); otherwise fall back to this screen's own hook. Either way
+  // requestPermission is always the REAL expo-camera requester — never a no-op.
+  const permission = hookPermission ?? cameraPermissionProp ?? null;
+  const close = onClose ?? onCancel ?? (() => {});
   const insets = useSafeAreaInsets();
   const [flashOn, setFlashOn] = useState(false);
   const [mode, setMode] = useState('scan');
@@ -146,7 +145,7 @@ export default function PictureUploadScreen({ onClose, onResult, cameraPermissio
             <Text className="text-white font-bold">Grant permission</Text>
           </Pressable>
         )}
-        <Pressable onPress={onClose} className="mt-4 px-4 py-2">
+        <Pressable onPress={close} className="mt-4 px-4 py-2">
           <Text className="text-white/70">Go back</Text>
         </Pressable>
       </View>
@@ -197,7 +196,7 @@ export default function PictureUploadScreen({ onClose, onResult, cameraPermissio
           <Pressable onPress={pickFromLibrary} className="mt-4 px-4 py-2">
             <Text className="text-white/70">Use a photo from the gallery instead</Text>
           </Pressable>
-          <Pressable onPress={onClose} className="mt-2 px-4 py-2">
+          <Pressable onPress={close} className="mt-2 px-4 py-2">
             <Text className="text-white/70">Go back</Text>
           </Pressable>
         </View>
@@ -222,7 +221,7 @@ export default function PictureUploadScreen({ onClose, onResult, cameraPermissio
         style={{ paddingTop: Math.max(insets.top, 16) }}
       >
         <Pressable
-          onPress={onClose}
+          onPress={close}
           accessibilityLabel="Close camera"
           className="w-10 h-10 rounded-full bg-black/60 items-center justify-center"
         >
