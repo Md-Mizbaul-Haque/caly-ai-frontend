@@ -62,8 +62,8 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
         setPreviewUri(uri);
         onResult({ kind: 'scan', imageUri: uri, items, placeholder });
       }
-    } catch (e) {
-      Alert.alert('Scan failed', e.message || 'Could not analyze this photo.');
+     } catch (_e) {
+       Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.');
     } finally {
       setScanning(false);
       setBusy(false);
@@ -76,9 +76,9 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (photo?.uri) await analyze(photo.uri, mode === 'label' ? 'label' : 'scan');
-    } catch (e) {
-      setBusy(false);
-      Alert.alert('Camera error', 'Could not take the picture. Try again.');
+     } catch (_e) {
+       setBusy(false);
+       Alert.alert('Camera error', 'Could not take the picture. Try again.');
     }
   }, [busy, cameraReady, mode, analyze]);
 

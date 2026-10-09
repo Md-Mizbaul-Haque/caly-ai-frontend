@@ -8,42 +8,43 @@ import SplashOverlay from '../../shared/components/SplashOverlay';
 import PictureUploadScreen from '../../features/scan/screens/PictureUploadScreen';
 import ScanResultScreen from '../../features/scan/screens/ScanResultScreen';
 import { useCameraPermissions } from 'expo-camera';
-import { fetchWeek, fetchMeals, createMeal, deleteMealById } from '../../shared/lib/mealsApi';
-import { fetchWeights, createWeight, fetchWeightGoal, deleteWeight } from '../../shared/lib/weightsApi';
-import { calcTotals } from '../../shared/utils/totals';
-import { dateKey, effectiveTimeZone } from '../../shared/utils/format';
-import { toastSuccess, toastError } from '../../shared/utils/toast';
-import { useSession } from '../../features/auth/session';
-import { TabShellProvider } from '../../features/tabs/shell';
-import { readCache, writeCache, scopedKey, setCacheOwner } from '../../shared/lib/appCache';
+   import { fetchWeek, fetchMeals, createMeal, deleteMealById, weekRange } from '../../shared/lib/mealsApi';
+   import { fetchWeights, createWeight, fetchWeightGoal, deleteWeight } from '../../shared/lib/weightsApi';
+   import { calcTotals } from '../../shared/utils/totals';
+   import { dateKey, effectiveTimeZone } from '../../shared/utils/format';
+   import { toastSuccess, toastError } from '../../shared/utils/toast';
+   import { useSession } from '../../features/auth/session';
+   import { TabShellProvider } from '../../features/tabs/shell';
+   import { writeCache, scopedKey, setCacheOwner, storageKey, ttlFor } from '../../shared/lib/appCache';
+
+   import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SPLASH_MIN_MS = 450;
 
 export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const { user, authChecked, goal, setGoal } = useSession();
-  const userKey = user ? (user._id || user.id || user.email) : null;
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [navHeight, setNavHeight] = useState(0);
-  const [showScan, setShowScan] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
-  const [pendingPhoto, setPendingPhoto] = useState(null);
-  const [meals, setMeals] = useState([]); // current calendar week (dashboard view)
-  // Always a valid Date from first render. The cached day is restored
-  // asynchronously in the hydration effect below: readCache is async, and
-  // new Date(promise) is an Invalid Date whose empty dateKey makes the day
-  // strip rebuild its window on every render (infinite "Too many re-renders").
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [weights, setWeights] = useState([]);
-  const [weightGoal, setWeightGoalState] = useState(null);
-  const [logWeightOpen, setLogWeightOpen] = useState(false);
-  const [splashMinDone, setSplashMinDone] = useState(false);
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const cameraPermissionAskedRef = useRef(false);
-  const snapshotRef = useRef([]);
+   const { user, authChecked, goal } = useSession();
+   const userKey = user ? (user._id || user.id || user.email) : null;
+   const [sheetOpen, setSheetOpen] = useState(false);
+   const [navHeight, setNavHeight] = useState(0);
+   const [showScan, setShowScan] = useState(false);
+   const [scanResult, setScanResult] = useState(null);
+   const [meals, setMeals] = useState([]); // current calendar week (dashboard view)
+   const [mealsTimestamp, setMealsTimestamp] = useState(0); // Timestamp of last successful fetch
+   // Always a valid Date from first render. The cached day is restored
+   // asynchronously in the hydration effect below: readCache is async, and
+   // new Date(promise) is an Invalid Date whose empty dateKey makes the day
+   // strip rebuild its window on every render (infinite "Too many re-renders").
+   const [selectedDate, setSelectedDate] = useState(() => new Date());
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState(null);
+   const [weights, setWeights] = useState([]);
+   const [weightGoal, setWeightGoalState] = useState(null);
+   const [logWeightOpen, setLogWeightOpen] = useState(false);
+   const [splashMinDone, setSplashMinDone] = useState(false);
+   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+   const cameraPermissionAskedRef = useRef(false);
 
   // Longer-horizon meals for the Progress screen (up to 1 year back),
   // merged with the week view so daily-average/trend cards never show
@@ -68,26 +69,62 @@ export default function TabsLayout() {
   // it so client days match the server's ?from/?to windows.
   const timeZone = useMemo(() => effectiveTimeZone(user), [user]);
 
-  const loadWeek = useCallback(async ({ silent, reference } = {}) => {
-    // Silent refreshes (background revalidation over cached data) must not
-    // flip the UI back into its loading state. `reference` selects which
-    // calendar week to load (defaults to the current week) so the dashboard
-    // can fetch the week containing the user-selected day.
-    if (!silent) {
-      setLoading(true);
-      setError(null);
-    }
-    try {
-      const mealsData = await fetchWeek(reference || new Date(), timeZone);
-      setMeals(mealsData);
-      writeCache(scopedKey('weekMeals', userKey), mealsData);
-    } catch (e) {
-      // Error UI only appears when there's nothing cached to show.
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [userKey, timeZone]);
+    // eslint-disable-next-line react-hooks/immutability
+    const loadWeek = useCallback(async ({ silent, reference } = {}) => {
+     // Silent refreshes (background revalidation over cached data) must not
+     // flip the UI back into its loading state. `reference` selects which
+     // calendar week to load (defaults to the current week) so the dashboard
+     // can fetch the week containing the user-selected day.
+     
+     // Check if we have sufficiently fresh data already
+     const weekMealsStale = !meals.length || (Date.now() - mealsTimestamp > 5 * 60 * 1000); // 5 minutes threshold
+     
+     // If we have fresh data and this is a background request, resolve immediately
+     if (!weekMealsStale && silent) {
+       return meals;
+     }
+     
+     // Request deduplication: prevent multiple simultaneous requests for the same week
+     const weekId = `${weekRange(reference || new Date(), timeZone).from}|${timeZone}`;
+     if (loadWeekRequestRef.current === weekId && loadWeekPromiseRef.current) {
+       return loadWeekPromiseRef.current;
+     }
+     
+     // Set up loading state for non-silent requests
+     if (!silent) {
+       setLoading(true);
+       setError(null);
+     }
+     
+     // Create the fetch promise
+     const fetchPromise = (async () => {
+       try {
+         const mealsData = await fetchWeek(reference || new Date(), timeZone);
+         setMeals(mealsData);
+         setMealsTimestamp(Date.now()); // Update timestamp when we get fresh data
+         writeCache(scopedKey('weekMeals', userKey), mealsData);
+         return mealsData;
+       } catch (e) {
+         // Error UI only appears when there's nothing cached to show.
+         if (!silent) setError(e.message);
+         throw e;
+       } finally {
+         if (!silent) setLoading(false);
+         // Clear the request ref after completion
+         if (loadWeekRequestRef.current === weekId) {
+           loadWeekRequestRef.current = null;
+           loadWeekPromiseRef.current = null;
+         }
+       }
+     })();
+     
+      // Store request info for deduplication
+      loadWeekRequestRef.current = weekId;
+      // eslint-disable-next-line react-hooks/immutability
+      loadWeekPromiseRef.current = fetchPromise;
+
+      return fetchPromise;
+    }, [meals, mealsTimestamp, timeZone, userKey]);
 
    // Load meals for a horizon ending today (e.g. 365 days for the Progress
    // screen's daily-average card). Skipped when a wider horizon is already
@@ -124,75 +161,121 @@ export default function TabsLayout() {
     }
   }, [user, userKey]);
 
-  const hydratedForRef = useRef(null);
-  const mealsHydratedRef = useRef(false);
-  const weightsHydratedRef = useRef(false);
+   const hydratedForRef = useRef(null);
+   const mealsHydratedRef = useRef(false);
+    const weightsHydratedRef = useRef(false);
+    // Refs for loadWeek request deduplication
+    const loadWeekRequestRef = useRef(null);
+    const loadWeekPromiseRef = useRef(null);
 
-  useEffect(() => {
-    if (!(authChecked && user)) return;
-    const key = user._id || user.id || user.email;
-    if (hydratedForRef.current === key) return;
-    hydratedForRef.current = key;
-    // New account (login / switch): drop the previous owner's in-memory
-    // state first so their meals/weights never flash, then hydrate from
-    // that owner's namespaced cache while the network revalidates.
-    setCacheOwner(key);
-    setMeals([]);
-    setRangeMeals([]);
-    setWeights([]);
-    setWeightGoalState(null);
-    setSelectedDate(new Date());
-    setError(null);
-    setLoading(true);
-    rangeFromRef.current = null;
-    let alive = true;
-    (async () => {
-      const [cachedMeals, cachedWeights, cachedGoal, cachedDate] = await Promise.all([
-        readCache(scopedKey('weekMeals', key)),
-        readCache(scopedKey('weights', key)),
-        readCache(scopedKey('weightGoal', key)),
-        readCache(scopedKey('selectedDate', key)),
-      ]);
-      if (!alive) return;
-      mealsHydratedRef.current = true;
-      weightsHydratedRef.current = true;
-      if (cachedMeals) {
-        setMeals(cachedMeals);
-        setLoading(false);
-      }
-      if (cachedWeights) setWeights(cachedWeights);
-      if (cachedGoal !== null) setWeightGoalState(cachedGoal);
-      if (cachedDate) {
-        const d = new Date(cachedDate);
-        // Corrupt cache must never resurrect an Invalid Date (see above).
-        if (!Number.isNaN(d.getTime())) {
-          setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
-        }
-      }
-      await Promise.all([loadWeek({ silent: true }), fetchWeightsAndGoal()]);
-    })();
-    return () => { alive = false; };
-  }, [authChecked, user]);
+    // eslint-disable-next-line react-hooks/immutability
+    useEffect(() => {
+     if (!(authChecked && user)) return;
+     const key = user._id || user.id || user.email;
+     if (hydratedForRef.current === key) return;
+     hydratedForRef.current = key;
+     // New account (login / switch): drop the previous owner's in-memory
+     // state first so their meals/weights never flash, then hydrate from
+     // that owner's namespaced cache while the network revalidates.
+     setCacheOwner(key);
+     setMeals([]);
+     setRangeMeals([]);
+     setWeights([]);
+     setWeightGoalState(null);
+     setSelectedDate(new Date());
+     setError(null);
+     setLoading(true);
+     rangeFromRef.current = null;
+     let alive = true;
+     (async () => {
+       // Read cache with timestamps to check freshness
+       const readCacheWithTimestamp = async (cacheKey) => {
+         try {
+           const raw = await AsyncStorage.getItem(storageKey(cacheKey));
+           if (!raw) return null;
+           const parsed = JSON.parse(raw);
+           if (Date.now() - parsed.fetchedAt > ttlFor(cacheKey)) return null;
+           // For namespaced keys (which we always use with userKey), ownership check is not needed
+           // as the key already isolates owners (contains ':')
+           return { data: parsed.data, fetchedAt: parsed.fetchedAt };
+         } catch {
+           return null;
+         }
+       };
+
+       const [
+         weekMealsResult,
+         weightsResult,
+         weightGoalResult,
+         selectedDateResult
+       ] = await Promise.all([
+         readCacheWithTimestamp(scopedKey('weekMeals', key)),
+         readCacheWithTimestamp(scopedKey('weights', key)),
+         readCacheWithTimestamp(scopedKey('weightGoal', key)),
+         readCacheWithTimestamp(scopedKey('selectedDate', key)),
+       ]);
+
+       if (!alive) return;
+       mealsHydratedRef.current = true;
+       weightsHydratedRef.current = true;
+
+       // Set data from cache if available
+       if (weekMealsResult?.data) {
+         setMeals(weekMealsResult.data);
+         setMealsTimestamp(weekMealsResult.fetchedAt);
+         setLoading(false); // Hide loading spinner if we have cached meals
+       }
+       if (weightsResult?.data) setWeights(weightsResult.data);
+       if (weightGoalResult?.data !== null) setWeightGoalState(weightGoalResult.data);
+       if (selectedDateResult?.data) {
+         const d = new Date(selectedDateResult.data);
+         // Corrupt cache must never resurrect an Invalid Date (see above).
+         if (!Number.isNaN(d.getTime())) {
+           setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+         }
+       }
+
+       // Determine if background revalidation is needed based on cache freshness
+       const now = Date.now();
+       const WEEKMEALS_FRESHNESS_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+       const WEIGHTS_FRESHNESS_THRESHOLD = 4 * 60 * 60 * 1000; // 4 hours
+       
+       const weekMealsStale = !weekMealsResult || (now - weekMealsResult.fetchedAt > WEEKMEALS_FRESHNESS_THRESHOLD);
+       const weightsStale = !weightsResult || (now - weightsResult.fetchedAt > WEIGHTS_FRESHNESS_THRESHOLD);
+       const weightGoalStale = !weightGoalResult || (now - weightGoalResult.fetchedAt > WEIGHTS_FRESHNESS_THRESHOLD);
+
+       // Trigger background revalidation for stale data
+       // Use silent:true to avoid showing loading spinner for background updates
+       if (weekMealsStale) {
+         await loadWeek({ silent: true }).catch(() => {});
+       }
+       if (weightsStale || weightGoalStale) {
+         await fetchWeightsAndGoal().catch(() => {});
+       }
+     })();
+     return () => { alive = false; };
+   }, [authChecked, user, loadWeek, fetchWeightsAndGoal, timeZone]);
 
   // Handle meal deletion: persist via API, then drop from both the week
   // view and the long-horizon range so Dashboard + Progress stay in sync.
   // Rolls back on failure so the row never silently vanishes.
-  const handleMealDeleted = useCallback(async (mealId) => {
-    const id = String(mealId);
-    const prevWeek = meals;
-    const prevRange = rangeMeals;
-    setMeals(prevWeek.filter((meal) => String(meal.id) !== id));
-    setRangeMeals(prevRange.filter((meal) => String(meal.id || meal._id) !== id));
-    try {
-      await deleteMealById(mealId);
-      toastSuccess('Meal deleted!');
-    } catch (e) {
-      setMeals(prevWeek);
-      setRangeMeals(prevRange);
-      toastError('Could not delete', e.message);
-      throw e;
-    }
-  }, [meals, rangeMeals]);
+   const handleMealDeleted = useCallback(async (mealId) => {
+     const id = String(mealId);
+     const prevWeek = meals;
+     const prevRange = rangeMeals;
+     setMeals(prevWeek.filter((meal) => String(meal.id) !== id));
+     setRangeMeals(prevRange.filter((meal) => String(meal.id || meal._id) !== id));
+     try {
+       await deleteMealById(mealId);
+       setMealsTimestamp(Date.now()); // Update timestamp since we confirmed deletion with server
+       toastSuccess('Meal deleted!');
+     } catch (e) {
+       setMeals(prevWeek);
+       setRangeMeals(prevRange);
+       toastError('Could not delete', e.message);
+       throw e;
+     }
+   }, [meals, rangeMeals]);
 
   // Handle weight logging via WeightLogSheet's onSave({ value }): POSTs the
   // weight and merges the result (same-day re-logs replace in place). The
@@ -228,18 +311,19 @@ export default function TabsLayout() {
   // client-side loggedAt (ISO with offset) when callers omit it so the meal
   // lands on the device's calendar day instead of the server clock's.
   // Throws so the caller (sheet/form) can show the error inline instead of guessing.
-  const handleSave = useCallback(async (meal) => {
-    const payload = meal && meal.loggedAt ? meal : { ...meal, loggedAt: new Date().toISOString() };
-    const saved = await createMeal(payload);
-    setMeals((prev) => [...prev, saved]);
-    setRangeMeals((prev) => {
-      const id = String(saved.id || saved._id);
-      if (prev.some((m) => String(m.id || m._id) === id)) return prev;
-      return [...prev, saved];
-    });
-    toastSuccess('Meal logged!');
-    return saved;
-  }, []);
+   const handleSave = useCallback(async (meal) => {
+     const payload = meal && meal.loggedAt ? meal : { ...meal, loggedAt: new Date().toISOString() };
+     const saved = await createMeal(payload);
+     setMeals((prev) => [...prev, saved]);
+     setMealsTimestamp(Date.now()); // Update timestamp since we got fresh data from server
+     setRangeMeals((prev) => {
+       const id = String(saved.id || saved._id);
+       if (prev.some((m) => String(m.id || m._id) === id)) return prev;
+       return [...prev, saved];
+     });
+     toastSuccess('Meal logged!');
+     return saved;
+   }, []);
 
   const latestWeight = useMemo(() => {
     let best = null;

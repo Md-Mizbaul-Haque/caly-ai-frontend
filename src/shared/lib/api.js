@@ -62,8 +62,8 @@ async function request(method, path, { headers = {}, body } = {}) {
       body,
       signal: ctrl.signal,
     });
-  } catch (e) {
-    throw connectionError(id, method, path);
+   } catch (_e) {
+     throw connectionError(id, method, path);
   } finally {
     clearTimeout(timer);
   }
@@ -117,8 +117,8 @@ export async function authedFetch(path, options = {}) {
       headers: { ...(await authHeaders()), ...(options.headers || {}) },
       signal: ctrl.signal,
     });
-  } catch (e) {
-    throw connectionError(id, options.method || 'GET', path);
+   } catch (_e) {
+     throw connectionError(id, options.method || 'GET', path);
   } finally {
     clearTimeout(timer);
   }
