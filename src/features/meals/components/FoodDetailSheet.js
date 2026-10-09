@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Animated, Image, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { Minus, Plus, X, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import Chip from '../../../shared/components/ui/Chip';
@@ -16,8 +17,12 @@ const SERVING_STEP = 0.5;
  * Modes: 'grams' (catalog food, values per 100g) or 'servings' (a previously
  * logged meal, values are that serving — multiplier 0.5x steps).
  * Same Animated dock pattern as QuickLogSheet (no extra dependency).
+ * Rendered in a full-screen Modal so it overlays the BottomNav (the screen
+ * content area ends at the top of the nav, so an absolute view inside the
+ * screen can never cover the nav).
  */
 export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }) {
+  const insets = useSafeAreaInsets();
   const [progress] = useState(() => new Animated.Value(0));
   const [amount, setAmount] = useState(mode === 'grams' ? 100 : 1);
   const [type, setType] = useState(() => defaultMealType(new Date().getHours()));
@@ -80,23 +85,25 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
   ];
 
   return (
-    <View className="absolute inset-0" pointerEvents="box-none" style={{ zIndex: 40 }}>
-      <Animated.View
-        style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(26,26,26,0.45)', opacity: progress,
-        }}
-      >
-        <Pressable className="flex-1" onPress={() => dismiss()} accessibilityLabel="Close food details" />
-      </Animated.View>
+    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => dismiss()}>
+      <View className="flex-1" pointerEvents="box-none">
+        <Animated.View
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(26,26,26,0.45)', opacity: progress,
+          }}
+        >
+          <Pressable className="flex-1" onPress={() => dismiss()} accessibilityLabel="Close food details" />
+        </Animated.View>
 
-      <Animated.View
-        className="bg-card rounded-t-[24px] border-t border-border"
-        style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%',
-          opacity: progress, transform: [{ translateY }],
-        }}
-      >
+        <Animated.View
+          className="bg-card rounded-t-[24px] border-t border-border"
+          style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%',
+            paddingBottom: Math.max(insets.bottom, 0),
+            opacity: progress, transform: [{ translateY }],
+          }}
+        >
         <ScrollView className="px-4 pt-3 pb-6">
           <View className="items-center mb-2">
             <View className="w-10 h-1 rounded-full bg-muted" />
@@ -168,7 +175,8 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
           />
           {saving ? <ActivityIndicator className="mt-3" /> : null}
         </ScrollView>
-      </Animated.View>
-    </View>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
