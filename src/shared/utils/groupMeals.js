@@ -19,7 +19,6 @@ function groupMealsForDay(dayMeals) {
     let g = groups.get(key);
     if (!g) {
       g = {
-        key,
         name: String(m?.name ?? '').trim(),
         mealType: m?.mealType ?? 'Snack',
         kcal: 0,
