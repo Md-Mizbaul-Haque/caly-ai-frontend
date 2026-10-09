@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import { Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
@@ -34,6 +34,9 @@ export default function DashboardScreen({
   onDelete,
 }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  // Bumped after every pull-to-refresh so the day strip re-centers on the
+  // (possibly resized) selected pill.
+  const [recenterSignal, setRecenterSignal] = useState(0);
   const s = useTabShell();
   const isFocused = useIsFocused();
 
@@ -51,6 +54,12 @@ export default function DashboardScreen({
   const error = errorProp ?? s.error ?? null;
   const weightGoal = weightGoalProp ?? s.progressCache?.weightGoal ?? s.weightGoal ?? null;
   void weightGoal;
+
+  // Day blocks rebuild Date objects every render: compare calendar keys so
+  // re-tapping the selected pill is a no-op instead of churning the dashboard.
+  const handleSelect = useCallback((d) => {
+    setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+  }, [timeZone]);
 
   // Load the calendar week containing the selected day. Without this, days
   // outside the initially fetched current week could never show data.
@@ -111,6 +120,8 @@ export default function DashboardScreen({
       await s.refreshWeights?.(); // Refresh weights and goal
     } catch (err) {
       console.error('Refresh failed:', err);
+    } finally {
+      setRecenterSignal((n) => n + 1);
     }
   }
 
@@ -141,7 +152,7 @@ export default function DashboardScreen({
         )}
 
         <View className="mt-4">
-          <DaySelector selected={selectedDate} onSelect={setSelectedDate} totalsByDate={totalsByDate} goal={goal} timeZone={timeZone} />
+          <DaySelector selected={selectedDate} onSelect={handleSelect} totalsByDate={totalsByDate} goal={goal} timeZone={timeZone} recenterSignal={recenterSignal} />
         </View>
 
         <Card style={{ marginTop: 16 }}>

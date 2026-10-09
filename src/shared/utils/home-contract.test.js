@@ -53,6 +53,28 @@ describe('calendar/day filtering', () => {
     assert.match(src, /timeZone/, 'DaySelector must render the week in the user zone');
   });
 
+  it('DaySelector snaps and re-centers like real-world apps', () => {
+    const src = read('shared/components/dashboard/DaySelector.js');
+    assert.match(src, /onMomentumScrollEnd/, 'swipe release must snap the nearest day to center');
+    assert.match(src, /nearestToCenter/, 'snap target must use the shared centering math');
+    assert.match(src, /centerTarget/, 'scrolling must use the shared centering math');
+    assert.match(src, /edgePadding/, 'edge days need symmetric padding to center');
+    assert.match(src, /onContentSizeChange/, 'must wait for measured content before centering (mount race)');
+    assert.match(src, /recenterSignal/, 'parent refresh must be able to trigger a re-center');
+  });
+
+  it('DaySelector browses without dead ends and never swipe-selects', () => {
+    const src = read('shared/components/dashboard/DaySelector.js');
+    assert.match(src, /buildWindow/, 'strip must render a rolling window of day-blocks');
+    assert.match(src, /extendWindow/, 'swiping to an edge must instantly reveal more blocks');
+    const snap = /function handleSnap\(\) \{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(snap, 'handleSnap must exist');
+    assert.doesNotMatch(snap[1], /onSelect/, 'swipe release must snap only — only taps change the selection');
+    assert.match(src, /needsSnap/, 'snap must skip sub-pixel corrections (programmatic echo loop)');
+    assert.match(src, /MAX_BLOCKS/, 'window growth must be capped (unbounded SVG pills jank low-end devices)');
+    assert.match(src, /rotated/, 'rotation must recompute padding and re-center');
+  });
+
   it('selecting another week triggers a fetch for that week', () => {
     const layout = read('app/(tabs)/_layout.js');
     // loadWeek() takes no args and always fetches new Date() -> cannot load other weeks
