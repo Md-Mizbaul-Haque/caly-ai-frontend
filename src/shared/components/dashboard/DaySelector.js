@@ -46,6 +46,11 @@ export default function DaySelector({
   const isFocused = useIsFocused();
 
   const [windowDays, setWindowDays] = useState(() => buildWindow(selectedKey || todayKey, WINDOW_RADIUS, timeZone));
+  // Anchor the render-phase rebuild below fired for: a non-converging anchor
+  // (e.g. an Invalid Date's empty key) settles after one rebuild instead of
+  // looping setWindowDays forever ("Too many re-renders"). State (not a ref)
+  // because refs must not be read/written during render.
+  const [lastRebuildKey, setLastRebuildKey] = useState(null);
   const [pad, setPad] = useState(0);
   const [ready, setReady] = useState(false);
   const padRef = useRef(0);
@@ -64,8 +69,13 @@ export default function DaySelector({
   // A far-away selection (or zone change) rebuilds the window around it.
   // Render-phase adjustment (React-endorsed for derived state): taps land on
   // rendered blocks, so this normally keeps the same array — no extra render.
-  if (!windowDays.some((d) => d.key === selectedKey)) {
-    setWindowDays(buildWindow(selectedKey || todayKey, WINDOW_RADIUS, timeZone));
+  // The anchor falls back to today when the selection has no key, and the
+  // last-rebuild guard makes a non-converging anchor structurally unable to
+  // loop: one rebuild per anchor, then settle.
+  const anchorKey = selectedKey || todayKey;
+  if (anchorKey && lastRebuildKey !== anchorKey && !windowDays.some((d) => d.key === anchorKey)) {
+    setLastRebuildKey(anchorKey);
+    setWindowDays(buildWindow(anchorKey, WINDOW_RADIUS, timeZone));
   }
 
   function setPadBoth(next) {

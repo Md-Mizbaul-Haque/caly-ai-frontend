@@ -23,17 +23,18 @@ export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { user, authChecked, goal, setGoal } = useSession();
+  const userKey = user ? (user._id || user.id || user.email) : null;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [navHeight, setNavHeight] = useState(0);
   const [showScan, setShowScan] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [pendingPhoto, setPendingPhoto] = useState(null);
   const [meals, setMeals] = useState([]); // current calendar week (dashboard view)
-const [selectedDate, setSelectedDate] = useState(() => {
-  // Try to restore from cache first, fallback to today
-  const cachedDate = readCache(scopedKey('selectedDate', userKey));
-  return cachedDate ? new Date(cachedDate) : new Date();
-});
+  // Always a valid Date from first render. The cached day is restored
+  // asynchronously in the hydration effect below: readCache is async, and
+  // new Date(promise) is an Invalid Date whose empty dateKey makes the day
+  // strip rebuild its window on every render (infinite "Too many re-renders").
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [weights, setWeights] = useState([]);
@@ -61,8 +62,6 @@ const [selectedDate, setSelectedDate] = useState(() => {
   }), [weights, weightGoal, meals, rangeMeals]);
 
   const active = segments[segments.length - 1] ?? 'dashboard';
-
-  const userKey = user ? (user._id || user.id || user.email) : null;
 
   // Calendar zone for this user: their stored zone, else the device zone,
   // UTC when nothing is usable. Every fetch and every grouping below uses
@@ -142,15 +141,17 @@ const [selectedDate, setSelectedDate] = useState(() => {
     setRangeMeals([]);
     setWeights([]);
     setWeightGoalState(null);
+    setSelectedDate(new Date());
     setError(null);
     setLoading(true);
     rangeFromRef.current = null;
     let alive = true;
     (async () => {
-      const [cachedMeals, cachedWeights, cachedGoal] = await Promise.all([
+      const [cachedMeals, cachedWeights, cachedGoal, cachedDate] = await Promise.all([
         readCache(scopedKey('weekMeals', key)),
         readCache(scopedKey('weights', key)),
         readCache(scopedKey('weightGoal', key)),
+        readCache(scopedKey('selectedDate', key)),
       ]);
       if (!alive) return;
       mealsHydratedRef.current = true;
@@ -161,6 +162,13 @@ const [selectedDate, setSelectedDate] = useState(() => {
       }
       if (cachedWeights) setWeights(cachedWeights);
       if (cachedGoal !== null) setWeightGoalState(cachedGoal);
+      if (cachedDate) {
+        const d = new Date(cachedDate);
+        // Corrupt cache must never resurrect an Invalid Date (see above).
+        if (!Number.isNaN(d.getTime())) {
+          setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+        }
+      }
       await Promise.all([loadWeek({ silent: true }), fetchWeightsAndGoal()]);
     })();
     return () => { alive = false; };
