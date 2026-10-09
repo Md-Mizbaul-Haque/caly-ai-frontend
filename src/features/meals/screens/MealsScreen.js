@@ -40,6 +40,36 @@ const FALLBACK_SUGGESTIONS = {
     { name: 'Black Coffee', kcal: 2, protein: 0, carbs: 0, fat: 0, portion: '1 cup (240ml)' },
     { name: 'Whole Wheat Bread', kcal: 69, protein: 3, carbs: 12, fat: 1, portion: '1 slice (28g)' },
   ],
+  Fruits: [
+    { name: 'Apple', kcal: 95, protein: 0, carbs: 25, fat: 0, portion: '1 medium' },
+    { name: 'Banana', kcal: 105, protein: 1, carbs: 27, fat: 0, portion: '1 medium' },
+    { name: 'Orange', kcal: 87, protein: 1, carbs: 21, fat: 0, portion: '1 medium' },
+  ],
+  Vegetables: [
+    { name: 'Carrot', kcal: 41, protein: 1, carbs: 10, fat: 0, portion: '1 medium' },
+    { name: 'Broccoli', kcal: 55, protein: 4, carbs: 11, fat: 0, portion: '1 cup' },
+    { name: 'Spinach', kcal: 7, protein: 3, carbs: 1, fat: 0, portion: '1 cup' },
+  ],
+  Proteins: [
+    { name: 'Grilled Chicken', kcal: 320, protein: 35, carbs: 2, fat: 14, portion: '1 fillet (150g)' },
+    { name: 'Salmon', kcal: 280, protein: 25, carbs: 0, fat: 18, portion: '1 fillet (150g)' },
+    { name: 'Eggs', kcal: 155, protein: 13, carbs: 1, fat: 11, portion: '2 large' },
+  ],
+  Grains: [
+    { name: 'Brown Rice', kcal: 230, protein: 5, carbs: 52, fat: 2, portion: '1 cup cooked' },
+    { name: 'Quinoa', kcal: 222, protein: 8, carbs: 39, fat: 4, portion: '1 cup cooked' },
+    { name: 'Whole Wheat Bread', kcal: 110, protein: 4, carbs: 22, fat: 2, portion: '2 slices' },
+  ],
+  Dairy: [
+    { name: 'Milk', kcal: 150, protein: 8, carbs: 12, fat: 8, portion: '1 cup' },
+    { name: 'Greek Yogurt', kcal: 120, protein: 15, carbs: 6, fat: 0, portion: '1 container (150g)' },
+    { name: 'Cheese', kcal: 180, protein: 6, carbs: 1, fat: 15, portion: '1 oz' },
+  ],
+  Snacks: [
+    { name: 'Apple', kcal: 95, protein: 0, carbs: 25, fat: 0, portion: '1 medium' },
+    { name: 'Popcorn', kcal: 108, protein: 3, carbs: 13, fat: 5, portion: '3 cups' },
+    { name: 'Almonds', kcal: 164, protein: 6, carbs: 6, fat: 14, portion: '1/4 cup' },
+  ],
 };
 
 function MealPill({ label, active, onPress }) {
