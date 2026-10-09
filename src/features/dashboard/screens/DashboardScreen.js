@@ -8,11 +8,11 @@ import EmptyState from '../../../shared/components/ui/EmptyState';
 import DaySelector from '../../../shared/components/dashboard/DaySelector';
 import MealRow from '../../../shared/components/dashboard/MealRow';
 import { calcTotals } from '../../../shared/utils/totals';
+import { formatAmount } from '../../../shared/utils/formatNumber';
 import { groupMealsForDay } from '../../../shared/utils/groupMeals';
 import { dateKey } from '../../../shared/utils/format';
 import { weekRange } from '../../../shared/lib/mealsApi';
 import PrimaryButton from '../../../shared/components/ui/Button';
-import { useIsFocused } from 'expo-router/react-navigation';
 import { useTabShell } from '../../tabs/shell';
 
 function macroTargets(goal) {
@@ -166,9 +166,9 @@ export default function DashboardScreen({
         <Card style={{ marginTop: 16 }}>
           <View className="flex-row items-center">
             <View className="flex-1 pr-2">
-              <View className="flex-row items-baseline">
-                <Text className="text-5xl font-extrabold text-ink">{t.eaten}</Text>
-                <Text className="text-lg font-semibold text-muted-foreground">/{goal}</Text>
+              <View className="flex-row items-baseline" style={{ minWidth: 0 }}>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ flexShrink: 1, minWidth: 0 }} className="text-5xl font-extrabold text-ink">{formatAmount(t.eaten, 0)}</Text>
+                <Text numberOfLines={1} style={{ flexShrink: 0 }} className="text-lg font-semibold text-muted-foreground">/{formatAmount(goal, 0)}</Text>
               </View>
               <Text className="text-sm text-muted-foreground mt-1">Calories eaten</Text>
             </View>
