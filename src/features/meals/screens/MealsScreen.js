@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
 import {
-  Search, X, Clock, Heart, ScanBarcode, Camera, ChevronLeft,
-  Settings, ChevronRight, Pencil, Mic, Plus,
+  Search, X, Clock, Heart, ScanBarcode, Camera,
+  ChevronRight, Pencil, Plus,
 } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
 import Chip from '../../../shared/components/ui/Chip';
@@ -112,8 +111,8 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
   const [kcal, setKcal] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
-  const [fat, setFat] = useState('');
-  const requestRef = useRef(0);
+    const [fat, setFat] = useState('');
+    const requestRef = useRef(0);
 
   const trimmed = query.trim();
   const showResults = trimmed.length >= 2;
@@ -195,20 +194,12 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
   return (
     <View className="flex-1 bg-white">
       <ScrollView className="flex-1 px-4 pt-12" contentContainerStyle={{ paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
-        <View className="flex-row items-center justify-between mb-1">
-          <View className="flex-row items-center flex-1">
-            <Pressable onPress={() => router.back()} accessibilityLabel="Go back" hitSlop={8} className="mr-2">
-              <ChevronLeft size={24} color="#1A1A1A" />
-            </Pressable>
-            <View>
-              <Text className="text-2xl font-bold text-ink">Log food</Text>
-              <Text className="text-xs text-muted-foreground">Search, tap, or add manually</Text>
-            </View>
-          </View>
-          <Pressable onPress={() => router.push('/settings')} accessibilityLabel="Settings" hitSlop={8} className="w-10 h-10 rounded-full bg-cream items-center justify-center">
-            <Settings size={20} color="#1A1A1A" />
-          </Pressable>
-        </View>
+         <View className="flex-row items-center mb-1">
+           <View>
+             <Text className="text-2xl font-bold text-ink">Log food</Text>
+             <Text className="text-xs text-muted-foreground">Search, tap, or add manually</Text>
+           </View>
+         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 mb-3 -mx-4 px-4">
           {TYPES.map((t) => (
@@ -231,9 +222,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
               <X size={18} color="#71717A" />
             </Pressable>
           )}
-          <View className="w-9 h-9 rounded-full bg-primary/10 items-center justify-center">
-            <Mic size={18} color="#f2470c" />
-          </View>
+
         </View>
 
         <View className="flex-row mb-1" style={{ gap: 8 }}>
