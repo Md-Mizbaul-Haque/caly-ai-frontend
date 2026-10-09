@@ -30,12 +30,22 @@ describe('tab-bar clearance (measured, not assumed)', () => {
     );
   });
 
-  it('overlay sheets dock above the tab bar via bottomOffset', () => {
+  it('overlay sheets clear the tab bar (offset or full-screen Modal)', () => {
     const layout = read('app/(tabs)/_layout.js');
-    const sheetOffsets = (layout.match(/bottomOffset=\{navHeight\}/g) || []).length;
+    assert.match(
+      layout,
+      /bottomOffset=\{navHeight\}/,
+      'QuickLogSheet must get bottomOffset={navHeight}'
+    );
+    // WeightLogSheet renders in a full-screen Modal (same pattern as
+    // FoodDetailSheet), which overlays the tab bar by construction — so it
+    // must either take bottomOffset or be Modal-based with safe-area padding.
+    const sheet = read('shared/components/WeightLogSheet.js');
+    const takesOffset = /bottomOffset/.test(sheet);
+    const isModal = /<Modal[\s>]/.test(sheet) && /useSafeAreaInsets/.test(sheet);
     assert.ok(
-      sheetOffsets >= 2,
-      `QuickLogSheet + WeightLogSheet must both get bottomOffset={navHeight} (found ${sheetOffsets})`
+      takesOffset || isModal,
+      'WeightLogSheet must clear the tab bar via bottomOffset or a full-screen Modal'
     );
   });
 

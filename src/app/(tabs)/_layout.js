@@ -386,7 +386,6 @@ export default function TabsLayout() {
           </View>
         )}
         {logWeightOpen && <WeightLogSheet
-          bottomOffset={navHeight}
           onClose={() => setLogWeightOpen(false)}
           onSave={handleWeightSave}
           currentGoal={weightGoal}
