@@ -8,7 +8,7 @@ import { toastSuccess } from '../shared/utils/toast';
 const FAQS = [
   { q: 'How does calorie tracking work?', a: 'Log meals from the Diary tab or tap + to scan a meal. Caly AI estimates calories and macros automatically.' },
   { q: 'How do I change my daily goal?', a: 'Open More → Calorie and Macro Targets and save a new goal between 500 and 10000 kcal.' },
-  { q: 'Can I log my weight?', a: 'Yes — use More → Weight Tracker or the + button on the Home tab to log a weigh-in and see your trend.' },
+  { q: 'Can I log my weight?', a: 'Yes — use the Log Weight button on Progress or the + menu to log a weigh-in. Set your goal under More → Weight Tracker.' },
 ];
 
 export default function HelpScreen() {

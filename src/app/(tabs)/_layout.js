@@ -9,7 +9,7 @@ import PictureUploadScreen from '../../features/scan/screens/PictureUploadScreen
 import ScanResultScreen from '../../features/scan/screens/ScanResultScreen';
 import { useCameraPermissions } from 'expo-camera';
 import { fetchWeek, fetchMeals, createMeal, deleteMealById } from '../../shared/lib/mealsApi';
-import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from '../../shared/lib/weightsApi';
+import { fetchWeights, createWeight, fetchWeightGoal, deleteWeight } from '../../shared/lib/weightsApi';
 import { calcTotals } from '../../shared/utils/totals';
 import { dateKey, effectiveTimeZone } from '../../shared/utils/format';
 import { toastSuccess, toastError } from '../../shared/utils/toast';
@@ -194,15 +194,10 @@ export default function TabsLayout() {
     }
   }, [meals, rangeMeals]);
 
-  // Handle weight logging via WeightLogSheet's onSave({ value, goal? }):
-  // persists the goal first (separate PUT), then POSTs the weight and
-  // merges the result (same-day re-logs replace in place).
-  const handleWeightSave = useCallback(async ({ value, goal: goalValue } = {}) => {
-    if (goalValue !== undefined && goalValue !== null && Number(goalValue) !== Number(weightGoal)) {
-      const savedGoal = await setWeightGoal(goalValue);
-      setWeightGoalState(savedGoal);
-      writeCache(scopedKey('weightGoal', userKey), savedGoal);
-    }
+  // Handle weight logging via WeightLogSheet's onSave({ value }): POSTs the
+  // weight and merges the result (same-day re-logs replace in place). The
+  // weight goal is edited on the Weight Tracker screen, never here.
+  const handleWeightSave = useCallback(async ({ value } = {}) => {
     const { weight, updated } = await createWeight({ value });
     const wid = String(weight.id || weight._id);
     const next = updated && weights.some((w) => String(w.id || w._id) === wid)
@@ -212,7 +207,7 @@ export default function TabsLayout() {
     writeCache(scopedKey('weights', userKey), next);
     toastSuccess('Weight logged!');
     return weight;
-  }, [userKey, weightGoal, weights]);
+  }, [userKey, weights]);
 
   const handleDeleteWeight = useCallback(async (weightId) => {
     const id = String(weightId);
@@ -388,7 +383,6 @@ export default function TabsLayout() {
         {logWeightOpen && <WeightLogSheet
           onClose={() => setLogWeightOpen(false)}
           onSave={handleWeightSave}
-          currentGoal={weightGoal}
           latestWeight={latestWeight}
         />}
         <SplashOverlay done={splashMinDone} />

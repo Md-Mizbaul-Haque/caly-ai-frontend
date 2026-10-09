@@ -43,6 +43,7 @@ export default function ProgressScreen({
   error = null,
   timeZone,
   onLogWeight,
+  onEditGoal,
   onRetry,
   onRefreshWeights,
   onLoadRangeMeals,
@@ -233,13 +234,17 @@ export default function ProgressScreen({
               <Text className="text-3xl font-extrabold text-ink">{latest ? fmt(latest.value) : '—'}</Text>
               {latest && <Text className="text-sm text-muted-foreground ml-1">lbs</Text>}
             </View>
-            <Pressable onPress={onLogWeight} hitSlop={6} className="flex-row items-center mt-1">
-              <Target size={12} color="#8A8A8A" />
-              <Text className="text-xs text-muted-foreground ml-1">
-                Goal: {weightGoal != null ? `${fmt(weightGoal)} lbs` : 'not set'}
-              </Text>
-              <Pencil size={11} color="#8A8A8A" style={{ marginLeft: 4 }} />
-            </Pressable>
+            <View className="flex-row items-center mt-1">
+              <Pressable onPress={onLogWeight} hitSlop={6} className="flex-row items-center">
+                <Target size={12} color="#8A8A8A" />
+                <Text className="text-xs text-muted-foreground ml-1">
+                  Goal: {weightGoal != null ? `${fmt(weightGoal)} lbs` : 'not set'}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => onEditGoal?.()} hitSlop={8} accessibilityLabel="Edit weight goal" accessibilityRole="button" className="p-1" style={{ marginLeft: 4 }}>
+                <Pencil size={11} color="#8A8A8A" />
+              </Pressable>
+            </View>
             {onDeleteWeight && latest && latest.id && !String(latest.id).startsWith('temp-') && (
               <Pressable onPress={() => onDeleteWeight(latest.id)} hitSlop={6} className="mt-1">
                 <Text className="text-xs text-destructive">Delete latest entry</Text>

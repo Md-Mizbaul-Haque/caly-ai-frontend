@@ -4,21 +4,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import PrimaryButton from './ui/Button';
 import { X } from './ui/icons';
-import { MIN_LBS, MAX_LBS, sanitizeDecimalInput, parseWeight, isValidWeight, shouldSendGoal } from '../utils/weightLog';
+import { MIN_LBS, MAX_LBS, sanitizeDecimalInput, parseWeight, isValidWeight } from '../utils/weightLog';
 /**
  * Docked sheet for logging weight. Weight (lbs) is required and prefills with
- * the latest entry; goal weight prefills from the saved goal and only updates
- * when changed. onSave({ value, goal? }) talks to the real /api/weights
- * endpoints (same-day re-log replaces the existing entry) and must throw on
+ * the latest entry. The weight goal lives on the Weight Tracker screen
+ * (More -> Weight Tracker, also linked from the Progress goal row) — this
+ * sheet never edits it. onSave({ value }) talks to the real /api/weights
+ * endpoint (same-day re-log replaces the existing entry) and must throw on
  * failure so the sheet can surface the error inline instead of guessing.
  * Same Modal dock pattern as FoodDetailSheet (no extra dependency):
  * rendered in a full-screen Modal so it overlays the BottomNav.
  */
-export default function WeightLogSheet({ currentGoal = null, latestWeight = null, onClose, onSave }) {
+export default function WeightLogSheet({ latestWeight = null, onClose, onSave }) {
   const insets = useSafeAreaInsets();
   const [progress] = useState(() => new Animated.Value(0));
   const [weight, setWeight] = useState(latestWeight != null ? String(latestWeight) : '');
-  const [goal, setGoal] = useState(currentGoal != null ? String(currentGoal) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -42,11 +42,6 @@ export default function WeightLogSheet({ currentGoal = null, latestWeight = null
       return;
     }
     const payload = { value };
-    // Only send the goal when it actually changed — avoids a redundant PUT
-    // on every weight log when the prefilled goal was left untouched.
-    if (shouldSendGoal(goal, currentGoal)) {
-      payload.goal = parseWeight(goal);
-    }
     setBusy(true);
     setError(null);
     try {
@@ -99,16 +94,6 @@ export default function WeightLogSheet({ currentGoal = null, latestWeight = null
               placeholder={latestWeight != null ? String(latestWeight) : 'e.g. 132.1'}
               selectTextOnFocus
               accessibilityLabel="Weight in pounds"
-              className="bg-cream rounded-xl px-3 py-3 text-ink mb-3"
-            />
-
-            <Text className="text-xs text-muted-foreground mb-2">Goal weight (lbs)</Text>
-            <TextInput
-              value={goal}
-              onChangeText={(v) => setGoal(sanitizeDecimalInput(v))}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 140"
-              accessibilityLabel="Goal weight in pounds"
               className="bg-cream rounded-xl px-3 py-3 text-ink mb-4"
             />
 

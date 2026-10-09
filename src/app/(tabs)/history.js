@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import ProgressScreen from '../../features/progress/screens/ProgressScreen';
 import { useTabShell } from '../../features/tabs/shell';
 
@@ -14,6 +15,7 @@ export default function HistoryRoute() {
       error={s.error}
       timeZone={s.timeZone}
       onLogWeight={() => s.setLogWeightOpen(true)}
+      onEditGoal={() => router.push('/weight-tracker')}
       onRetry={s.loadWeek}
       onRefreshWeights={s.refreshWeights}
       onLoadRangeMeals={s.loadRangeMeals}

@@ -88,7 +88,7 @@ function FoodCard({ item, subtitle, onAdd }) {
 
 function SectionHeader({ title, onSeeAll, actionLabel = 'See all' }) {
   return (
-    <View className="flex-row items-center justify-between mb-2.5 mt-5">
+    <View className="flex-row items-center justify-between mb-2 mt-4">
       <Text className="text-base font-bold text-ink">{title}</Text>
       <Pressable onPress={onSeeAll} accessibilityLabel={`${actionLabel}: ${title}`} accessibilityRole="button" className="flex-row items-center">
         <Text className="text-xs font-semibold text-primary mr-0.5">{actionLabel}</Text>
@@ -102,7 +102,7 @@ function CategoryTile({ tile, size = 64, onPress }) {
   const { key, Icon, tint, color } = tile;
   return (
     <Pressable onPress={() => onPress(key)} accessibilityLabel={`Browse ${key}`} accessibilityRole="button" className="items-center" style={{ width: size + 16 }}>
-      <View className="rounded-2xl items-center justify-center mb-1.5" style={{ width: size, height: size, backgroundColor: tint }}>
+      <View className="rounded-2xl items-center justify-center mb-1" style={{ width: size, height: size, backgroundColor: tint }}>
         <Icon size={Math.round(size * 0.42)} color={color} />
       </View>
       <Text className="text-xs font-semibold text-ink" numberOfLines={1}>{key}</Text>
@@ -340,22 +340,22 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
               onSeeAll={() => setShowAllCategories((v) => !v)}
             />
             {showAllCategories ? (
-              <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+              <View className="flex-row flex-wrap" style={{ gap: 10 }}>
                 {CATEGORIES.map((tile) => (
                   <View key={tile.key} style={{ width: '30%' }} className="items-center">
-                    <CategoryTile tile={tile} size={64} onPress={handleQueryChange} />
+                    <CategoryTile tile={tile} size={56} onPress={handleQueryChange} />
                   </View>
                 ))}
               </View>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingRight: 24 }} className="-mx-4 px-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }} className="-mx-4 px-4">
                 {CATEGORIES.map((tile) => (
-                  <CategoryTile key={tile.key} tile={tile} size={64} onPress={handleQueryChange} />
+                  <CategoryTile key={tile.key} tile={tile} size={56} onPress={handleQueryChange} />
                 ))}
               </ScrollView>
             )}
 
-            <Pressable onPress={() => setManualOpen((v) => !v)} accessibilityLabel="Manual entry" className="flex-row items-center bg-cream rounded-2xl px-4 py-3.5 mt-5">
+            <Pressable onPress={() => setManualOpen((v) => !v)} accessibilityLabel="Manual entry" className="flex-row items-center bg-cream rounded-2xl px-4 py-3.5 mt-4">
               <View className="w-9 h-9 rounded-full bg-primary/10 items-center justify-center mr-3">
                 <Pencil size={18} color="#f2470c" />
               </View>
