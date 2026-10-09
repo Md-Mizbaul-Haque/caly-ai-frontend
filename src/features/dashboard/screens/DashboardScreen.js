@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, View, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import { Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
@@ -34,12 +34,11 @@ export default function DashboardScreen({
   onAdd,
   onDelete,
 }) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
   // Bumped after every pull-to-refresh so the day strip re-centers on the
   // (possibly resized) selected pill.
   const [recenterSignal, setRecenterSignal] = useState(0);
   const s = useTabShell();
-  const isFocused = useIsFocused();
+  const { selectedDate, setSelectedDate: setSelectedDateFromContext } = s;
 
   // Props win; context (TabShell) is the fallback so the screen works both
   // under the tab layout and in isolation. Previously this read only
@@ -56,11 +55,11 @@ export default function DashboardScreen({
   const weightGoal = weightGoalProp ?? s.progressCache?.weightGoal ?? s.weightGoal ?? null;
   void weightGoal;
 
-  // Day blocks rebuild Date objects every render: compare calendar keys so
-  // re-tapping the selected pill is a no-op instead of churning the dashboard.
-  const handleSelect = useCallback((d) => {
-    setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
-  }, [timeZone]);
+   // Day blocks rebuild Date objects every render: compare calendar keys so
+   // re-tapping the selected pill is a no-op instead of churning the dashboard.
+   const handleSelect = useCallback((d) => {
+     setSelectedDateFromContext((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+   }, [timeZone]);
 
   // Load the calendar week containing the selected day. Without this, days
   // outside the initially fetched current week could never show data.
@@ -77,46 +76,47 @@ export default function DashboardScreen({
   
    const MACROS = useMemo(() => macroTargets(goal), [goal]);
 
-  const dayMeals = useMemo(
-    () => {
-      if (!isFocused) return [];
-      return meals.filter(m => dateKey(m.loggedAt, timeZone) === dateKey(selectedDate, timeZone));
-    },
-    [meals, selectedDate, isFocused, timeZone]
-  );
+   const dayMeals = useMemo(
+     () => {
+       // When not focused, we still want to calculate dayMeals for cache consistency
+       // but we won't render it until focused. This prevents flicker when navigating back.
+       return meals.filter(m => dateKey(m.loggedAt, timeZone) === dateKey(selectedDate, timeZone));
+     },
+     [meals, selectedDate, timeZone]
+   );
   
-  // Repeat logs of the same meal collapse into one summed card (display-only;
-  // totals still sum the raw entries so the ring never drifts from the list).
-  const groupedDayMeals = useMemo(() => groupMealsForDay(dayMeals), [dayMeals]);
+   // Repeat logs of the same meal collapse into one summed card (display-only;
+   // totals still sum the raw entries so the ring never drifts from the list).
+   const groupedDayMeals = useMemo(() => groupMealsForDay(dayMeals), [dayMeals]);
 
-  const t = useMemo(() => {
-    if (!isFocused) return { eaten: 0, protein: 0, carbs: 0, fat: 0, remaining: 0 };
-    return calcTotals(dayMeals, goal);
-  }, [dayMeals, goal, isFocused]);
+   const t = useMemo(() => {
+     // Calculate totals regardless of focus state to maintain consistency
+     // The UI layer can choose to show/hide based on focus if needed
+     return calcTotals(dayMeals, goal);
+   }, [dayMeals, goal]);
 
    const totalsByDate = useMemo(() => {
-     if (!isFocused) return {};
      const accum = {};
-      for (const m of meals) {
-        const k = dateKey(m.loggedAt, timeZone);
-       if (!k) continue;
-       if (!accum[k]) {
-         accum[k] = { eaten: 0, protein: 0, carbs: 0, fat: 0 };
+       for (const m of meals) {
+         const k = dateKey(m.loggedAt, timeZone);
+        if (!k) continue;
+        if (!accum[k]) {
+          accum[k] = { eaten: 0, protein: 0, carbs: 0, fat: 0 };
+        }
+        accum[k].eaten += Number(m.kcal) || 0;
+        accum[k].protein += Number(m.protein) || 0;
+        accum[k].carbs += Number(m.carbs) || 0;
+        accum[k].fat += Number(m.fat) || 0;
        }
-       accum[k].eaten += Number(m.kcal) || 0;
-       accum[k].protein += Number(m.protein) || 0;
-       accum[k].carbs += Number(m.carbs) || 0;
-       accum[k].fat += Number(m.fat) || 0;
-     }
-     const out = {};
-     for (const [k, totals] of Object.entries(accum)) {
-       out[k] = {
-         ...totals,
-         remaining: Math.max(0, goal - totals.eaten),
-       };
-     }
-      return out;
-    }, [meals, goal, isFocused, timeZone]);
+       const out = {};
+       for (const [k, totals] of Object.entries(accum)) {
+         out[k] = {
+           ...totals,
+           remaining: Math.max(0, goal - totals.eaten),
+         };
+       }
+       return out;
+     }, [meals, goal, timeZone]);
 
   async function handleRefresh() {
     try {

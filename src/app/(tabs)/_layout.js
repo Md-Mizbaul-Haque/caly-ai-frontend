@@ -29,6 +29,11 @@ export default function TabsLayout() {
   const [scanResult, setScanResult] = useState(null);
   const [pendingPhoto, setPendingPhoto] = useState(null);
   const [meals, setMeals] = useState([]); // current calendar week (dashboard view)
+const [selectedDate, setSelectedDate] = useState(() => {
+  // Try to restore from cache first, fallback to today
+  const cachedDate = readCache(scopedKey('selectedDate', userKey));
+  return cachedDate ? new Date(cachedDate) : new Date();
+});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [weights, setWeights] = useState([]);
@@ -85,19 +90,26 @@ export default function TabsLayout() {
     }
   }, [userKey, timeZone]);
 
-  // Load meals for a horizon ending today (e.g. 365 days for the Progress
-  // screen's daily-average card). Skipped when a wider horizon is already
-  // loaded; results merge under the week view so both screens stay correct.
-  const loadRangeMeals = useCallback(async (days) => {
-    const end = new Date();
-    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - days);
-    const from = dateKey(start, timeZone);
-    // A wider horizon already covers this one ??" nothing to fetch.
-    if (rangeFromRef.current && rangeFromRef.current <= from) return;
-    const data = await fetchMeals(from, dateKey(end, timeZone), undefined, timeZone);
-    rangeFromRef.current = from;
-    setRangeMeals(data);
-  }, [timeZone]);
+   // Load meals for a horizon ending today (e.g. 365 days for the Progress
+   // screen's daily-average card). Skipped when a wider horizon is already
+   // loaded; results merge under the week view so both screens stay correct.
+   const loadRangeMeals = useCallback(async (days) => {
+     const end = new Date();
+     const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - days);
+     const from = dateKey(start, timeZone);
+     // A wider horizon already covers this one ??" nothing to fetch.
+     if (rangeFromRef.current && rangeFromRef.current <= from) return;
+     const data = await fetchMeals(from, dateKey(end, timeZone), undefined, timeZone);
+     rangeFromRef.current = from;
+     setRangeMeals(data);
+   }, [timeZone]);
+
+   // Persist selectedDate to cache whenever it changes
+   useEffect(() => {
+     if (userKey) {
+       writeCache(scopedKey('selectedDate', userKey), selectedDate.toISOString());
+     }
+   }, [selectedDate, userKey]);
 
   const fetchWeightsAndGoal = useCallback(async () => {
     if (!user) return;
@@ -244,38 +256,40 @@ export default function TabsLayout() {
     });
     return Math.round(calcTotals(todays, goal).remaining);
   }, [meals, goal, timeZone]);
-  // Value to expose through TabShell context. Declared AFTER the handlers it
-  // references — building it earlier reads the handler consts before
-  // initialization (TDZ) and crashes the whole tab layout on first render.
-  // Must stay in sync with what DashboardScreen / ProgressScreen consume:
-  // progressCache + goal/loading/error, week + range meals, weights + goal,
-  // and every handler the routes pass down as props.
-  const tabShellValue = useMemo(() => ({
-    progressCache,
-    goal,
-    loading,
-    error,
-    meals,
-    rangeMeals,
-    weights,
-    weightGoal,
-    navHeight,
-    timeZone,
-    loadWeek,
-    loadRangeMeals,
-    refreshWeights: fetchWeightsAndGoal,
-    fetchWeightsAndGoal,
-    setSheetOpen,
-    setLogWeightOpen,
-    deleteMeal: handleMealDeleted,
-    handleSave,
-    handleWeightSave,
-    handleDeleteWeight,
-  }), [
-    progressCache, goal, loading, error, meals, rangeMeals, weights, weightGoal,
-    navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal,
-    handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
-  ]);
+   // Value to expose through TabShell context. Declared AFTER the handlers it
+   // references — building it earlier reads the handler consts before
+   // initialization (TDZ) and crashes the whole tab layout on first render.
+   // Must stay in sync with what DashboardScreen / ProgressScreen consume:
+   // progressCache + goal/loading/error, week + range meals, weights + goal,
+   // selectedDate, and every handler the routes pass down as props.
+   const tabShellValue = useMemo(() => ({
+     progressCache,
+     goal,
+     loading,
+     error,
+     meals,
+     rangeMeals,
+     weights,
+     weightGoal,
+     selectedDate,
+     setSelectedDate,
+     navHeight,
+     timeZone,
+     loadWeek,
+     loadRangeMeals,
+     refreshWeights: fetchWeightsAndGoal,
+     fetchWeightsAndGoal,
+     setSheetOpen,
+     setLogWeightOpen,
+     deleteMeal: handleMealDeleted,
+     handleSave,
+     handleWeightSave,
+     handleDeleteWeight,
+   }), [
+     progressCache, goal, loading, error, meals, rangeMeals, weights, weightGoal,
+     selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal,
+     handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
+   ]);
 
   // Branded splash stays at least SPLASH_MIN_MS so startup never flashes,
   // then fades via SplashOverlay's `done` prop. Previously the layout passed
