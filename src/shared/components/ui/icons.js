@@ -56,6 +56,16 @@ import CalendarDaysIcon from 'lucide-react-native/icons/calendar-days';
 import AlertCircleIcon from 'lucide-react-native/icons/circle-alert';
 import TicketPercentIcon from 'lucide-react-native/icons/ticket-percent';
 import UtensilsIcon from 'lucide-react-native/icons/utensils';
+import EyeIcon from 'lucide-react-native/icons/eye';
+import EyeOffIcon from 'lucide-react-native/icons/eye-off';
+import BikeIcon from 'lucide-react-native/icons/bike';
+import FootprintsIcon from 'lucide-react-native/icons/footprints';
+import SofaIcon from 'lucide-react-native/icons/sofa';
+import CircleIcon from 'lucide-react-native/icons/circle';
+import CircleUserIcon from 'lucide-react-native/icons/circle-user';
+import UserRoundIcon from 'lucide-react-native/icons/user-round';
+import PartyPopperIcon from 'lucide-react-native/icons/party-popper';
+import CheckIcon from 'lucide-react-native/icons/check';
 
 const withThinStroke = (IconComponent, displayName) => {
   const Wrapped = (props) => (
@@ -121,6 +131,16 @@ const CalendarDays = withThinStroke(CalendarDaysIcon, 'CalendarDays');
 const AlertCircle = withThinStroke(AlertCircleIcon, 'AlertCircle');
 const TicketPercent = withThinStroke(TicketPercentIcon, 'TicketPercent');
 const Utensils = withThinStroke(UtensilsIcon, 'Utensils');
+const Eye = withThinStroke(EyeIcon, 'Eye');
+const EyeOff = withThinStroke(EyeOffIcon, 'EyeOff');
+const Bike = withThinStroke(BikeIcon, 'Bike');
+const Footprints = withThinStroke(FootprintsIcon, 'Footprints');
+const Sofa = withThinStroke(SofaIcon, 'Sofa');
+const Circle = withThinStroke(CircleIcon, 'Circle');
+const CircleUser = withThinStroke(CircleUserIcon, 'CircleUser');
+const UserRound = withThinStroke(UserRoundIcon, 'UserRound');
+const PartyPopper = withThinStroke(PartyPopperIcon, 'PartyPopper');
+const Check = withThinStroke(CheckIcon, 'Check');
 
 export {
   House,
@@ -179,5 +199,15 @@ export {
   AlertCircle,
   TicketPercent,
   Utensils,
+  Eye,
+  EyeOff,
+  Bike,
+  Footprints,
+  Sofa,
+  Circle,
+  CircleUser,
+  UserRound,
+  PartyPopper,
+  Check,
 };
 export { Icon } from '@/components/ui/icon';

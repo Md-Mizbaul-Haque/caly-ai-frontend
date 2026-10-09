@@ -10,13 +10,16 @@ const ITEMS = [
   { key: 'more', label: 'More', Icon: Ellipsis },
 ];
 
-export default function BottomNav({ active, onChange, sheetOpen = false, onToggleSheet }) {
+export default function BottomNav({ active, onChange, sheetOpen = false, onToggleSheet, onHeight }) {
   const insets = useSafeAreaInsets();
   const leftItems = ITEMS.slice(0, 2);
   const rightItems = ITEMS.slice(2);
   return (
     <View
       className={cn('bg-card flex-row items-center pl-1 pr-4 pt-2')}
+      // Report the measured height so screens/sheets can clear the tab bar
+      // (including the protruding center button and bottom safe-area inset).
+      onLayout={(e) => onHeight?.(Math.round(e.nativeEvent.layout.height))}
       style={{
         paddingBottom: Math.max(insets.bottom, 10),
         borderTopWidth: 1,

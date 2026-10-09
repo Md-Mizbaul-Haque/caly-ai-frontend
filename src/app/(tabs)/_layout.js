@@ -301,17 +301,11 @@ export default function TabsLayout() {
     }
   }, [scanResult, router]);
 
-  // Handle navigation height changes
-  useEffect(() => {
-    const handleNavHeightChange = (height) => {
-      setNavHeight(height);
-    };
-
-    // In a real app, you'd listen to navigation events
-    // For now, we'll simulate it
-    return () => {
-      // Cleanup
-    };
+  // Measured tab-bar height (reported by BottomNav onLayout): screens and
+  // overlay sheets clear exactly this, so the last card never slides under
+  // the bar or its protruding center button. Equality bail-out avoids loops.
+  const handleNavHeight = useCallback((h) => {
+    setNavHeight((prev) => (prev === h ? prev : h));
   }, []);
 
   // Render the layout
@@ -320,7 +314,7 @@ export default function TabsLayout() {
       <View style={{ flex: 1 }}>
         <Slot />
         <BottomNav
-          navHeight={navHeight}
+          onHeight={handleNavHeight}
           active={active}
           sheetOpen={sheetOpen}
           onChange={(key) => router.push(`/(tabs)/${key}`)}
@@ -328,6 +322,7 @@ export default function TabsLayout() {
         />
         {sheetOpen && (
           <QuickLogSheet
+            bottomOffset={navHeight}
             onClose={() => setSheetOpen(false)}
             remaining={remainingToday}
             onLogFood={() => {
@@ -369,6 +364,7 @@ export default function TabsLayout() {
           </View>
         )}
         {logWeightOpen && <WeightLogSheet
+          bottomOffset={navHeight}
           onClose={() => setLogWeightOpen(false)}
           onSave={handleWeightSave}
           currentGoal={weightGoal}
