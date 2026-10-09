@@ -11,11 +11,11 @@ import { useCameraPermissions } from 'expo-camera';
 import { fetchWeek, fetchMeals, createMeal, deleteMealById } from '../../shared/lib/mealsApi';
 import { fetchWeights, createWeight, fetchWeightGoal, setWeightGoal, deleteWeight } from '../../shared/lib/weightsApi';
 import { calcTotals } from '../../shared/utils/totals';
-import { dateKey } from '../../shared/utils/format';
+import { dateKey, effectiveTimeZone } from '../../shared/utils/format';
 import { toastSuccess, toastError } from '../../shared/utils/toast';
 import { useSession } from '../../features/auth/session';
 import { TabShellProvider } from '../../features/tabs/shell';
-import { readCache, writeCache } from '../../shared/lib/appCache';
+import { readCache, writeCache, scopedKey, setCacheOwner } from '../../shared/lib/appCache';
 
 const SPLASH_MIN_MS = 450;
 
@@ -57,24 +57,33 @@ export default function TabsLayout() {
 
   const active = segments[segments.length - 1] ?? 'dashboard';
 
-  const loadWeek = useCallback(async ({ silent } = {}) => {
+  const userKey = user ? (user._id || user.id || user.email) : null;
+
+  // Calendar zone for this user: their stored zone, else the device zone,
+  // UTC when nothing is usable. Every fetch and every grouping below uses
+  // it so client days match the server's ?from/?to windows.
+  const timeZone = useMemo(() => effectiveTimeZone(user), [user]);
+
+  const loadWeek = useCallback(async ({ silent, reference } = {}) => {
     // Silent refreshes (background revalidation over cached data) must not
-    // flip the UI back into its loading state.
+    // flip the UI back into its loading state. `reference` selects which
+    // calendar week to load (defaults to the current week) so the dashboard
+    // can fetch the week containing the user-selected day.
     if (!silent) {
       setLoading(true);
       setError(null);
     }
     try {
-      const mealsData = await fetchWeek(new Date());
+      const mealsData = await fetchWeek(reference || new Date(), timeZone);
       setMeals(mealsData);
-      writeCache('weekMeals', mealsData);
+      writeCache(scopedKey('weekMeals', userKey), mealsData);
     } catch (e) {
       // Error UI only appears when there's nothing cached to show.
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userKey, timeZone]);
 
   // Load meals for a horizon ending today (e.g. 365 days for the Progress
   // screen's daily-average card). Skipped when a wider horizon is already
@@ -82,13 +91,13 @@ export default function TabsLayout() {
   const loadRangeMeals = useCallback(async (days) => {
     const end = new Date();
     const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - days);
-    const from = dateKey(start);
+    const from = dateKey(start, timeZone);
     // A wider horizon already covers this one ??" nothing to fetch.
     if (rangeFromRef.current && rangeFromRef.current <= from) return;
-    const data = await fetchMeals(from, dateKey(end));
+    const data = await fetchMeals(from, dateKey(end, timeZone), undefined, timeZone);
     rangeFromRef.current = from;
     setRangeMeals(data);
-  }, []);
+  }, [timeZone]);
 
   const fetchWeightsAndGoal = useCallback(async () => {
     if (!user) return;
@@ -96,13 +105,13 @@ export default function TabsLayout() {
       const [w, g] = await Promise.all([fetchWeights(), fetchWeightGoal()]);
       setWeights(w);
       setWeightGoalState(g);
-      writeCache('weights', w);
-      writeCache('weightGoal', g);
+      writeCache(scopedKey('weights', userKey), w);
+      writeCache(scopedKey('weightGoal', userKey), g);
     } catch {
       // Offline / 403 (unverified) / server errors: keep cached data as-is
       // instead of an unhandled rejection that leaves state stale.
     }
-  }, [user]);
+  }, [user, userKey]);
 
   const hydratedForRef = useRef(null);
   const mealsHydratedRef = useRef(false);
@@ -110,15 +119,26 @@ export default function TabsLayout() {
 
   useEffect(() => {
     if (!(authChecked && user)) return;
-    const userKey = user._id || user.id || user.email;
-    if (hydratedForRef.current === userKey) return;
-    hydratedForRef.current = userKey;
+    const key = user._id || user.id || user.email;
+    if (hydratedForRef.current === key) return;
+    hydratedForRef.current = key;
+    // New account (login / switch): drop the previous owner's in-memory
+    // state first so their meals/weights never flash, then hydrate from
+    // that owner's namespaced cache while the network revalidates.
+    setCacheOwner(key);
+    setMeals([]);
+    setRangeMeals([]);
+    setWeights([]);
+    setWeightGoalState(null);
+    setError(null);
+    setLoading(true);
+    rangeFromRef.current = null;
     let alive = true;
     (async () => {
       const [cachedMeals, cachedWeights, cachedGoal] = await Promise.all([
-        readCache('weekMeals'),
-        readCache('weights'),
-        readCache('weightGoal'),
+        readCache(scopedKey('weekMeals', key)),
+        readCache(scopedKey('weights', key)),
+        readCache(scopedKey('weightGoal', key)),
       ]);
       if (!alive) return;
       mealsHydratedRef.current = true;
@@ -134,47 +154,128 @@ export default function TabsLayout() {
     return () => { alive = false; };
   }, [authChecked, user]);
 
-  // Handle meal deletion
+  // Handle meal deletion: persist via API, then drop from both the week
+  // view and the long-horizon range so Dashboard + Progress stay in sync.
+  // Rolls back on failure so the row never silently vanishes.
   const handleMealDeleted = useCallback(async (mealId) => {
-    setMeals(prev => prev.filter(meal => meal.id !== mealId));
-    toastSuccess('Meal deleted!');
-  }, []);
+    const id = String(mealId);
+    const prevWeek = meals;
+    const prevRange = rangeMeals;
+    setMeals(prevWeek.filter((meal) => String(meal.id) !== id));
+    setRangeMeals(prevRange.filter((meal) => String(meal.id || meal._id) !== id));
+    try {
+      await deleteMealById(mealId);
+      toastSuccess('Meal deleted!');
+    } catch (e) {
+      setMeals(prevWeek);
+      setRangeMeals(prevRange);
+      toastError('Could not delete', e.message);
+      throw e;
+    }
+  }, [meals, rangeMeals]);
 
-  // Handle weight logging
-  const handleWeightLogged = useCallback(async (weight) => {
-    setWeights(prev => [...prev, weight]);
+  // Handle weight logging via WeightLogSheet's onSave({ value, goal? }):
+  // persists the goal first (separate PUT), then POSTs the weight and
+  // merges the result (same-day re-logs replace in place).
+  const handleWeightSave = useCallback(async ({ value, goal: goalValue } = {}) => {
+    if (goalValue !== undefined && goalValue !== null && Number(goalValue) !== Number(weightGoal)) {
+      const savedGoal = await setWeightGoal(goalValue);
+      setWeightGoalState(savedGoal);
+      writeCache(scopedKey('weightGoal', userKey), savedGoal);
+    }
+    const { weight, updated } = await createWeight({ value });
+    const wid = String(weight.id || weight._id);
+    const next = updated && weights.some((w) => String(w.id || w._id) === wid)
+      ? weights.map((w) => (String(w.id || w._id) === wid ? weight : w))
+      : [...weights, weight];
+    setWeights(next);
+    writeCache(scopedKey('weights', userKey), next);
     toastSuccess('Weight logged!');
-  }, []);
+    return weight;
+  }, [userKey, weightGoal, weights]);
+
+  const handleDeleteWeight = useCallback(async (weightId) => {
+    const id = String(weightId);
+    const prev = weights;
+    setWeights(prev.filter((x) => String(x.id || x._id) !== id));
+    try {
+      await deleteWeight(weightId);
+      toastSuccess('Weight entry deleted!');
+    } catch (e) {
+      setWeights(prev);
+      toastError('Could not delete', e.message);
+      throw e;
+    }
+  }, [weights]);
 
   // Save a meal (manual entry, catalog sheet, scan): POST then merge into the
-  // week view so Dashboard/today totals update immediately. Throws so the
-  // caller (sheet/form) can show the error inline instead of guessing.
+  // week view so Dashboard/today totals update immediately. Stamps the
+  // client-side loggedAt (ISO with offset) when callers omit it so the meal
+  // lands on the device's calendar day instead of the server clock's.
+  // Throws so the caller (sheet/form) can show the error inline instead of guessing.
   const handleSave = useCallback(async (meal) => {
-    const saved = await createMeal(meal);
+    const payload = meal && meal.loggedAt ? meal : { ...meal, loggedAt: new Date().toISOString() };
+    const saved = await createMeal(payload);
     setMeals((prev) => [...prev, saved]);
+    setRangeMeals((prev) => {
+      const id = String(saved.id || saved._id);
+      if (prev.some((m) => String(m.id || m._id) === id)) return prev;
+      return [...prev, saved];
+    });
     toastSuccess('Meal logged!');
     return saved;
   }, []);
 
+  const latestWeight = useMemo(() => {
+    let best = null;
+    for (const w of weights) {
+      const t = new Date(w.loggedAt).getTime();
+      if (Number.isNaN(t)) continue;
+      if (!best || t >= best.t) best = { t, value: w.value };
+    }
+    return best ? best.value : null;
+  }, [weights]);
   // kcal remaining today for the quick-log sheet (today's meals only).
   const remainingToday = useMemo(() => {
-    const key = dateKey(new Date());
+    const key = dateKey(new Date(), timeZone);
     const todays = meals.filter((m) => {
       const d = new Date(m.loggedAt);
-      return !Number.isNaN(d.getTime()) && dateKey(d) === key;
+      return !Number.isNaN(d.getTime()) && dateKey(d, timeZone) === key;
     });
     return Math.round(calcTotals(todays, goal).remaining);
-  }, [meals, goal]);
+  }, [meals, goal, timeZone]);
   // Value to expose through TabShell context. Declared AFTER the handlers it
   // references — building it earlier reads the handler consts before
   // initialization (TDZ) and crashes the whole tab layout on first render.
+  // Must stay in sync with what DashboardScreen / ProgressScreen consume:
+  // progressCache + goal/loading/error, week + range meals, weights + goal,
+  // and every handler the routes pass down as props.
   const tabShellValue = useMemo(() => ({
+    progressCache,
+    goal,
+    loading,
+    error,
+    meals,
+    rangeMeals,
+    weights,
+    weightGoal,
+    navHeight,
+    timeZone,
     loadWeek,
+    loadRangeMeals,
+    refreshWeights: fetchWeightsAndGoal,
+    fetchWeightsAndGoal,
     setSheetOpen,
+    setLogWeightOpen,
     deleteMeal: handleMealDeleted,
     handleSave,
-    meals,
-  }), [loadWeek, setSheetOpen, handleMealDeleted, handleSave, meals]);
+    handleWeightSave,
+    handleDeleteWeight,
+  }), [
+    progressCache, goal, loading, error, meals, rangeMeals, weights, weightGoal,
+    navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal,
+    handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
+  ]);
 
   // Branded splash stays at least SPLASH_MIN_MS so startup never flashes,
   // then fades via SplashOverlay's `done` prop. Previously the layout passed
@@ -267,9 +368,11 @@ export default function TabsLayout() {
             />
           </View>
         )}
-        {logWeightOpen && <WeightLogSheet 
+        {logWeightOpen && <WeightLogSheet
           onClose={() => setLogWeightOpen(false)}
-          onWeightLogged={handleWeightLogged}
+          onSave={handleWeightSave}
+          currentGoal={weightGoal}
+          latestWeight={latestWeight}
         />}
         <SplashOverlay done={splashMinDone} />
       </View>

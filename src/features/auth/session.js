@@ -1,11 +1,37 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { getToken, setSessionExpiredHandler } from '../../shared/lib/tokenStore';
-import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail } from '../../shared/lib/authApi';
+import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail, updateProfile } from '../../shared/lib/authApi';
 import { toastError, toastSuccess } from '../../shared/utils/toast';
 import { readCache, writeCache, clearAppCache } from '../../shared/lib/appCache';
+import { deviceTimeZone } from '../../shared/utils/format';
 
 const AuthSessionContext = createContext(null);
+
+// One zone sync per account at a time (module scope — survives rerenders).
+// The PUT response re-enters applyUser with the same zone and no-ops.
+let syncingZoneFor = null;
+function syncTimeZone(u, setUser) {
+  if (!u) return;
+  const key = u._id || u.id || u.email;
+  if (!key || syncingZoneFor === key) return;
+  let device;
+  try {
+    device = deviceTimeZone();
+  } catch {
+    return;
+  }
+  if (!device || u.timezone === device) return;
+  syncingZoneFor = key;
+  updateProfile({ timezone: device })
+    .then(({ user: fresh }) => {
+      if (fresh) setUser(fresh);
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (syncingZoneFor === key) syncingZoneFor = null;
+    });
+}
 
 export function AuthSessionProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -25,6 +51,7 @@ export function AuthSessionProvider({ children }) {
     setUser(u);
     if (u) writeCache('user', u);
     if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal);
+    syncTimeZone(u, setUser);
   }
 
   useEffect(() => {

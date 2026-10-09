@@ -11,6 +11,8 @@ export default function HistoryRoute() {
       meals={s.meals}
       rangeMeals={s.rangeMeals}
       loading={s.loading}
+      error={s.error}
+      timeZone={s.timeZone}
       onLogWeight={() => s.setLogWeightOpen(true)}
       onRetry={s.loadWeek}
       onRefreshWeights={s.refreshWeights}
