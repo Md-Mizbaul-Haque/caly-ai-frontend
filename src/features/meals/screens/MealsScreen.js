@@ -240,19 +240,26 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
             {!searching && !searchError && results.length === 0 && (
               <Text className="text-muted-foreground text-center my-4">No foods found.</Text>
             )}
-            {results.map((item) => (
-              <Pressable
-                key={String(item.fdcId ?? item.id ?? item.name)}
-                onPress={() => setSheet({ food: item, mode: 'grams' })}
-                className="flex-row items-center bg-cream rounded-2xl px-3 py-2.5 mb-2"
-              >
-                <View className="flex-1">
-                  <Text className="font-bold text-ink" numberOfLines={1}>{item.name}</Text>
-                  <Text className="text-xs text-muted-foreground" numberOfLines={1}>{Math.round(item.kcal)} kcal /100g</Text>
-                </View>
-                <Text className="font-bold text-primary">+</Text>
-              </Pressable>
-            ))}
+             {results.map((item) => (
+               <Pressable
+                 key={String(item.fdcId ?? item.id ?? item.name)}
+                 onPress={() => setSheet({ food: item, mode: 'grams' })}
+                 className="flex-row items-center bg-cream rounded-2xl px-3 py-2.5 mb-2"
+               >
+                 <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
+                   {item.imageUrl ? (
+                     <Image source={{ uri: item.imageUrl }} className="w-full h-full" resizeMode="cover" />
+                   ) : (
+                     <Text className="text-2xl">{item.emoji || '🍽️'}</Text>
+                   )}
+                 </View>
+                 <View className="flex-1">
+                   <Text className="font-bold text-ink" numberOfLines={1}>{item.name}</Text>
+                   <Text className="text-xs text-muted-foreground" numberOfLines={1}>{Math.round(item.kcal)} kcal /100g</Text>
+                 </View>
+                 <Text className="font-bold text-primary">+</Text>
+               </Pressable>
+             ))}
           </View>
         ) : (
           <View>
