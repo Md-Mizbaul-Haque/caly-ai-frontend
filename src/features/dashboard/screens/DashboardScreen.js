@@ -38,10 +38,9 @@ export default function DashboardScreen({
   // (possibly resized) selected pill.
   const [recenterSignal, setRecenterSignal] = useState(0);
   const s = useTabShell();
-  const { selectedDate, setSelectedDate: setSelectedDateFromContext } = s;
-  // Ref to stabilize setSelectedDate across renders and prevent re-render loops
-  const setSelectedDateRef = useRef(setSelectedDateFromContext);
-  setSelectedDateRef.current = setSelectedDateFromContext;
+  const { selectedDate } = s;
+  // Use setSelectedDate from context directly - the context provider ensures
+  // it's the same function reference, preventing re-render loops
 
   // Props win; context (TabShell) is the fallback so the screen works both
   // under the tab layout and in isolation. Previously this read only
@@ -61,8 +60,9 @@ export default function DashboardScreen({
    // Day blocks rebuild Date objects every render: compare calendar keys so
    // re-tapping the selected pill is a no-op instead of churning the dashboard.
    const handleSelect = useCallback((d) => {
-     setSelectedDateRef.current((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
-   }, [timeZone]);
+     // Use the setSelectedDate from context - it's stabilized by the provider
+     s.setSelectedDate?.((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+   }, [timeZone, s]);
 
   // Load the calendar week containing the selected day. Without this, days
   // outside the initially fetched current week could never show data.
