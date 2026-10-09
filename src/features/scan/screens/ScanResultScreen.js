@@ -13,7 +13,8 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
  * - 'barcode' kind: product info card.
  * User reviews/edits totals, picks a meal type, then confirms -> onSave(meal).
  */
-export default function ScanResultScreen({ result, onSave, onClose }) {
+export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
+  const close = onClose ?? onDone ?? (() => {});
   const [items, setItems] = useState(() =>
     result.kind === 'barcode' ? [result.item] : result.items
   );
@@ -57,7 +58,7 @@ export default function ScanResultScreen({ result, onSave, onClose }) {
   return (
     <ScrollView className="flex-1 bg-white px-4 pt-12" contentContainerStyle={{ paddingBottom: 40 }}>
       <View className="flex-row items-center mb-4">
-        <Pressable onPress={onClose} accessibilityLabel="Back" hitSlop={8} className="mr-3">
+        <Pressable onPress={close} accessibilityLabel="Back" hitSlop={8} className="mr-3">
           <ChevronLeft size={26} color="#1A1A1A" />
         </Pressable>
         <Text className="text-2xl font-bold text-ink">

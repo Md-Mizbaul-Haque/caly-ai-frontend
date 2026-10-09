@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import ProgressRing from './ProgressRing';
+import { formatAmount } from '../../utils/formatNumber';
 
 export default function MacroCard({ label, grams = 0, target = 1, color, icon: Icon, style, className }) {
   const safeTarget = Math.max(Number(target) || 0, 1);
@@ -10,9 +11,9 @@ export default function MacroCard({ label, grams = 0, target = 1, color, icon: I
   return (
     <Card style={[{ shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }, style]} className={cn('rounded-card border-border bg-card py-3', className)}>
       <CardContent className="px-3">
-        <View className="flex-row items-baseline">
-          <Text className="text-base font-bold text-foreground">{safeGrams}</Text>
-          <Text className="text-xs text-muted-foreground"> /{safeTarget}g</Text>
+        <View className="flex-row items-baseline" style={{ minWidth: 0 }}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={{ flexShrink: 1, minWidth: 0 }} className="text-base font-bold text-foreground">{formatAmount(safeGrams)}</Text>
+          <Text numberOfLines={1} style={{ flexShrink: 0 }} className="text-xs text-muted-foreground"> /{formatAmount(safeTarget)}g</Text>
         </View>
         <Text className="text-xs font-medium text-muted-foreground mt-0.5 mb-2">{label}</Text>
         <View className="items-center">

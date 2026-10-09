@@ -63,7 +63,7 @@ Backend errors surface as toasts; optimistic creates roll back on failure.
 
 ## Scripts
 
-`npm start` (dev server) · `android` / `ios` (dev builds) · `web` · `lint` (`expo lint`).
+`npm start` (dev server) · `android` / `ios` (dev builds) · `web` · `lint` (`expo lint`) · `e2e` (Playwright tester vision, Chromium + Expo Web).
 
 ```bash
 npx expo start          # dev server
@@ -72,6 +72,26 @@ npx expo run:ios        # local iOS dev build (macOS only)
 npx expo lint           # lint
 npx tsc --noEmit        # typecheck
 ```
+
+## E2E tester vision (Playwright + Expo Web)
+
+Backend first: `npm run dev` in `caly-ai-backend/` (http://localhost:5000).
+One-time browser install in this folder:
+
+```bash
+npx playwright install chromium
+```
+
+Then:
+
+```bash
+npm run e2e        # headless, screenshots/traces on failure
+npm run e2e:headed # watch Chromium like a user
+npm run e2e:ui     # interactive time-travel + screenshots
+npm run e2e:report # open trace/screenshots after a failure
+```
+
+Investigate a bug: add `await page.screenshot({ path: 'e2e/bug-xyz.png', fullPage: true })` in the spec, run headed, open the PNG. Specs live in `e2e/`; config is `playwright.config.ts` (Expo Web on `:8082`).
 
 ## Structure
 

@@ -1,20 +1,16 @@
 import { apiGet, apiPost, apiDelete } from './api';
-import { dateKey } from '../utils/format';
+import { weekRange, buildMealsPath } from '../utils/mealDates';
+import { effectiveTimeZone } from '../utils/format';
 
-export function weekRange(reference) {
-  const ref = reference instanceof Date ? reference : new Date(reference);
-  const start = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - ref.getDay());
-  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-  return { from: dateKey(start), to: dateKey(end) };
+export { weekRange, buildMealsPath };
+
+export async function fetchWeek(reference = new Date(), timeZone) {
+  const { from, to } = weekRange(reference, timeZone);
+  return fetchMeals(from, to, undefined, timeZone);
 }
 
-export async function fetchWeek(reference = new Date()) {
-  const { from, to } = weekRange(reference);
-  return fetchMeals(from, to);
-}
-
-export async function fetchMeals(from, to) {
-  const data = await apiGet(`/api/meals?from=${from}&to=${to}`);
+export async function fetchMeals(from, to, mealType, timeZone) {
+  const data = await apiGet(buildMealsPath(from, to, mealType, timeZone));
   return data.meals;
 }
 
@@ -26,4 +22,9 @@ export async function createMeal(meal) {
 export async function deleteMealById(id) {
   const data = await apiDelete(`/api/meals/${id}`);
   return data.deleted;
+}
+
+// Convenience: week fetch in the user's calendar zone.
+export async function fetchWeekForUser(reference, user) {
+  return fetchWeek(reference || new Date(), effectiveTimeZone(user));
 }

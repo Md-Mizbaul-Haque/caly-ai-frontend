@@ -41,7 +41,9 @@ export default function ProgressScreen({
   rangeMeals = [], // ~1 year of meals fetched for this screen
   loading = false,
   error = null,
+  timeZone,
   onLogWeight,
+  onEditGoal,
   onRetry,
   onRefreshWeights,
   onLoadRangeMeals,
@@ -117,22 +119,29 @@ export default function ProgressScreen({
   }, [weightGoal, rangeEntries]);
 
   const { streak, weekDays } = useMemo(() => {
-    const logged = new Set(mergedMeals.map(m => dateKey(m.loggedAt)).filter(Boolean));
+    const logged = new Set(mergedMeals.map(m => dateKey(m.loggedAt, timeZone)).filter(Boolean));
+    // Step back whole calendar days in the user's zone (noon-anchored UTC
+    // so DST transitions can't skip or double a day).
+    const shiftKey = (key, delta) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || '');
+      if (!m) return '';
+      return dateKey(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + delta, 12)), timeZone);
+    };
     let count = 0;
-    const d = new Date();
-    if (!logged.has(dateKey(d))) d.setDate(d.getDate() - 1);
-    while (logged.has(dateKey(d))) {
+    let cursor = dateKey(new Date(), timeZone);
+    if (!logged.has(cursor)) cursor = shiftKey(cursor, -1);
+    while (cursor && logged.has(cursor)) {
       count += 1;
-      d.setDate(d.getDate() - 1);
+      cursor = shiftKey(cursor, -1);
     }
     const now = new Date();
     const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
     const days = WEEKDAY_LABELS.map((label, i) => {
       const day = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i);
-      return { label, logged: logged.has(dateKey(day)), isToday: dateKey(day) === dateKey(now) };
+      return { label, logged: logged.has(dateKey(day, timeZone)), isToday: dateKey(day, timeZone) === dateKey(now, timeZone) };
     });
     return { streak: count, weekDays: days };
-  }, [mergedMeals]);
+  }, [mergedMeals, timeZone]);
 
   const encouragement = (() => {
     if (streak >= 3 || (goalPct != null && goalPct > 0)) {
@@ -150,7 +159,7 @@ export default function ProgressScreen({
     };
     const current = mergedMeals.filter(inRange);
     const kcalOf = list => list.reduce((sum, m) => sum + (Number(m.kcal) || 0), 0);
-    const daysOf = list => new Set(list.map(m => dateKey(m.loggedAt)).filter(Boolean)).size;
+    const daysOf = list => new Set(list.map(m => dateKey(m.loggedAt, timeZone)).filter(Boolean)).size;
     const curDays = daysOf(current);
     const avg = curDays ? Math.round(kcalOf(current) / curDays) : 0;
     let trend = null;
@@ -169,7 +178,7 @@ export default function ProgressScreen({
       }
     }
     return { avg, curDays, trend };
-  }, [mergedMeals, start]);
+  }, [mergedMeals, start, timeZone]);
 
   // Intake moving WITH the goal direction reads good, against it reads bad;
   // maintain/unset stays neutral instead of misleading.
@@ -225,13 +234,17 @@ export default function ProgressScreen({
               <Text className="text-3xl font-extrabold text-ink">{latest ? fmt(latest.value) : '—'}</Text>
               {latest && <Text className="text-sm text-muted-foreground ml-1">lbs</Text>}
             </View>
-            <Pressable onPress={onLogWeight} hitSlop={6} className="flex-row items-center mt-1">
-              <Target size={12} color="#8A8A8A" />
-              <Text className="text-xs text-muted-foreground ml-1">
-                Goal: {weightGoal != null ? `${fmt(weightGoal)} lbs` : 'not set'}
-              </Text>
-              <Pencil size={11} color="#8A8A8A" style={{ marginLeft: 4 }} />
-            </Pressable>
+            <View className="flex-row items-center mt-1">
+              <Pressable onPress={onLogWeight} hitSlop={6} className="flex-row items-center">
+                <Target size={12} color="#8A8A8A" />
+                <Text className="text-xs text-muted-foreground ml-1">
+                  Goal: {weightGoal != null ? `${fmt(weightGoal)} lbs` : 'not set'}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => onEditGoal?.()} hitSlop={8} accessibilityLabel="Edit weight goal" accessibilityRole="button" className="p-1" style={{ marginLeft: 4 }}>
+                <Pencil size={11} color="#8A8A8A" />
+              </Pressable>
+            </View>
             {onDeleteWeight && latest && latest.id && !String(latest.id).startsWith('temp-') && (
               <Pressable onPress={() => onDeleteWeight(latest.id)} hitSlop={6} className="mt-1">
                 <Text className="text-xs text-destructive">Delete latest entry</Text>

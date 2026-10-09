@@ -17,27 +17,56 @@ const TTL = {
   weightGoal: 24 * 60 * 60 * 1000,
 };
 
+// Per-user namespaced keys (e.g. `weekMeals:abc123`) so account B never
+// paints account A's cached meals/weights. Unknown keys resolve to
+// `caly.cache.<key>` with the weekMeals TTL.
+function storageKey(key) {
+  if (KEYS[key]) return KEYS[key];
+  return `caly.cache.${key}`;
+}
+
+function ttlFor(key) {
+  if (TTL[key] !== undefined) return TTL[key];
+  const base = String(key).split(':')[0];
+  return TTL[base] ?? 0;
+}
+
+export function scopedKey(base, userKey) {
+  return userKey ? `${base}:${userKey}` : base;
+}
+
 export async function readCache(key) {
   try {
-    const raw = await AsyncStorage.getItem(KEYS[key]);
+    const raw = await AsyncStorage.getItem(storageKey(key));
     if (!raw) return null;
-    const { data, fetchedAt } = JSON.parse(raw);
-    if (Date.now() - fetchedAt > (TTL[key] ?? 0)) return null;
+    const { data, fetchedAt, owner } = JSON.parse(raw);
+    if (Date.now() - fetchedAt > ttlFor(key)) return null;
+    // A namespaced entry already isolates owners; a legacy global entry
+    // carrying an owner stamp is only valid for that same owner.
+    if (owner && key.indexOf(':') === -1 && currentOwner && owner !== currentOwner) return null;
     return data;
   } catch {
     return null;
   }
 }
 
+let currentOwner = null;
+
+export function setCacheOwner(owner) {
+  currentOwner = owner || null;
+}
+
 export function writeCache(key, data) {
   AsyncStorage
-    .setItem(KEYS[key], JSON.stringify({ data, fetchedAt: Date.now() }))
+    .setItem(storageKey(key), JSON.stringify({ data, fetchedAt: Date.now(), owner: currentOwner }))
     .catch(() => {});
 }
 
 export async function clearAppCache() {
   try {
-    await AsyncStorage.multiRemove(Object.values(KEYS));
+    const all = await AsyncStorage.getAllKeys();
+    const ours = all.filter((k) => k === KEYS.user || k.startsWith('caly.cache.'));
+    await AsyncStorage.multiRemove(ours);
   } catch {
     // best effort — a leftover cache only means a stale first paint
   }

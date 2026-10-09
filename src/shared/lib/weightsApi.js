@@ -1,8 +1,14 @@
 import { apiGet, apiPost, apiDelete, apiPut } from './api';
+import { resolveTimeZone, UTC } from '../utils/format';
 
-export async function fetchWeights(from, to) {
+function withTimeZone(query, timeZone) {
+  const tz = timeZone === undefined || timeZone === null ? UTC : resolveTimeZone(timeZone);
+  return `${query}${query.includes('?') ? '&' : '?'}tz=${encodeURIComponent(tz)}`;
+}
+
+export async function fetchWeights(from, to, timeZone) {
   const query = from && to ? `?from=${from}&to=${to}` : '';
-  const data = await apiGet(`/api/weights${query}`);
+  const data = await apiGet(withTimeZone(`/api/weights${query}`, timeZone));
   return data.weights;
 }
 

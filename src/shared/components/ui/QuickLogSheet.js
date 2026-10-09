@@ -3,7 +3,6 @@ import { ActivityIndicator, Animated, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Camera, Scale, Plus } from './icons';
-import { useCameraPermissions, requestPermission } from 'expo-camera';
 const QUICK_ACTIONS = [
   { key: 'food', label: 'Log Food', Icon: Plus },
   { key: 'scan', label: 'Scan', Icon: Camera },

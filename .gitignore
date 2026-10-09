@@ -54,3 +54,9 @@ lint_output.txt
 tmp/
 lint_output.txt
 analyze-logo.js
+
+# Playwright tester vision
+/test-results/
+/playwright-report/
+/playwright/.cache/
+e2e/*.png

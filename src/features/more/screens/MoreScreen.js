@@ -129,7 +129,7 @@ export default function MoreScreen() {
         <SectionLabel>Tracking</SectionLabel>
         <MenuGroup>
           <MenuRow icon={Target} label="Calorie and Macro Targets" description="Adjust your daily calorie goal" onPress={() => router.push('/calorie-macro-targets')} />
-          <MenuRow icon={Scale} label="Weight Tracker" description="Log weight and see your trend" onPress={() => router.push('/weight-tracker')} />
+          <MenuRow icon={Scale} label="Weight Tracker" description="Set your weight goal" onPress={() => router.push('/weight-tracker')} />
           <MenuRow icon={Utensils} label="Favorites, Foods, and Recipes" description="Quickly re-log what you eat often" onPress={() => router.push('/favorites')} />
           <MenuRow icon={BookOpen} label="Find Recipes" description="Meals that fit your remaining calories" onPress={() => router.push('/find-recipes')} />
         </MenuGroup>
