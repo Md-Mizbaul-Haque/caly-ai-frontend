@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View 
 import {
   Search, X, Clock, Heart, ScanBarcode, Camera,
   ChevronRight, Pencil, Plus,
+  Apple, Carrot, Beef, Wheat, Milk, Cookie,
 } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
 import Chip from '../../../shared/components/ui/Chip';
@@ -15,12 +16,12 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const TYPE_EMOJI = { Breakfast: '☀️', Lunch: '☀️', Dinner: '🌙', Snack: '🥤' };
 const SEARCH_DEBOUNCE_MS = 400;
 const CATEGORIES = [
-  { key: 'Fruits', emoji: '🍌' },
-  { key: 'Vegetables', emoji: '🥦' },
-  { key: 'Proteins', emoji: '🍗' },
-  { key: 'Grains', emoji: '🥣' },
-  { key: 'Dairy', emoji: '🥛' },
-  { key: 'Snacks', emoji: '🥜' },
+  { key: 'Fruits', Icon: Apple, tint: '#FDECEC', color: '#D92D20' },
+  { key: 'Vegetables', Icon: Carrot, tint: '#E7F6EC', color: '#12805C' },
+  { key: 'Proteins', Icon: Beef, tint: '#FFF1E5', color: '#C2410C' },
+  { key: 'Grains', Icon: Wheat, tint: '#FBF3DB', color: '#A16207' },
+  { key: 'Dairy', Icon: Milk, tint: '#EAF2FD', color: '#1D6FD1' },
+  { key: 'Snacks', Icon: Cookie, tint: '#F3ECFD', color: '#7C3AED' },
 ];
 const FALLBACK_SUGGESTIONS = {
   Breakfast: [
@@ -111,8 +112,10 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
   const [kcal, setKcal] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
-    const [fat, setFat] = useState('');
-    const requestRef = useRef(0);
+  const [fat, setFat] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const requestRef = useRef(0);
 
   const trimmed = query.trim();
   const showResults = trimmed.length >= 2;
@@ -189,6 +192,31 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
     if (item.portion) return item.portion;
     if (fallback) return fallback;
     return `${mealType} serving`;
+  }
+
+  async function handleManualSave() {
+    if (!canSave || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        name: name.trim(),
+        kcal: Number(kcal),
+        protein: Number(protein) || 0,
+        carbs: Number(carbs) || 0,
+        fat: Number(fat) || 0,
+        mealType,
+      });
+      setName('');
+      setKcal('');
+      setProtein('');
+      setCarbs('');
+      setFat('');
+    } catch (e) {
+      setSaveError(e.message || 'Could not save this meal. Try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -295,12 +323,12 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
 
             <SectionHeader title="Browse by category" onSeeAll={() => setQuery('')} />
             <View className="flex-row justify-between">
-              {CATEGORIES.map((c) => (
-                <Pressable key={c.key} onPress={() => setQuery(c.key)} accessibilityLabel={c.key} className="items-center flex-1">
-                  <View className="w-12 h-12 rounded-full bg-cream items-center justify-center mb-1">
-                    <Text className="text-2xl">{c.emoji}</Text>
+              {CATEGORIES.map(({ key, Icon, tint, color }) => (
+                <Pressable key={key} onPress={() => setQuery(key)} accessibilityLabel={`Browse ${key}`} accessibilityRole="button" className="items-center flex-1">
+                  <View className="w-[52px] h-[52px] rounded-2xl items-center justify-center mb-1.5" style={{ backgroundColor: tint }}>
+                    <Icon size={24} color={color} />
                   </View>
-                  <Text className="text-[11px] text-ink" numberOfLines={1}>{c.key}</Text>
+                  <Text className="text-xs font-semibold text-ink" numberOfLines={1}>{key}</Text>
                 </Pressable>
               ))}
             </View>
@@ -316,15 +344,24 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
               <ChevronRight size={20} color="#71717A" />
             </Pressable>
             {manualOpen && (
-              <Card>
-                <TextInput value={name} onChangeText={setName} placeholder="Food name" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-                <TextInput value={kcal} onChangeText={setKcal} placeholder="kcal" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-                <TextInput value={protein} onChangeText={setProtein} placeholder="protein g" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-                <TextInput value={carbs} onChangeText={setCarbs} placeholder="carbs g" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-                <TextInput value={fat} onChangeText={setFat} placeholder="fat g" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-                <View className="flex-row mb-4">{TYPES.map((t) => <Chip key={t} label={t} active={mealType === t} onPress={() => selectMealType(t)} />)}</View>
+              <Card style={{ marginTop: 8 }}>
+                <Text className="font-bold text-ink mb-2">New meal</Text>
+                <TextInput value={name} onChangeText={setName} placeholder="Food name" placeholderTextColor="#A1A1AA" maxLength={80} returnKeyType="next" accessibilityLabel="Food name" className="bg-cream rounded-xl px-3 py-3 mb-2 text-base text-ink" />
+                <View className="flex-row mb-2" style={{ gap: 8 }}>
+                  <TextInput value={kcal} onChangeText={setKcal} placeholder="kcal *" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Calories" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
+                </View>
+                <View className="flex-row mb-2" style={{ gap: 8 }}>
+                  <TextInput value={protein} onChangeText={setProtein} placeholder="protein g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Protein grams" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
+                  <TextInput value={carbs} onChangeText={setCarbs} placeholder="carbs g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Carbs grams" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
+                  <TextInput value={fat} onChangeText={setFat} placeholder="fat g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="done" accessibilityLabel="Fat grams" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
+                </View>
+                <Text className="text-xs font-semibold text-muted-foreground mt-1 mb-1.5">Meal type</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 12, paddingVertical: 2 }} className="mb-3">
+                  {TYPES.map((t) => <Chip key={t} label={t} active={mealType === t} onPress={() => selectMealType(t)} />)}
+                </ScrollView>
                 {!canSave && <Text className="text-red-500 mb-2">Enter a name and kcal &gt; 0</Text>}
-                <PrimaryButton title="Save meal" disabled={!canSave} onPress={() => onSave({ name: name.trim(), kcal: Number(kcal), protein: Number(protein) || 0, carbs: Number(carbs) || 0, fat: Number(fat) || 0, mealType })} />
+                {saveError ? <Text className="text-red-500 mb-2">{saveError}</Text> : null}
+                <PrimaryButton title={saving ? 'Saving…' : 'Save meal'} disabled={!canSave || saving} onPress={handleManualSave} />
               </Card>
             )}
           </View>

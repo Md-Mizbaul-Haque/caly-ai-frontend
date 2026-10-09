@@ -66,6 +66,10 @@ import CircleUserIcon from 'lucide-react-native/icons/circle-user';
 import UserRoundIcon from 'lucide-react-native/icons/user-round';
 import PartyPopperIcon from 'lucide-react-native/icons/party-popper';
 import CheckIcon from 'lucide-react-native/icons/check';
+import AppleIcon from 'lucide-react-native/icons/apple';
+import CarrotIcon from 'lucide-react-native/icons/carrot';
+import MilkIcon from 'lucide-react-native/icons/milk';
+import CookieIcon from 'lucide-react-native/icons/cookie';
 
 const withThinStroke = (IconComponent, displayName) => {
   const Wrapped = (props) => (
@@ -141,6 +145,10 @@ const CircleUser = withThinStroke(CircleUserIcon, 'CircleUser');
 const UserRound = withThinStroke(UserRoundIcon, 'UserRound');
 const PartyPopper = withThinStroke(PartyPopperIcon, 'PartyPopper');
 const Check = withThinStroke(CheckIcon, 'Check');
+const Apple = withThinStroke(AppleIcon, 'Apple');
+const Carrot = withThinStroke(CarrotIcon, 'Carrot');
+const Milk = withThinStroke(MilkIcon, 'Milk');
+const Cookie = withThinStroke(CookieIcon, 'Cookie');
 
 export {
   House,
@@ -209,5 +217,9 @@ export {
   UserRound,
   PartyPopper,
   Check,
+  Apple,
+  Carrot,
+  Milk,
+  Cookie,
 };
 export { Icon } from '@/components/ui/icon';

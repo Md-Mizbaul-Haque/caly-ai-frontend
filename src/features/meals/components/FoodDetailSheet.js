@@ -161,11 +161,11 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
             </Pressable>
           </View>
 
-          <View className="flex-row mb-4">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 12, paddingVertical: 2 }} className="mb-4">
             {TYPES.map((t) => (
               <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
             ))}
-          </View>
+          </ScrollView>
 
           {error ? <Text className="text-red-500 mb-2">{error}</Text> : null}
           <PrimaryButton
