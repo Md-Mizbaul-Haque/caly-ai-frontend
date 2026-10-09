@@ -49,6 +49,28 @@ describe('tab-bar clearance (measured, not assumed)', () => {
     );
   });
 
+  it('tab switches replace instead of stacking screens', () => {
+    // Pushing a tab route mounts a duplicate screen (day strip rebuilds,
+    // week refetches, back walks duplicate Homes). Replace keeps one
+    // instance: BottomNav switches and the quick-log food shortcut.
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(
+      layout,
+      /onChange=\{\(key\) => router\.replace\(`\/\(tabs\)\/\$\{key\}`\)\}/,
+      'BottomNav tab switches must use router.replace'
+    );
+    assert.match(
+      layout,
+      /router\.replace\('\/\(tabs\)\/meals'\)/,
+      'quick-log food shortcut must use router.replace'
+    );
+    assert.doesNotMatch(
+      layout,
+      /router\.push\(`\/\(tabs\)\//,
+      'no tab switch may router.push (stacks duplicate screens)'
+    );
+  });
+
   it('ProgressScreen bottom padding accounts for the tab bar', () => {
     const screen = read('features/progress/screens/ProgressScreen.js');
     assert.match(

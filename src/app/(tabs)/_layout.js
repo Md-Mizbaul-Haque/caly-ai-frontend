@@ -334,7 +334,7 @@ export default function TabsLayout() {
           onHeight={handleNavHeight}
           active={active}
           sheetOpen={sheetOpen}
-          onChange={(key) => router.push(`/(tabs)/${key}`)}
+          onChange={(key) => router.replace(`/(tabs)/${key}`)}
           onToggleSheet={() => setSheetOpen((v) => !v)}
         />
         {sheetOpen && (
@@ -344,7 +344,7 @@ export default function TabsLayout() {
             remaining={remainingToday}
             onLogFood={() => {
               setSheetOpen(false);
-              router.push('/(tabs)/meals');
+              router.replace('/(tabs)/meals');
             }}
             onScan={() => {
               setSheetOpen(false);

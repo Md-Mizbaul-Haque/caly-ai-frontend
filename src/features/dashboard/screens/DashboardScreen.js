@@ -59,10 +59,14 @@ export default function DashboardScreen({
 
    // Day blocks rebuild Date objects every render: compare calendar keys so
    // re-tapping the selected pill is a no-op instead of churning the dashboard.
+   // Deps use the stable state setter (not the whole shell object) so the
+   // DaySelector's onSelect keeps its identity across data updates instead of
+   // re-rendering the 60+ ring strip on every meal/weight change.
+   const setSelectedDate = s.setSelectedDate;
    const handleSelect = useCallback((d) => {
      // Use the setSelectedDate from context - it's stabilized by the provider
-     s.setSelectedDate?.((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
-   }, [timeZone, s]);
+     setSelectedDate?.((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+   }, [timeZone, setSelectedDate]);
 
   // Load the calendar week containing the selected day. Without this, days
   // outside the initially fetched current week could never show data.
