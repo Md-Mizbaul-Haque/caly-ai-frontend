@@ -30,6 +30,11 @@ export default function MealRow({ meal, onDelete }) {
           <Text className="flex-1 font-bold text-ink" numberOfLines={1}>
             {meal.name}
           </Text>
+          {meal.count > 1 ? (
+            <View className="ml-1.5 bg-primary/10 rounded-full px-1.5 py-0.5">
+              <Text className="text-[10px] font-bold text-primary">×{meal.count}</Text>
+            </View>
+          ) : null}
           <Text className="text-[11px] text-muted-foreground ml-2">{formatTime(meal.loggedAt)}</Text>
           {onDelete ? (
             <Pressable onPress={() => onDelete(meal.id)} hitSlop={8} className="ml-2">

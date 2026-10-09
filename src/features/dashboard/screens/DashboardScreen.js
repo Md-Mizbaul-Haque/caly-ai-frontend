@@ -8,6 +8,7 @@ import EmptyState from '../../../shared/components/ui/EmptyState';
 import DaySelector from '../../../shared/components/dashboard/DaySelector';
 import MealRow from '../../../shared/components/dashboard/MealRow';
 import { calcTotals } from '../../../shared/utils/totals';
+import { groupMealsForDay } from '../../../shared/utils/groupMeals';
 import { dateKey } from '../../../shared/utils/format';
 import { weekRange } from '../../../shared/lib/mealsApi';
 import PrimaryButton from '../../../shared/components/ui/Button';
@@ -84,6 +85,10 @@ export default function DashboardScreen({
     [meals, selectedDate, isFocused, timeZone]
   );
   
+  // Repeat logs of the same meal collapse into one summed card (display-only;
+  // totals still sum the raw entries so the ring never drifts from the list).
+  const groupedDayMeals = useMemo(() => groupMealsForDay(dayMeals), [dayMeals]);
+
   const t = useMemo(() => {
     if (!isFocused) return { eaten: 0, protein: 0, carbs: 0, fat: 0, remaining: 0 };
     return calcTotals(dayMeals, goal);
@@ -185,13 +190,13 @@ export default function DashboardScreen({
         </View>
 
         <Text className="text-base font-bold text-ink mt-6 mb-3">{"Today's Meals"}</Text>
-        {dayMeals.length === 0 ? (
+        {groupedDayMeals.length === 0 ? (
           <Card>
             <EmptyState onCta={onAdd} />
           </Card>
         ) : (
           <View style={{ gap: 12 }}>
-            {dayMeals.map(m => (
+            {groupedDayMeals.map(m => (
               <MealRow key={m.id} meal={m} onDelete={onDelete} />
             ))}
           </View>
