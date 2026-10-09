@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import { Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
