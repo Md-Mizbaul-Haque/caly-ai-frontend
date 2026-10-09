@@ -13,8 +13,9 @@ export async function fetchWeek(reference = new Date()) {
   return fetchMeals(from, to);
 }
 
-export async function fetchMeals(from, to) {
-  const data = await apiGet(`/api/meals?from=${from}&to=${to}`);
+export async function fetchMeals(from, to, mealType) {
+  const qs = `/api/meals?from=${from}&to=${to}${mealType ? `&mealType=${encodeURIComponent(mealType)}` : ''}`;
+  const data = await apiGet(qs);
   return data.meals;
 }
 

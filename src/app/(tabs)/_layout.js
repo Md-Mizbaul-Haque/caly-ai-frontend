@@ -36,7 +36,7 @@ export default function TabsLayout() {
   const [logWeightOpen, setLogWeightOpen] = useState(false);
   const [splashMinDone, setSplashMinDone] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [cameraPermissionAsked, setCameraPermissionAsked] = useState(false);
+  const cameraPermissionAskedRef = useRef(false);
   const snapshotRef = useRef([]);
 
   // Longer-horizon meals for the Progress screen (up to 1 year back),
@@ -185,15 +185,13 @@ export default function TabsLayout() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Request camera permissions early if not already asked
+  // Request camera permissions early if not already asked (ref guard avoids setState-in-effect cascade)
   useEffect(() => {
-    if (!cameraPermissionAsked && cameraPermission) {
-      setCameraPermissionAsked(true);
-      if (!cameraPermission.granted) {
-        requestCameraPermission();
-      }
+    if (!cameraPermissionAskedRef.current && cameraPermission && !cameraPermission.granted) {
+      cameraPermissionAskedRef.current = true;
+      requestCameraPermission();
     }
-  }, [cameraPermission, cameraPermissionAsked, requestCameraPermission]);
+  }, [cameraPermission, requestCameraPermission]);
 
   // Handle scan result
   useEffect(() => {
@@ -233,7 +231,7 @@ export default function TabsLayout() {
             remaining={remainingToday}
             onLogFood={() => {
               setSheetOpen(false);
-              router.push('/(tabs)/log');
+              router.push('/(tabs)/meals');
             }}
             onScan={() => {
               setSheetOpen(false);
