@@ -343,14 +343,14 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
               <View className="flex-row flex-wrap" style={{ gap: 10 }}>
                 {CATEGORIES.map((tile) => (
                   <View key={tile.key} style={{ width: '30%' }} className="items-center">
-                    <CategoryTile tile={tile} size={56} onPress={handleQueryChange} />
+                    <CategoryTile tile={tile} size={56} onPress={() => selectMealType(tile.key)} />
                   </View>
                 ))}
               </View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }} className="-mx-4 px-4">
                 {CATEGORIES.map((tile) => (
-                  <CategoryTile key={tile.key} tile={tile} size={56} onPress={handleQueryChange} />
+                  <CategoryTile key={tile.key} tile={tile} size={56} onPress={() => selectMealType(tile.key)} />
                 ))}
               </ScrollView>
             )}
