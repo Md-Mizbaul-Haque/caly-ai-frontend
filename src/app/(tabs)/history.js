@@ -16,7 +16,7 @@ export default function HistoryRoute() {
       timeZone={s.timeZone}
       onLogWeight={() => s.setLogWeightOpen(true)}
       onEditGoal={() => router.push('/weight-tracker')}
-      onRetry={s.loadWeek}
+      onRetry={() => Promise.allSettled([s.loadWeek(), s.refreshWeights(), s.loadRangeMeals(365)])}
       onRefreshWeights={s.refreshWeights}
       onLoadRangeMeals={s.loadRangeMeals}
       onDeleteWeight={s.handleDeleteWeight}

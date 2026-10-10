@@ -150,14 +150,7 @@ export default function TabsLayout() {
      setRangeMeals(data);
    }, [timeZone]);
 
-   // Persist selectedDate to cache whenever it changes
-   useEffect(() => {
-     if (userKey) {
-       writeCache(scopedKey('selectedDate', userKey), selectedDate.toISOString());
-     }
-   }, [selectedDate, userKey]);
-
-  const fetchWeightsAndGoal = useCallback(async () => {
+   const fetchWeightsAndGoal = useCallback(async () => {
     if (!user) return;
     try {
       const [w, g] = await Promise.all([fetchWeights(), fetchWeightGoal()]);
@@ -172,11 +165,31 @@ export default function TabsLayout() {
   }, [user, userKey]);
 
    const hydratedForRef = useRef(null);
-   const mealsHydratedRef = useRef(false);
-    const weightsHydratedRef = useRef(false);
     // Refs for loadWeek request deduplication
     const loadWeekRequestRef = useRef(null);
     const loadWeekPromiseRef = useRef(null);
+    const rangePersistedRef = useRef(null);
+
+    // Cache persists run only for the hydrated owner: on account switch the
+    // first render still holds the previous owner's state, and an unguarded
+    // write would file it under the new key before hydration clears it.
+    // Persist selectedDate to cache whenever it changes
+    useEffect(() => {
+      if (!userKey || (hydratedForRef.current && hydratedForRef.current !== userKey)) return;
+      writeCache(scopedKey('selectedDate', userKey), selectedDate.toISOString());
+    }, [selectedDate, userKey]);
+
+    // Persist the long-horizon meals so the Progress streak/average cards
+    // paint instantly on the next cold start (1h TTL, silent revalidate).
+    useEffect(() => {
+      if (!userKey || (hydratedForRef.current && hydratedForRef.current !== userKey) || !rangeMeals.length) return;
+      // Skip rewrites when size + horizon are unchanged so a multi-year
+      // history isn't re-stringified on every state change.
+      const stamp = `${rangeMeals.length}:${rangeFromRef.current}`;
+      if (rangePersistedRef.current === `${userKey}:${stamp}`) return;
+      rangePersistedRef.current = `${userKey}:${stamp}`;
+      writeCache(scopedKey('rangeMeals', userKey), { meals: rangeMeals, from: rangeFromRef.current });
+    }, [rangeMeals, userKey]);
 
     // eslint-disable-next-line react-hooks/immutability
     useEffect(() => {
@@ -222,17 +235,17 @@ if (hydratedForRef.current === key) return;
          weekMealsResult,
          weightsResult,
          weightGoalResult,
-         selectedDateResult
+         selectedDateResult,
+         rangeMealsResult
        ] = await Promise.all([
          readCacheWithTimestamp(scopedKey('weekMeals', key)),
          readCacheWithTimestamp(scopedKey('weights', key)),
          readCacheWithTimestamp(scopedKey('weightGoal', key)),
          readCacheWithTimestamp(scopedKey('selectedDate', key)),
+         readCacheWithTimestamp(scopedKey('rangeMeals', key)),
        ]);
 
        if (!alive) return;
-       mealsHydratedRef.current = true;
-       weightsHydratedRef.current = true;
 
        // Set data from cache if available
        if (weekMealsResult?.data) {
@@ -249,15 +262,31 @@ if (hydratedForRef.current === key) return;
            setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
          }
        }
+       // Long-horizon meals paint the Progress streak/average instantly.
+       // Fresh cache also restores the horizon guard so the focus fetch
+       // stays a no-op; stale cache paints but refetches silently on focus.
+       const rangeCache = Array.isArray(rangeMealsResult?.data)
+         ? { meals: rangeMealsResult.data, from: null }
+         : rangeMealsResult?.data;
+       if (rangeCache?.meals?.length) {
+         setRangeMeals(rangeCache.meals);
+         rangeFromRef.current = rangeCache.from ?? null;
+       }
 
        // Determine if background revalidation is needed based on cache freshness
        const now = Date.now();
        const WEEKMEALS_FRESHNESS_THRESHOLD = 5 * 60 * 1000; // 5 minutes
        const WEIGHTS_FRESHNESS_THRESHOLD = 4 * 60 * 60 * 1000; // 4 hours
+       const RANGE_MEALS_FRESHNESS_THRESHOLD = 60 * 60 * 1000; // 1 hour
        
        const weekMealsStale = !weekMealsResult || (now - weekMealsResult.fetchedAt > WEEKMEALS_FRESHNESS_THRESHOLD);
        const weightsStale = !weightsResult || (now - weightsResult.fetchedAt > WEIGHTS_FRESHNESS_THRESHOLD);
        const weightGoalStale = !weightGoalResult || (now - weightGoalResult.fetchedAt > WEIGHTS_FRESHNESS_THRESHOLD);
+       // Stale horizon guard is dropped so the next Progress focus
+       // silently revalidates; the painted cache stays until it lands.
+       if (!rangeMealsResult?.data || (now - rangeMealsResult.fetchedAt > RANGE_MEALS_FRESHNESS_THRESHOLD)) {
+         rangeFromRef.current = null;
+       }
 
         // Trigger background revalidation for stale data
         // Use silent:true to avoid showing loading spinner for background updates.
@@ -390,7 +419,6 @@ if (hydratedForRef.current === key) return;
      loadWeek,
      loadRangeMeals,
      refreshWeights: fetchWeightsAndGoal,
-     fetchWeightsAndGoal,
      setSheetOpen,
      setLogWeightOpen,
      deleteMeal: handleMealDeleted,
