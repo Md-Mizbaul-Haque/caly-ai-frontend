@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Image, Alert, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, CircleQuestionMark, Zap, ZapOff, ScanLine, ScanBarcode, FileText, Images } from '../../../shared/components/ui/icons';
 import { scanImage, lookupBarcode } from '../../../shared/lib/scanApi';
@@ -80,7 +81,21 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
         const { item } = await lookupBarcode(uri, { signal: ctrl.signal }); // uri is the barcode digits here
         onResult({ kind: 'barcode', item });
       } else {
-        const { items, placeholder } = await scanImage(stableUri, { signal: ctrl.signal });
+        // Shrink camera/gallery photos before upload: multi-MB originals
+        // stall on some mobile networks (and burn AI bytes) while 1280px
+        // is plenty for food recognition. Falls back to the original.
+        let uploadUri = stableUri;
+        try {
+          const shrunk = await manipulateAsync(
+            stableUri,
+            [{ resize: { width: 1280 } }],
+            { compress: 0.7, format: SaveFormat.JPEG }
+          );
+          if (shrunk?.uri) uploadUri = shrunk.uri;
+        } catch {
+          // keep the original
+        }
+        const { items, placeholder } = await scanImage(uploadUri, { signal: ctrl.signal });
         setPreviewUri(stableUri);
         onResult({ kind: 'scan', imageUri: stableUri, items, placeholder });
       }

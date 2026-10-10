@@ -42,6 +42,12 @@ describe('scan flow robustness', () => {
     assert.match(upload, /Cancel|cancel/, 'scanning overlay has no cancel');
   });
 
+  it('photos are shrunk before upload (no multi-MB stalls)', () => {
+    const upload = read('features/scan/screens/PictureUploadScreen.js');
+    assert.match(upload, /manipulateAsync/, 'original camera photos upload uncompressed');
+    assert.match(upload, /resize/, 'no resize bound on the upload');
+  });
+
   it('web uploads send real bytes, not a stringified object', () => {
     const scanApi = read('shared/lib/scanApi.js');
     assert.match(scanApi, /new File\(/, 'blob:/data: URIs must be resolved to a File before append');
