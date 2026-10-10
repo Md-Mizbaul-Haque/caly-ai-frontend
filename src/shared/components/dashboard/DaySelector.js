@@ -14,6 +14,14 @@ import {
 import ProgressRing from '../ui/ProgressRing';
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// Tab switches unmount this route (Slot + custom BottomNav), so every Home
+// return remounts the strip from scratch: pad back to 0, measurements wiped,
+// scroll back to 0 — first paint uncentered, then a visible jump once layout
+// passes complete. Retain the last strip across unmounts so a return paints
+// the same window with correct padding and centers on the first measure pass
+// instead of flashing blank/misplaced first.
+let retainedStrip = null;
+
 // Rolling strip window: ±10 day-blocks around the selection at mount, so
 // ~5 pills fill the viewport and swiping either way instantly reveals more.
 // Only taps change the selection; swiping merely browses (totals below stay
@@ -45,20 +53,53 @@ export default function DaySelector({
   }, [selectedKey]);
   const isFocused = useIsFocused();
 
-  const [windowDays, setWindowDays] = useState(() => buildWindow(selectedKey || todayKey, WINDOW_RADIUS, timeZone));
+  const [windowDays, setWindowDays] = useState(() => {
+    // Tab return: restore the retained window when it still contains the
+    // anchor (same day + zone) instead of rebuilding + remeasuring.
+    const anchor = selectedKey || todayKey;
+    if (
+      retainedStrip &&
+      retainedStrip.anchorKey === anchor &&
+      retainedStrip.timeZone === timeZone &&
+      Array.isArray(retainedStrip.windowDays) &&
+      retainedStrip.windowDays.some((d) => d.key === anchor)
+    ) {
+      return retainedStrip.windowDays;
+    }
+    return buildWindow(selectedKey || todayKey, WINDOW_RADIUS, timeZone);
+  });
   // Anchor the render-phase rebuild below fired for: a non-converging anchor
   // (e.g. an Invalid Date's empty key) settles after one rebuild instead of
   // looping setWindowDays forever ("Too many re-renders"). State (not a ref)
   // because refs must not be read/written during render.
   const [lastRebuildKey, setLastRebuildKey] = useState(null);
-  const [pad, setPad] = useState(0);
+  const [pad, setPad] = useState(() => {
+    // Restored padding lets the first measure pass center immediately
+    // instead of failing the pad check, re-rendering, then centering.
+    const anchor = selectedKey || todayKey;
+    if (
+      retainedStrip &&
+      retainedStrip.anchorKey === anchor &&
+      retainedStrip.timeZone === timeZone &&
+      Number.isFinite(retainedStrip.pad)
+    ) {
+      return retainedStrip.pad;
+    }
+    return 0;
+  });
   // Visible on first paint: the strip must never flash blank on tab return.
   // Centering still happens asynchronously via requestCenter/flushPending;
   // `ready` only tracks whether a programmatic center has completed.
   const [ready, setReady] = useState(true);
-  const padRef = useRef(0);
+  const padRef = useRef(pad);
   const readyRef = useRef(true);
   const pending = useRef(null);
+  // Mirror for the unmount save: the cleanup must persist the LATEST window,
+  // not the mount-time closure.
+  const windowDaysRef = useRef(windowDays);
+  useEffect(() => {
+    windowDaysRef.current = windowDays;
+  }, [windowDays]);
   // Backward-extension compensation: { key, oldX } of the anchor pill so the
   // viewport doesn't jump when blocks are prepended ahead of it.
   const shiftRef = useRef(null);
@@ -66,8 +107,37 @@ export default function DaySelector({
   const scrollRef = useRef(null);
   const containerWidth = useRef(0);
   const contentWidth = useRef(0);
-  const scrollX = useRef(0);
+  // Restore the last scroll offset so a tab return lands near the selection
+  // even before fresh measurements arrive (exact center follows via pending).
+  const scrollX = useRef(
+    (() => {
+      const anchor = selectedKey || todayKey;
+      if (
+        retainedStrip &&
+        retainedStrip.anchorKey === anchor &&
+        retainedStrip.timeZone === timeZone &&
+        Number.isFinite(retainedStrip.scrollX) &&
+        retainedStrip.scrollX > 0
+      ) {
+        return retainedStrip.scrollX;
+      }
+      return 0;
+    })(),
+  );
   const itemLayout = useRef({});
+
+  // Persist the strip on unmount (tab switch) for the next mount above.
+  // Re-registers on zone change so the saved zone is never stale.
+  useEffect(() => () => {
+    retainedStrip = {
+      windowDays: windowDaysRef.current,
+      pad: padRef.current,
+      scrollX: scrollX.current,
+      anchorKey: selectedKeyRef.current,
+      timeZone,
+      containerWidth: containerWidth.current,
+    };
+  }, [timeZone]);
 
   // A far-away selection (or zone change) rebuilds the window around it.
   // Render-phase adjustment (React-endorsed for derived state): taps land on
@@ -137,10 +207,12 @@ export default function DaySelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey]);
 
-  // Return from another tab: keep the selection, scroll it back to center.
+  // Return from another tab: keep the selection, restore it back to center
+  // WITHOUT animation — this is a state restore, not a user action, so an
+  // animated glide reads as a re-render flash.
   const wasFocused = useRef(isFocused);
   useEffect(() => {
-    if (isFocused && !wasFocused.current) requestCenter(selectedKeyRef.current, true);
+    if (isFocused && !wasFocused.current) requestCenter(selectedKeyRef.current, false);
     wasFocused.current = isFocused;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused]);

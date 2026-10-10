@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   Search, X, Clock, Heart, ScanBarcode, Camera,
   ChevronRight, Pencil, Plus,
@@ -10,8 +10,15 @@ import CachedImage from '../../../shared/components/image/CachedImage';
 import Chip from '../../../shared/components/ui/Chip';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import FoodDetailSheet from '../components/FoodDetailSheet';
-import { searchFoods, fetchSuggestions, fetchMyFoods } from '../../../shared/lib/foodsApi';
+import { searchFoods, fetchSuggestions, fetchMyFoods, getCachedSuggestions } from '../../../shared/lib/foodsApi';
 import { recentFoods, defaultMealType } from '../../../shared/utils/foodScale';
+
+// Warm the OS image cache so navigating back paints instantly.
+function prefetchFoodImages(foods) {
+  for (const f of foods || []) {
+    if (f?.imageUrl) Image.prefetch(f.imageUrl).catch(() => {});
+  }
+}
 
 const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const TYPE_EMOJI = { Breakfast: '☀️', Lunch: '☀️', Dinner: '🌙', Snack: '🥤' };
@@ -150,7 +157,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [sheet, setSheet] = useState(null);
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestions, setSuggestions] = useState(() => getCachedSuggestions(defaultMealType(new Date().getHours()), 10) ?? []);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [name, setName] = useState('');
@@ -174,15 +181,34 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
     return (filtered.length ? filtered : recents).slice(0, 8);
   }, [meals, mealLower]);
 
+  useEffect(() => {
+    prefetchFoodImages(previousLogs);
+  }, [previousLogs]);
+
   function selectMealType(t) {
     setMealType(t);
-    setSuggestionsLoading(true);
+    // Paint cached rows instantly; only spin on a real cache miss.
+    const cached = getCachedSuggestions(t, 10);
+    if (cached) {
+      setSuggestions(cached);
+      setSuggestionsLoading(false);
+    } else {
+      setSuggestionsLoading(true);
+    }
   }
 
   useEffect(() => {
     let alive = true;
+    // Cached rows are already painted via useState initializer / selectMealType;
+    // this effect only warms the image cache and revalidates data.
+    const cached = getCachedSuggestions(mealType, 10);
+    if (cached) prefetchFoodImages(cached);
     fetchSuggestions(mealType, 10)
-      .then((foods) => { if (alive) setSuggestions(foods); })
+      .then((foods) => {
+        if (!alive) return;
+        setSuggestions(foods);
+        prefetchFoodImages(foods);
+      })
       .catch(() => { if (alive) setSuggestions(FALLBACK_SUGGESTIONS[mealType] || []); })
       .finally(() => { if (alive) setSuggestionsLoading(false); });
     return () => { alive = false; };
