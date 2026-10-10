@@ -39,7 +39,14 @@ async function fetchWithRetry(fetchFn, maxRetries = 2, retryDelay = 1000, signal
  */
 export async function scanImage(imageUri, { signal } = {}) {
   const form = new FormData();
-  form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
+  // Web gallery URIs are blob:/data: URLs — the {uri,name,type} shape only
+  // uploads on native. Resolve to a real File first so web uploads bytes.
+  let file = { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' };
+  if (typeof imageUri === 'string' && /^(blob|data):/.test(imageUri)) {
+    const blob = await (await fetch(imageUri, { signal })).blob();
+    file = new File([blob], 'meal.jpg', { type: blob.type || 'image/jpeg' });
+  }
+  form.append('image', file);
   // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
   const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000, signal });
   let res;

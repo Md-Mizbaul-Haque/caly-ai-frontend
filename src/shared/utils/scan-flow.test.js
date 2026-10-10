@@ -42,6 +42,16 @@ describe('scan flow robustness', () => {
     assert.match(upload, /Cancel|cancel/, 'scanning overlay has no cancel');
   });
 
+  it('web uploads send real bytes, not a stringified object', () => {
+    const scanApi = read('shared/lib/scanApi.js');
+    assert.match(scanApi, /new File\(/, 'blob:/data: URIs must be resolved to a File before append');
+  });
+
+  it('saved meals never carry dead or bloated image URLs', () => {
+    const screen = read('features/scan/screens/ScanResultScreen.js');
+    assert.match(screen, /blob\|data/, 'transient blob: and megabyte data: URIs must not be persisted as imageUrl');
+  });
+
   it('gallery pick handles denial instead of rejecting', () => {
     const upload = read('features/scan/screens/PictureUploadScreen.js');
     const fn = /pickFromLibrary[\s\S]{0,600}/.exec(upload);

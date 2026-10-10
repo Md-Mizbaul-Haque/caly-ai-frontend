@@ -57,15 +57,32 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     scanCtrl.current?.abort();
     const ctrl = new AbortController();
     scanCtrl.current = ctrl;
+    // Web gallery URIs are transient blob: URLs that the browser can revoke
+    // mid-session (dead preview on re-render). Convert once to a data: URL
+    // so preview + upload use a stable reference. Native file:// URIs skip this.
+    let stableUri = uri;
+    if (kind !== 'barcode' && typeof uri === 'string' && uri.startsWith('blob:')) {
+      try {
+        const blob = await (await fetch(uri)).blob();
+        stableUri = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(blob);
+        });
+      } catch {
+        stableUri = uri;
+      }
+    }
     setScanning(true);
     try {
       if (kind === 'barcode') {
         const { item } = await lookupBarcode(uri, { signal: ctrl.signal }); // uri is the barcode digits here
         onResult({ kind: 'barcode', item });
       } else {
-        const { items, placeholder } = await scanImage(uri, { signal: ctrl.signal });
-        setPreviewUri(uri);
-        onResult({ kind: 'scan', imageUri: uri, items, placeholder });
+        const { items, placeholder } = await scanImage(stableUri, { signal: ctrl.signal });
+        setPreviewUri(stableUri);
+        onResult({ kind: 'scan', imageUri: stableUri, items, placeholder });
       }
      } catch (_e) {
         // User-cancelled: stay silent, the overlay is already gone.

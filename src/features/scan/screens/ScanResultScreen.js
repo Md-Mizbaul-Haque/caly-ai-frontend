@@ -57,7 +57,11 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
         carbs: Math.round(activeTotals.carbs),
         fat: Math.round(activeTotals.fat),
         mealType: type,
-        ...(result.imageUri ? { imageUrl: result.imageUri } : {}),
+        // Only persist portable image references. Blob: URIs die with the
+        // page and data: URIs would bloat every diary fetch with megabytes
+        // of base64 — web meals simply save without a photo (native file
+        // references still persist).
+        ...(result.imageUri && !/^(blob|data):/.test(result.imageUri) ? { imageUrl: result.imageUri } : {}),
       });
     } catch (e) {
       setSaveError(e.message || 'Could not save this meal.');
