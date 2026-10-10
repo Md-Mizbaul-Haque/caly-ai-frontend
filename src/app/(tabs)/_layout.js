@@ -96,19 +96,29 @@ export default function TabsLayout() {
        setError(null);
      }
      
-     // Create the fetch promise
-     const fetchPromise = (async () => {
-       try {
-         const mealsData = await fetchWeek(reference || new Date(), timeZone);
-         setMeals(mealsData);
-         setMealsTimestamp(Date.now()); // Update timestamp when we get fresh data
-         writeCache(scopedKey('weekMeals', userKey), mealsData);
-         return mealsData;
-       } catch (e) {
-         // Error UI only appears when there's nothing cached to show.
-         if (!silent) setError(e.message);
-         throw e;
-       } finally {
+      // Create the fetch promise
+      const fetchPromise = (async () => {
+        try {
+          const mealsData = await fetchWeek(reference || new Date(), timeZone);
+          // Account switched while this request was in flight: drop the
+          // result so the previous owner's meals never overwrite the new
+          // owner's state (their hydration repopulates separately).
+          // (Safe to read here: this runs after render, when the ref below
+          // is initialized.)
+          if (hydratedForRef.current && hydratedForRef.current !== userKey) {
+            return mealsData;
+          }
+          setMeals(mealsData);
+          setMealsTimestamp(Date.now()); // Update timestamp when we get fresh data
+          writeCache(scopedKey('weekMeals', userKey), mealsData);
+          return mealsData;
+        } catch (e) {
+          // Error UI only appears when there's nothing cached to show.
+          // Silent background failures keep visible data as-is; the caller
+          // (hydration) surfaces the error only when nothing is cached.
+          if (!silent) setError(e.message);
+          throw e;
+        } finally {
          if (!silent) setLoading(false);
          // Clear the request ref after completion
          if (loadWeekRequestRef.current === weekId) {
@@ -172,8 +182,9 @@ export default function TabsLayout() {
     useEffect(() => {
      if (!(authChecked && user)) return;
      const key = user._id || user.id || user.email;
-     if (hydratedForRef.current === key) return;
-     hydratedForRef.current = key;
+if (hydratedForRef.current === key) return;
+    // eslint-disable-next-line react-hooks/immutability
+    hydratedForRef.current = key;
      // New account (login / switch): drop the previous owner's in-memory
      // state first so their meals/weights never flash, then hydrate from
      // that owner's namespaced cache while the network revalidates.
@@ -187,21 +198,25 @@ export default function TabsLayout() {
      setLoading(true);
      rangeFromRef.current = null;
      let alive = true;
-     (async () => {
-       // Read cache with timestamps to check freshness
-       const readCacheWithTimestamp = async (cacheKey) => {
-         try {
-           const raw = await AsyncStorage.getItem(storageKey(cacheKey));
-           if (!raw) return null;
-           const parsed = JSON.parse(raw);
-           if (Date.now() - parsed.fetchedAt > ttlFor(cacheKey)) return null;
-           // For namespaced keys (which we always use with userKey), ownership check is not needed
-           // as the key already isolates owners (contains ':')
-           return { data: parsed.data, fetchedAt: parsed.fetchedAt };
-         } catch {
-           return null;
-         }
-       };
+      (async () => {
+        // Read cache with timestamps to check freshness. Stale-while-revalidate:
+        // expired entries are still returned (stale:true) and painted
+        // immediately so offline cold starts render last-known data instead
+        // of an empty screen; a successful network revalidation then replaces
+        // them. Failures keep whatever is on screen.
+        const readCacheWithTimestamp = async (cacheKey) => {
+          try {
+            const raw = await AsyncStorage.getItem(storageKey(cacheKey));
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            const stale = Date.now() - parsed.fetchedAt > ttlFor(cacheKey);
+            // For namespaced keys (which we always use with userKey), ownership check is not needed
+            // as the key already isolates owners (contains ':')
+            return { data: parsed.data, fetchedAt: parsed.fetchedAt, stale };
+          } catch {
+            return null;
+          }
+        };
 
        const [
          weekMealsResult,
@@ -244,14 +259,24 @@ export default function TabsLayout() {
        const weightsStale = !weightsResult || (now - weightsResult.fetchedAt > WEIGHTS_FRESHNESS_THRESHOLD);
        const weightGoalStale = !weightGoalResult || (now - weightGoalResult.fetchedAt > WEIGHTS_FRESHNESS_THRESHOLD);
 
-       // Trigger background revalidation for stale data
-       // Use silent:true to avoid showing loading spinner for background updates
-       if (weekMealsStale) {
-         await loadWeek({ silent: true }).catch(() => {});
-       }
-       if (weightsStale || weightGoalStale) {
-         await fetchWeightsAndGoal().catch(() => {});
-       }
+        // Trigger background revalidation for stale data
+        // Use silent:true to avoid showing loading spinner for background updates.
+        // Failures keep painted (possibly stale) cache; when nothing was
+        // cached at all, surface the error and clear loading so the UI shows
+        // the retry card instead of spinning forever offline.
+        if (weekMealsStale) {
+          try {
+            await loadWeek({ silent: true });
+          } catch (e) {
+            if (alive && hydratedForRef.current === key && !weekMealsResult?.data) {
+              setError(e?.message || 'Could not load meals');
+            }
+          }
+        }
+        if (weightsStale || weightGoalStale) {
+          await fetchWeightsAndGoal().catch(() => {});
+        }
+        if (alive && hydratedForRef.current === key) setLoading(false);
      })();
      return () => { alive = false; };
    }, [authChecked, user, loadWeek, fetchWeightsAndGoal, timeZone]);

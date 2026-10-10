@@ -46,10 +46,14 @@ export default function DashboardScreen({
   // under the tab layout and in isolation. Previously this read only
   // s.progressCache, which the provider never supplied -> always empty.
   const timeZone = timeZoneProp ?? s.timeZone;
-  // Memoized so downstream useMemo deps stay referentially stable.
+  // Memoized so downstream useMemo deps stay referentially stable. Deps are
+  // the actual meal arrays (not the whole shell object, whose identity
+  // changes every provider render and would recompute on every data update).
+  const shellMeals = s.progressCache?.meals ?? s.meals ?? [];
   const meals = useMemo(
-    () => mealsProp ?? s.progressCache?.meals ?? s.meals ?? [],
-    [mealsProp, s],
+    () => mealsProp ?? shellMeals,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mealsProp, s.progressCache?.meals, s.meals],
   );
   const goal = goalProp ?? s.goal ?? 2000;
   const loading = loadingProp ?? s.loading ?? false;

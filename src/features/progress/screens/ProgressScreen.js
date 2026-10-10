@@ -144,10 +144,14 @@ export default function ProgressScreen({
   }, [mergedMeals, timeZone]);
 
   const encouragement = (() => {
+    if (entries.length === 0) return null;
     if (streak >= 3 || (goalPct != null && goalPct > 0)) {
-      return 'Great job! Consistency is key, and you’re mastering it!';
+      return 'Keep it up! You\'re on a roll 🔥';
     }
-    return 'Keep going! Every meal you log brings you closer to your goal.';
+    if (streak >= 3) {
+      return 'Steady progress — every log counts!';
+    }
+    return 'Every log moves you forward';
   })();
 
   const average = useMemo(() => {
@@ -245,12 +249,7 @@ export default function ProgressScreen({
                 <Pencil size={11} color="#8A8A8A" />
               </Pressable>
             </View>
-            {onDeleteWeight && latest && latest.id && !String(latest.id).startsWith('temp-') && (
-              <Pressable onPress={() => onDeleteWeight(latest.id)} hitSlop={6} className="mt-1">
-                <Text className="text-xs text-destructive">Delete latest entry</Text>
-              </Pressable>
-            )}
-          </View>
+            </View>
           <Pressable
             onPress={onLogWeight}
             accessibilityLabel="Log weight"
@@ -326,9 +325,11 @@ export default function ProgressScreen({
           <View className="items-center justify-center py-10">
             <Scale size={22} color="#8A8A8A" />
             <Text className="text-muted-foreground text-sm mt-2 text-center">
-              {entries.length === 1
-                ? 'One log so far — keep going\nso your trend can appear.'
-                : 'Log your weight at least twice\nto see your trend.'}
+              {entries.length === 0
+                ? 'Tap "Log Weight" to get started'
+                : entries.length === 1
+                  ? 'One log so far — keep going\nso your trend can appear.'
+                  : 'Log your weight at least twice\nto see your trend.'}
             </Text>
           </View>
         )}

@@ -33,6 +33,21 @@ function syncTimeZone(u, setUser) {
     });
 }
 
+// Bootstraps must never hang the splash: SecureStore/AsyncStorage can stall
+// (or throw) on some Android devices, which left authChecked false forever.
+const BOOT_TIMEOUT_MS = 8000;
+
+function withBootTimeout(promise, ms = 5000) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  return Promise.race([
+    Promise.resolve(promise).finally(() => clearTimeout(timer)),
+    timeout,
+  ]);
+}
+
 export function AuthSessionProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -64,30 +79,40 @@ export function AuthSessionProvider({ children }) {
 
   useEffect(() => {
     let alive = true;
+    // Failsafe: even if storage or the network never settles, the splash
+    // must go away so the user reaches a usable screen instead of hanging.
+    const failsafe = setTimeout(() => {
+      if (alive) setAuthChecked(true);
+    }, BOOT_TIMEOUT_MS);
     // Cache-first startup: a returning user sees their data instantly while
     // the token is revalidated in the background. Only a real 401 (revoked
     // session) signs them out; network blips must not.
     (async () => {
-      const cached = await readCache('user');
-      if (!alive) return;
-      if (cached) {
-        applyUser(cached);
-        setAuthChecked(true);
-      }
-      const t = await getToken();
-      if (!t) { if (alive) { setUser(null); setAuthChecked(true); } return; }
       try {
-        const data = await fetchMe();
-        if (alive) applyUser(data.user);
-      } catch (e) {
+        const cached = await withBootTimeout(readCache('user'));
         if (!alive) return;
-        if (e?.status === 401) { setUser(null); clearAppCache(); }
-        // Offline/other errors: keep whatever we have (cached or null).
+        if (cached) {
+          applyUser(cached);
+          setAuthChecked(true);
+        }
+        const t = await withBootTimeout(getToken());
+        if (!t) { if (alive) { setUser(null); setAuthChecked(true); } return; }
+        try {
+          const data = await fetchMe();
+          if (alive) applyUser(data.user);
+        } catch (e) {
+          if (!alive) return;
+          if (e?.status === 401) { setUser(null); clearAppCache(); }
+          // Offline/other errors: keep whatever we have (cached or null).
+        }
+      } catch {
+        // Storage threw: fall through — finally still releases the splash.
       } finally {
         if (alive) setAuthChecked(true);
+        clearTimeout(failsafe);
       }
     })();
-    return () => { alive = false; };
+    return () => { alive = false; clearTimeout(failsafe); };
   }, []);
 
   async function handleLogin(email, password) {

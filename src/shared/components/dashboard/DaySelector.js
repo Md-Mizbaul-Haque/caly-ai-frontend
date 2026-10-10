@@ -52,9 +52,12 @@ export default function DaySelector({
   // because refs must not be read/written during render.
   const [lastRebuildKey, setLastRebuildKey] = useState(null);
   const [pad, setPad] = useState(0);
-  const [ready, setReady] = useState(false);
+  // Visible on first paint: the strip must never flash blank on tab return.
+  // Centering still happens asynchronously via requestCenter/flushPending;
+  // `ready` only tracks whether a programmatic center has completed.
+  const [ready, setReady] = useState(true);
   const padRef = useRef(0);
-  const readyRef = useRef(false);
+  const readyRef = useRef(true);
   const pending = useRef(null);
   // Backward-extension compensation: { key, oldX } of the anchor pill so the
   // viewport doesn't jump when blocks are prepended ahead of it.

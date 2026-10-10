@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import \{ ActivityIndicator, Pressable, ScrollView, Text, TextInput, View \} from 'react-native';
 import {
   Search, X, Clock, Heart, ScanBarcode, Camera,
   ChevronRight, Pencil, Plus,
   Apple, Carrot, Beef, Wheat, Milk, Cookie,
 } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
+import CachedImage from '../../../shared/components/image/CachedImage';
 import Chip from '../../../shared/components/ui/Chip';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import FoodDetailSheet from '../components/FoodDetailSheet';
@@ -99,7 +100,7 @@ function FoodCard({ item, subtitle, onAdd }) {
     <View className="w-28 mr-3">
       <View className="w-28 h-24 rounded-2xl bg-cream items-center justify-center overflow-hidden mb-1.5">
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} className="w-full h-full" resizeMode="cover" />
+          <CachedImage source=\{\{ uri: item\.imageUrl \}\} className="w-full h-full" resizeMode="cover" \/>
         ) : (
           <Text className="text-4xl">{item.emoji || '🍽️'}</Text>
         )}
@@ -319,7 +320,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
                >
                  <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
                    {item.imageUrl ? (
-                     <Image source={{ uri: item.imageUrl }} className="w-full h-full" resizeMode="cover" />
+                     <CachedImage source=\{\{ uri: item\.imageUrl \}\} className="w-full h-full" resizeMode="cover" \/>
                    ) : (
                      <Text className="text-2xl">{item.emoji || '🍽️'}</Text>
                    )}

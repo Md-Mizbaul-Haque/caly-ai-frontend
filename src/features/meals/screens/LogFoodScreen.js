@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, TextInput, Text, View, Image, Pressable } from 'react-native';
+import \{ ActivityIndicator, FlatList, ScrollView, TextInput, Text, View, Pressable \} from 'react-native';
 import { Search, X } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
+import CachedImage from '../../../shared/components/image/CachedImage';
 import Chip from '../../../shared/components/ui/Chip';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import FoodDetailSheet from '../components/FoodDetailSheet';
@@ -20,7 +21,7 @@ function FoodRow({ item, subtitle, onPress }) {
       className="flex-row items-center bg-cream rounded-2xl px-3 py-2.5 mb-2"
     >
       {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} className="w-12 h-12 rounded-xl mr-3" resizeMode="cover" />
+        <CachedImage source=\{\{ uri: item\.imageUrl \}\} className="w-12 h-12 rounded-xl mr-3" resizeMode="cover" \/>
       ) : (
         <View className="w-12 h-12 rounded-xl mr-3 bg-muted items-center justify-center">
           <Text className="text-xl">🍽️</Text>
@@ -106,8 +107,7 @@ export default function LogFoodScreen({ meals = [], onSave, photo = null, onRemo
             {photo && (
               <View className="mb-4">
                 <View className="rounded-card overflow-hidden" style={{ height: 180 }}>
-                  <Image source={{ uri: photo }} className="w-full h-full" resizeMode="cover" />
-                </View>
+                  <CachedImage source=\{\{ uri: photo \}\> className="w-full h-full" resizeMode="cover" \/>
                 <Pressable
                   onPress={onRemovePhoto}
                   accessibilityLabel="Remove photo"
@@ -196,3 +196,4 @@ export default function LogFoodScreen({ meals = [], onSave, photo = null, onRemo
     </View>
   );
 }
+

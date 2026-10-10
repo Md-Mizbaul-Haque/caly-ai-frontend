@@ -1,6 +1,6 @@
 import { ScrollView, View, Text } from 'react-native';
 import { useSession } from '../features/auth/session';
-import { Card } from '../shared/components/ui/Card';
+import Card from '../shared/components/ui/Card';
 
 export default function SettingsScreen() {
   const { user } = useSession();
