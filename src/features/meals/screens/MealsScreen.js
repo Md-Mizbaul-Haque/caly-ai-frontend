@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   Search, X, Clock, Heart, ScanBarcode, Camera,
   ChevronRight, Pencil, Plus,
   Apple, Carrot, Beef, Wheat, Milk, Cookie,
 } from '../../../shared/components/ui/icons';
 import Card from '../../../shared/components/ui/Card';
+import CachedImage from '../../../shared/components/image/CachedImage';
 import Chip from '../../../shared/components/ui/Chip';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import FoodDetailSheet from '../components/FoodDetailSheet';
@@ -40,6 +41,36 @@ const FALLBACK_SUGGESTIONS = {
     { name: 'Black Coffee', kcal: 2, protein: 0, carbs: 0, fat: 0, portion: '1 cup (240ml)' },
     { name: 'Whole Wheat Bread', kcal: 69, protein: 3, carbs: 12, fat: 1, portion: '1 slice (28g)' },
   ],
+  Fruits: [
+    { name: 'Apple', kcal: 95, protein: 0, carbs: 25, fat: 0, portion: '1 medium' },
+    { name: 'Banana', kcal: 105, protein: 1, carbs: 27, fat: 0, portion: '1 medium' },
+    { name: 'Orange', kcal: 87, protein: 1, carbs: 21, fat: 0, portion: '1 medium' },
+  ],
+  Vegetables: [
+    { name: 'Carrot', kcal: 41, protein: 1, carbs: 10, fat: 0, portion: '1 medium' },
+    { name: 'Broccoli', kcal: 55, protein: 4, carbs: 11, fat: 0, portion: '1 cup' },
+    { name: 'Spinach', kcal: 7, protein: 3, carbs: 1, fat: 0, portion: '1 cup' },
+  ],
+  Proteins: [
+    { name: 'Grilled Chicken', kcal: 320, protein: 35, carbs: 2, fat: 14, portion: '1 fillet (150g)' },
+    { name: 'Salmon', kcal: 280, protein: 25, carbs: 0, fat: 18, portion: '1 fillet (150g)' },
+    { name: 'Eggs', kcal: 155, protein: 13, carbs: 1, fat: 11, portion: '2 large' },
+  ],
+  Grains: [
+    { name: 'Brown Rice', kcal: 230, protein: 5, carbs: 52, fat: 2, portion: '1 cup cooked' },
+    { name: 'Quinoa', kcal: 222, protein: 8, carbs: 39, fat: 4, portion: '1 cup cooked' },
+    { name: 'Whole Wheat Bread', kcal: 110, protein: 4, carbs: 22, fat: 2, portion: '2 slices' },
+  ],
+  Dairy: [
+    { name: 'Milk', kcal: 150, protein: 8, carbs: 12, fat: 8, portion: '1 cup' },
+    { name: 'Greek Yogurt', kcal: 120, protein: 15, carbs: 6, fat: 0, portion: '1 container (150g)' },
+    { name: 'Cheese', kcal: 180, protein: 6, carbs: 1, fat: 15, portion: '1 oz' },
+  ],
+  Snacks: [
+    { name: 'Apple', kcal: 95, protein: 0, carbs: 25, fat: 0, portion: '1 medium' },
+    { name: 'Popcorn', kcal: 108, protein: 3, carbs: 13, fat: 5, portion: '3 cups' },
+    { name: 'Almonds', kcal: 164, protein: 6, carbs: 6, fat: 14, portion: '1/4 cup' },
+  ],
 };
 
 function MealPill({ label, active, onPress }) {
@@ -69,7 +100,7 @@ function FoodCard({ item, subtitle, onAdd }) {
     <View className="w-28 mr-3">
       <View className="w-28 h-24 rounded-2xl bg-cream items-center justify-center overflow-hidden mb-1.5">
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} className="w-full h-full" resizeMode="cover" />
+                      <CachedImage uri={item.imageUrl} className="w-full h-full" resizeMode="cover" />
         ) : (
           <Text className="text-4xl">{item.emoji || '🍽️'}</Text>
         )}
@@ -90,10 +121,12 @@ function SectionHeader({ title, onSeeAll, actionLabel = 'See all' }) {
   return (
     <View className="flex-row items-center justify-between mb-2 mt-4">
       <Text className="text-base font-bold text-ink">{title}</Text>
-      <Pressable onPress={onSeeAll} accessibilityLabel={`${actionLabel}: ${title}`} accessibilityRole="button" className="flex-row items-center">
-        <Text className="text-xs font-semibold text-primary mr-0.5">{actionLabel}</Text>
-        <ChevronRight size={14} color="#f2470c" />
-      </Pressable>
+      {onSeeAll ? (
+        <Pressable onPress={onSeeAll} accessibilityLabel={`${actionLabel}: ${title}`} accessibilityRole="button" className="flex-row items-center">
+          <Text className="text-xs font-semibold text-primary mr-0.5">{actionLabel}</Text>
+          <ChevronRight size={14} color="#f2470c" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -289,7 +322,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
                >
                  <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
                    {item.imageUrl ? (
-                     <Image source={{ uri: item.imageUrl }} className="w-full h-full" resizeMode="cover" />
+          <CachedImage uri={item.imageUrl} className="w-full h-full" resizeMode="cover" />
                    ) : (
                      <Text className="text-2xl">{item.emoji || '🍽️'}</Text>
                    )}
@@ -304,7 +337,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
           </View>
         ) : (
           <View>
-            <SectionHeader title={`Previous ${mealLower} logs`} onSeeAll={() => setQuery(mealType)} />
+            <SectionHeader title={`Previous ${mealLower} logs`} />
             {previousLogs.length === 0 ? (
               <Text className="text-muted-foreground text-sm">No {mealLower} logs yet — log your first one below.</Text>
             ) : (
@@ -320,7 +353,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
               </ScrollView>
             )}
 
-            <SectionHeader title={`Suggestions for ${mealLower}`} onSeeAll={() => setQuery(mealType)} />
+            <SectionHeader title={`Suggestions for ${mealLower}`} />
             {suggestionsLoading ? <ActivityIndicator className="my-2" /> : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
                 {(suggestions.length ? suggestions : (FALLBACK_SUGGESTIONS[mealType] || [])).map((item) => (
@@ -395,3 +428,5 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
     </View>
   );
 }
+
+

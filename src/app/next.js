@@ -1,5 +1,5 @@
-import { ScrollView, View, Text } from 'react-native';
-import { Card } from '../shared/components/ui/Card';
+import { ScrollView, Text } from 'react-native';
+import Card from '../shared/components/ui/Card';
 
 export default function NextScreen() {
   return (
