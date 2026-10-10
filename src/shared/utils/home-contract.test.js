@@ -75,6 +75,17 @@ describe('calendar/day filtering', () => {
     assert.match(src, /rotated/, 'rotation must recompute padding and re-center');
   });
 
+  it('DaySelector retains strip state across tab-switch unmounts (no blank flash)', () => {
+    const src = read('shared/components/dashboard/DaySelector.js');
+    assert.match(src, /retainedStrip/, 'DaySelector must retain window/pad/scroll across unmounts');
+    assert.match(src, /windowDaysRef/, 'unmount save must persist the latest window, not the mount closure');
+    // Focus return is a state restore, not a user action — animating it
+    // reads as a re-render flash.
+    const focusFx = /wasFocused[\s\S]*?requestCenter\(selectedKeyRef\.current,\s*(true|false)\)/.exec(src);
+    assert.ok(focusFx, 'focus-return re-center must exist');
+    assert.equal(focusFx[1], 'false', 'tab-return re-center must not animate');
+  });
+
   it('selecting another week triggers a fetch for that week', () => {
     const layout = read('app/(tabs)/_layout.js');
     // loadWeek() takes no args and always fetches new Date() -> cannot load other weeks
