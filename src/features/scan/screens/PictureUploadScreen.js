@@ -35,6 +35,7 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
   const [previewUri, setPreviewUri] = useState(null);
   const cameraRef = useRef(null);
   const barcodeLock = useRef(false);
+  const scanCtrl = useRef(null);
   // Ask the OS once on mount — re-firing requestPermission on every render
   // can loop the system dialog on some Android skins.
   const askedOnce = useRef(false);
@@ -52,21 +53,27 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
   }, [permission, requestPermission]);
 
   const analyze = useCallback(async (uri, kind = 'scan') => {
+    // A new scan supersedes any in-flight one.
+    scanCtrl.current?.abort();
+    const ctrl = new AbortController();
+    scanCtrl.current = ctrl;
     setScanning(true);
     try {
       if (kind === 'barcode') {
-        const { item } = await lookupBarcode(uri); // uri is the barcode digits here
+        const { item } = await lookupBarcode(uri, { signal: ctrl.signal }); // uri is the barcode digits here
         onResult({ kind: 'barcode', item });
       } else {
-        const { items, placeholder } = await scanImage(uri);
+        const { items, placeholder } = await scanImage(uri, { signal: ctrl.signal });
         setPreviewUri(uri);
         onResult({ kind: 'scan', imageUri: uri, items, placeholder });
       }
      } catch (_e) {
-       Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.');
+        // User-cancelled: stay silent, the overlay is already gone.
+        if (!ctrl.signal.aborted) Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.');
     } finally {
       setScanning(false);
       setBusy(false);
+      if (scanCtrl.current === ctrl) scanCtrl.current = null;
     }
   }, [onResult]);
 
@@ -75,21 +82,26 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     setBusy(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      if (photo?.uri) await analyze(photo.uri, mode === 'label' ? 'label' : 'scan');
+      // 'label' mode uses the same AI pipeline as 'scan' — no separate kind.
+      if (photo?.uri) await analyze(photo.uri, 'scan');
      } catch (_e) {
        setBusy(false);
        Alert.alert('Camera error', 'Could not take the picture. Try again.');
     }
-  }, [busy, cameraReady, mode, analyze]);
+  }, [busy, cameraReady, analyze]);
 
   const pickFromLibrary = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setBusy(true);
-      await analyze(result.assets[0].uri, 'scan');
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setBusy(true);
+        await analyze(result.assets[0].uri, 'scan');
+      }
+    } catch {
+      Alert.alert('Gallery unavailable', 'Could not open your photo library.');
     }
   }, [analyze]);
 
@@ -210,6 +222,9 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
           {previewUri && (
             <Image source={{ uri: previewUri }} className="w-40 h-40 rounded-2xl mt-6" resizeMode="cover" />
           )}
+          <Pressable onPress={() => scanCtrl.current?.abort()} className="mt-6 px-6 py-2.5 rounded-full bg-white/15">
+            <Text className="text-white font-bold">Cancel</Text>
+          </Pressable>
         </View>
       )}
 

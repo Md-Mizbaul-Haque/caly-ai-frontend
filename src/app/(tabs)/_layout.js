@@ -448,13 +448,6 @@ if (hydratedForRef.current === key) return;
     }
   }, [cameraPermission, requestCameraPermission]);
 
-  // Handle scan result
-  useEffect(() => {
-    if (scanResult) {
-      router.push(`/scan/result?result=${encodeURIComponent(JSON.stringify(scanResult))}`);
-    }
-  }, [scanResult, router]);
-
   // Measured tab-bar height (reported by BottomNav onLayout): screens and
   // overlay sheets clear exactly this, so the last card never slides under
   // the bar or its protruding center button. Equality bail-out avoids loops.

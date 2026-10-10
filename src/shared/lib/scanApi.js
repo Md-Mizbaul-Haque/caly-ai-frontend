@@ -7,13 +7,17 @@ import { authedFetch } from './api';
  * @param {number} retryDelay - Delay between retries in milliseconds.
  * @returns {Promise<any>}
  */
-async function fetchWithRetry(fetchFn, maxRetries = 2, retryDelay = 1000) {
+async function fetchWithRetry(fetchFn, maxRetries = 2, retryDelay = 1000, signal) {
   let lastError;
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await fetchFn();
     } catch (error) {
       lastError = error;
+      // A caller abort is intentional — never retry it.
+      if (signal?.aborted) {
+        throw error;
+      }
       // Only retry on network errors (as defined in api.js: connectionError sets error.network = true)
       if (!error.network) {
         throw error;
@@ -33,14 +37,14 @@ async function fetchWithRetry(fetchFn, maxRetries = 2, retryDelay = 1000) {
  * Falls back to a placeholder estimate when the backend has no OPENAI_API_KEY
  * (503) so the log-a-meal flow always completes.
  */
-export async function scanImage(imageUri) {
+export async function scanImage(imageUri, { signal } = {}) {
   const form = new FormData();
   form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
   // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
-  const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000 });
+  const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000, signal });
   let res;
   try {
-    res = await fetchWithRetry(fetchFn);
+    res = await fetchWithRetry(fetchFn, 2, 1000, signal);
   } catch (error) {
     // If we exhausted retries, throw the last error
     throw error;
@@ -71,11 +75,11 @@ export async function scanImage(imageUri) {
 /**
  * GET /api/barcode/:code — returns { item: {name,kcal,protein,carbs,fat} }
  */
-export async function lookupBarcode(code) {
-  const fetchFn = () => authedFetch(`/api/scan/barcode/${encodeURIComponent(code)}`, { timeoutMs: 30000 });
+export async function lookupBarcode(code, { signal } = {}) {
+  const fetchFn = () => authedFetch(`/api/scan/barcode/${encodeURIComponent(code)}`, { timeoutMs: 30000, signal });
   let res;
   try {
-    res = await fetchWithRetry(fetchFn);
+    res = await fetchWithRetry(fetchFn, 2, 1000, signal);
   } catch (error) {
     throw error;
   }

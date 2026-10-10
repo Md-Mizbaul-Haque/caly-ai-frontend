@@ -109,8 +109,14 @@ export async function authedFetch(path, options = {}) {
   const id = newReportId();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS);
+  // A caller abort (e.g. Scan "Cancel") must stop our request too — fetch
+  // only honors one signal, so link the caller's to ours.
+  const { timeoutMs: _timeoutMs, signal: externalSignal, ...fetchOptions } = options;
+  if (externalSignal) {
+    if (externalSignal.aborted) ctrl.abort();
+    else externalSignal.addEventListener('abort', () => ctrl.abort(), { once: true });
+  }
   let res;
-  const { timeoutMs: _timeoutMs, ...fetchOptions } = options;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...fetchOptions,

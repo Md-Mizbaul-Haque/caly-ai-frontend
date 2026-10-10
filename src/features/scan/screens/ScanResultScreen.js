@@ -16,9 +16,11 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   const close = onClose ?? onDone ?? (() => {});
   const [items, setItems] = useState(() =>
-    result.kind === 'barcode' ? [result.item] : result.items
+    result.kind === 'barcode' ? [result.item].filter(Boolean) : (result.items ?? [])
   );
   const [type, setType] = useState('Snack');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   function updateItem(idx, field, value) {
     setItems(prev => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
@@ -43,16 +45,25 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   );
 
-  function handleSave() {
-    onSave({
-      name,
-      kcal: Math.round(activeTotals.kcal),
-      protein: Math.round(activeTotals.protein),
-      carbs: Math.round(activeTotals.carbs),
-      fat: Math.round(activeTotals.fat),
-      mealType: type,
-      ...(result.imageUri ? { imageUrl: result.imageUri } : {}),
-    });
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        name,
+        kcal: Math.round(activeTotals.kcal),
+        protein: Math.round(activeTotals.protein),
+        carbs: Math.round(activeTotals.carbs),
+        fat: Math.round(activeTotals.fat),
+        mealType: type,
+        ...(result.imageUri ? { imageUrl: result.imageUri } : {}),
+      });
+    } catch (e) {
+      setSaveError(e.message || 'Could not save this meal.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -83,6 +94,18 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       <Text className="text-base font-bold text-ink mb-2">
         {result.kind === 'barcode' ? 'Product' : `Detected foods (${items.length})`}
       </Text>
+      {result.kind === 'barcode' && items[0] && (
+        <Text className="text-xs text-muted-foreground mb-2">
+          {items[0].serving
+            ? `Nutrition scaled to a ${items[0].serving} serving.`
+            : 'Nutrition is per 100g — edit the fields to match your serving.'}
+        </Text>
+      )}
+      {!items.length && (
+        <Text className="text-sm text-muted-foreground mb-2">
+          Nothing detected — retake the photo with the meal filling the frame.
+        </Text>
+      )}
 
       {items.map((item, idx) => (
         <Card key={`${item.name}-${idx}`} style={{ marginBottom: 10, opacity: item.excluded ? 0.45 : 1 }}>
@@ -167,10 +190,15 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
 
       <View className="mt-6 mb-8">
         <PrimaryButton
-          title={`Save meal — ${Math.round(activeTotals.kcal)} kcal`}
-          disabled={activeTotals.kcal <= 0}
+          title={saving ? 'Saving…' : `Save meal — ${Math.round(activeTotals.kcal)} kcal`}
+          disabled={activeTotals.kcal <= 0 || saving || !items.length}
           onPress={handleSave}
         />
+        {saveError && (
+          <Text className="text-xs text-destructive text-center mt-2">
+            {saveError}
+          </Text>
+        )}
         {activeTotals.kcal <= 0 && (
           <Text className="text-xs text-muted-foreground text-center mt-2">
             Totals are zero — enter estimates in the fields above to save.
