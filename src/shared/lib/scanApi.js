@@ -80,6 +80,21 @@ export async function scanImage(imageUri, { signal } = {}) {
 }
 
 /**
+ * POST /api/scan/image — persist a KEPT meal photo to Cloudinary.
+ * Called once at Save (never for discarded scans) -> { imageUrl }.
+ */
+export async function uploadMealImage(imageUri, { signal } = {}) {
+  const form = new FormData();
+  form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
+  const res = await authedFetch('/api/scan/image', { method: 'POST', body: form, timeoutMs: 30000, signal });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `photo upload failed: ${res.status}`);
+  }
+  return data; // { imageUrl }
+}
+
+/**
  * GET /api/barcode/:code — returns { item: {name,kcal,protein,carbs,fat} }
  */
 export async function lookupBarcode(code, { signal } = {}) {

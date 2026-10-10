@@ -55,7 +55,13 @@ describe('scan flow robustness', () => {
 
   it('saved meals never carry dead or bloated image URLs', () => {
     const screen = read('features/scan/screens/ScanResultScreen.js');
-    assert.match(screen, /blob\|data/, 'transient blob: and megabyte data: URIs must not be persisted as imageUrl');
+    assert.match(screen, /uploadMealImage/, 'kept photos must persist via Cloudinary, not local URIs');
+    assert.match(screen, /startsWith\('file:'\)/, 'only native file URIs go up for storage');
+  });
+
+  it('scan items show their pictured serving', () => {
+    const screen = read('features/scan/screens/ScanResultScreen.js');
+    assert.match(screen, /item\.serving/, 'photo kcal without a portion misleads the diary');
   });
 
   it('gallery pick handles denial instead of rejecting', () => {
