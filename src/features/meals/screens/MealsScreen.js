@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import \{ ActivityIndicator, Pressable, ScrollView, Text, TextInput, View \} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   Search, X, Clock, Heart, ScanBarcode, Camera,
   ChevronRight, Pencil, Plus,
@@ -100,7 +100,7 @@ function FoodCard({ item, subtitle, onAdd }) {
     <View className="w-28 mr-3">
       <View className="w-28 h-24 rounded-2xl bg-cream items-center justify-center overflow-hidden mb-1.5">
         {item.imageUrl ? (
-          <CachedImage source=\{\{ uri: item\.imageUrl \}\} className="w-full h-full" resizeMode="cover" \/>
+                      <CachedImage uri={item.imageUrl} className="w-full h-full" resizeMode="cover" />
         ) : (
           <Text className="text-4xl">{item.emoji || '🍽️'}</Text>
         )}
@@ -121,10 +121,12 @@ function SectionHeader({ title, onSeeAll, actionLabel = 'See all' }) {
   return (
     <View className="flex-row items-center justify-between mb-2 mt-4">
       <Text className="text-base font-bold text-ink">{title}</Text>
-      <Pressable onPress={onSeeAll} accessibilityLabel={`${actionLabel}: ${title}`} accessibilityRole="button" className="flex-row items-center">
-        <Text className="text-xs font-semibold text-primary mr-0.5">{actionLabel}</Text>
-        <ChevronRight size={14} color="#f2470c" />
-      </Pressable>
+      {onSeeAll ? (
+        <Pressable onPress={onSeeAll} accessibilityLabel={`${actionLabel}: ${title}`} accessibilityRole="button" className="flex-row items-center">
+          <Text className="text-xs font-semibold text-primary mr-0.5">{actionLabel}</Text>
+          <ChevronRight size={14} color="#f2470c" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -320,7 +322,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
                >
                  <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
                    {item.imageUrl ? (
-                     <CachedImage source=\{\{ uri: item\.imageUrl \}\} className="w-full h-full" resizeMode="cover" \/>
+          <CachedImage uri={item.imageUrl} className="w-full h-full" resizeMode="cover" />
                    ) : (
                      <Text className="text-2xl">{item.emoji || '🍽️'}</Text>
                    )}
@@ -335,7 +337,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
           </View>
         ) : (
           <View>
-            <SectionHeader title={`Previous ${mealLower} logs`} onSeeAll={() => setQuery(mealType)} />
+            <SectionHeader title={`Previous ${mealLower} logs`} />
             {previousLogs.length === 0 ? (
               <Text className="text-muted-foreground text-sm">No {mealLower} logs yet — log your first one below.</Text>
             ) : (
@@ -351,7 +353,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
               </ScrollView>
             )}
 
-            <SectionHeader title={`Suggestions for ${mealLower}`} onSeeAll={() => setQuery(mealType)} />
+            <SectionHeader title={`Suggestions for ${mealLower}`} />
             {suggestionsLoading ? <ActivityIndicator className="my-2" /> : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
                 {(suggestions.length ? suggestions : (FALLBACK_SUGGESTIONS[mealType] || [])).map((item) => (
@@ -426,3 +428,5 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
     </View>
   );
 }
+
+

@@ -1,11 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
 import { useIsFocused } from 'expo-router/react-navigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Card from '../../../shared/components/ui/Card';
 import Chip from '../../../shared/components/ui/Chip';
 import WeightChart from '../../../shared/components/WeightChart';
 import { ArrowRight, Flame, Pencil, Scale, Target, TrendingDown, TrendingUp } from '../../../shared/components/ui/icons';
 import { dateKey } from '../../../shared/utils/format';
+
+const CACHE_TTL = {
+  weights: 24 * 60 * 60 * 1000,
+  weightGoal: 24 * 60 * 60 * 1000,
+  meals: 15 * 60 * 1000,
+};
+
+async function readCache(key) {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return null;
+    const { data, fetchedAt } = JSON.parse(raw);
+    if (Date.now() - fetchedAt > CACHE_TTL[key]) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
 
 const RANGES = [
   { key: '90D', days: 90, label: 'last 90 days' },
@@ -52,14 +71,52 @@ export default function ProgressScreen({
   const [range, setRange] = useState('6M');
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused();
+  const [cached, setCached] = useState({
+    weights: null,
+    weightGoal: null,
+    meals: null,
+  });
+
+  // Read cached data on mount so ProgressScreen paints instantly on screen arrival
+  // instead of waiting for API response. If cache is fresh, use it immediately;
+  // otherwise fall through to API-driven props.
+  useEffect(() => {
+    ;(async () => {
+      const cw = await readCache('caly.cache.weights');
+      const cg = await readCache('caly.cache.weightGoal');
+      const cm = await readCache('caly.cache.weekMeals');
+      if (cw || cg || cm) {
+        setCached({ weights: cw || null, weightGoal: cg || null, meals: cm || null });
+      }
+    })();
+  }, []);
 
   // Revalidate on every focus: weights/goal + the year of meals this screen
-  // needs for streak and daily-average. Fire-and-forget — cached data paints
-  // meanwhile, failures just leave the cache as-is.
+  // needs for streak and daily-average. If we have fresh cache, use it instead
+  // of making network requests (paints instantly, skips API). Failures just
+  // leave the cache as-is.
   useEffect(() => {
     if (!isFocused) return;
-    onRefreshWeights?.();
-    onLoadRangeMeals?.(365)?.catch?.(() => {});
+
+    ;(async () => {
+      const cw = await readCache('caly.cache.weights');
+      const cm = await readCache('caly.cache.weekMeals');
+
+      const hasFreshWeights = cw != null;
+      const hasFreshMeals = cm != null;
+
+      // If both have fresh cache, skip API calls entirely
+      if (hasFreshWeights && hasFreshMeals) {
+        return;
+      }
+
+      // Otherwise, trigger refetches for whatever is missing.
+      // one failing request must not swallow the others.
+      await Promise.allSettled([
+        !hasFreshWeights ? onRefreshWeights?.() : null,
+        !hasFreshMeals ? onLoadRangeMeals?.(365) : null,
+      ]);
+    })();
   }, [isFocused, onRefreshWeights, onLoadRangeMeals]);
 
   async function handleRefresh() {
@@ -79,17 +136,29 @@ export default function ProgressScreen({
   // Week rows win over the year fetch (they carry fresher optimistic state).
   const mergedMeals = useMemo(() => {
     const byId = new Map();
+    const mealList = meals.length > 0 ? meals : (cached.meals || []);
     for (const m of rangeMeals) byId.set(m.id || m._id, m);
-    for (const m of meals) byId.set(m.id || m._id, m);
+    for (const m of mealList) byId.set(m.id || m._id, m);
     return [...byId.values()];
-  }, [meals, rangeMeals]);
+  }, [meals, rangeMeals, cached.meals]);
 
   const entries = useMemo(
-    () => weights
-      .map(w => ({ id: w.id || w._id, date: new Date(w.loggedAt), value: Number(w.value) }))
-      .filter(w => !Number.isNaN(w.date.getTime()) && Number.isFinite(w.value))
-      .sort((a, b) => a.date - b.date),
-    [weights]
+    () => {
+      const weightList = weights.length > 0 ? weights : (cached.weights || []).map((w) => ({
+        id: w.id || w._id,
+        value: w.value,
+        loggedAt: w.loggedAt,
+      }));
+      return weightList
+        .map((w) => ({
+          id: w.id || w._id,
+          date: new Date(w.loggedAt),
+          value: Number(w.value),
+        }))
+        .filter((w) => !Number.isNaN(w.date.getTime()) && Number.isFinite(w.value))
+        .sort((a, b) => a.date - b.date);
+    },
+    [weights, cached.weights]
   );
 
   const latest = entries.length ? entries[entries.length - 1] : null;
@@ -143,16 +212,16 @@ export default function ProgressScreen({
     return { streak: count, weekDays: days };
   }, [mergedMeals, timeZone]);
 
-  const encouragement = (() => {
+const encouragement = (() => {
     if (entries.length === 0) return null;
-    if (streak >= 3 || (goalPct != null && goalPct > 0)) {
+    if (streak >= 3 && (goalPct != null && goalPct > 0)) {
       return 'Keep it up! You\'re on a roll 🔥';
-    }
-    if (streak >= 3) {
+    } else if (streak >= 3) {
       return 'Steady progress — every log counts!';
+    } else {
+      return 'Every log moves you forward';
     }
-    return 'Every log moves you forward';
-  })();
+})();
 
   const average = useMemo(() => {
     const now = new Date();
@@ -191,7 +260,11 @@ export default function ProgressScreen({
     : (average.trend >= 0) === (goalDir > 0);
   const trendTone = trendAligned == null ? '#8A8A8A' : trendAligned ? '#22C55E' : '#E64D4D';
 
-  const emptyAll = !loading && !entries.length && !mergedMeals.length;
+  const hasCachedWeights = cached.weights != null;
+const hasCachedGoal = cached.weightGoal != null;
+const hasCachedMeals = cached.meals != null;
+const hasCachedData = hasCachedWeights || hasCachedGoal || hasCachedMeals;
+const emptyAll = !loading && !hasCachedData && !entries.length && !mergedMeals.length;
 
   return (
     <ScrollView
@@ -205,7 +278,7 @@ export default function ProgressScreen({
     >
       <Text className="text-2xl font-bold text-ink mb-4">Progress</Text>
 
-      {loading && !entries.length && !mergedMeals.length && (
+      {loading && !hasCachedData && !entries.length && !mergedMeals.length && (
         <Card style={{ marginBottom: 12 }}>
           <View className="items-center py-4">
             <ActivityIndicator color="#f2470c" />

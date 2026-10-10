@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import \{ ActivityIndicator, Animated, Modal, Pressable, ScrollView, TextInput, View \} from 'react-native';
+import { ActivityIndicator, Animated, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { Minus, Plus, X, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
@@ -118,7 +118,7 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
 
           {food.imageUrl ? (
             <View className="rounded-card overflow-hidden mb-3" style={{ height: 170 }}>
-              <CachedImage source=\{\{ uri: food\.imageUrl \}\} className="w-full h-full" resizeMode="cover" \/>
+              <CachedImage uri={food.imageUrl} className="w-full h-full" resizeMode="cover" />
             </View>
           ) : null}
 
