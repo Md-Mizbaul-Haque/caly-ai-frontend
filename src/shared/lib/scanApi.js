@@ -47,6 +47,8 @@ export async function scanImage(imageUri, { signal } = {}) {
     file = new File([blob], 'meal.jpg', { type: blob.type || 'image/jpeg' });
   }
   form.append('image', file);
+  // Never set Content-Type manually here — fetch generates the multipart
+  // boundary; a hardcoded 'multipart/form-data' breaks every native upload.
   // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
   const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000, signal });
   let res;
@@ -85,8 +87,10 @@ export async function scanImage(imageUri, { signal } = {}) {
  */
 export async function uploadMealImage(imageUri, { signal } = {}) {
   const form = new FormData();
+  // Never set Content-Type manually — fetch generates the multipart boundary.
   form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
-  const res = await authedFetch('/api/scan/image', { method: 'POST', body: form, timeoutMs: 30000, signal });
+  const fetchFn = () => authedFetch('/api/scan/image', { method: 'POST', body: form, timeoutMs: 30000, signal });
+  const res = await fetchWithRetry(fetchFn, 2, 1000, signal);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || `photo upload failed: ${res.status}`);

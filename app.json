@@ -17,10 +17,6 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.mizba.calyaifrontend",
-      // Physical devices block cleartext http:// by default (Android 9+).
-      // The dev backend is plain http://<LAN-IP>:5000, so allow it —
-      // otherwise every fetch throws and the app shows "Couldn't connect".
-      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
@@ -59,7 +55,15 @@
           "root": "./src/app"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {

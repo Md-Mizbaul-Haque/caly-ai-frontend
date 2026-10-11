@@ -60,8 +60,9 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
     try {
       // Persist kept photos to Cloudinary so the diary shows them on every
       // device. A failed upload must not lose the meal — save without it.
+      // Anything not already remote (file:, content:, data:) is uploadable.
       let imageUrl;
-      if (result.imageUri && result.imageUri.startsWith('file:')) {
+      if (result.imageUri && !result.imageUri.startsWith('http')) {
         try {
           ({ imageUrl } = await uploadMealImage(result.imageUri));
         } catch {

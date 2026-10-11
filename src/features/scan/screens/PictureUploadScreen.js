@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Image, Alert, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import NetInfo from '@react-native-community/netinfo';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, CircleQuestionMark, Zap, ZapOff, ScanLine, ScanBarcode, FileText, Images } from '../../../shared/components/ui/icons';
@@ -37,6 +38,12 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
   const cameraRef = useRef(null);
   const barcodeLock = useRef(false);
   const scanCtrl = useRef(null);
+  // Last attempt (uri + kind) so a transient failure can offer Retry
+  // without forcing the user to retake the photo.
+  const lastAttempt = useRef(null);
+  // Ref mirror of analyze (below) so the Retry button can call the latest
+  // version without closing over the callback during its own definition.
+  const analyzeRef = useRef(null);
   // Ask the OS once on mount — re-firing requestPermission on every render
   // can loop the system dialog on some Android skins.
   const askedOnce = useRef(false);
@@ -53,7 +60,18 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     }
   }, [permission, requestPermission]);
 
+  // Leaving the camera mid-scan cancels the upload so a late result never
+  // pops up over a screen the user already left.
+  useEffect(() => () => scanCtrl.current?.abort(), []);
+
   const analyze = useCallback(async (uri, kind = 'scan') => {
+    // Offline now means a 60 s timeout + retries later — fail fast instead.
+    const net = await NetInfo.fetch().catch(() => null);
+    if (net && net.isConnected === false) {
+      Alert.alert("You're offline", 'Reconnect to Wi-Fi or mobile data, then try again.');
+      return;
+    }
+    lastAttempt.current = { uri, kind };
     // A new scan supersedes any in-flight one.
     scanCtrl.current?.abort();
     const ctrl = new AbortController();
@@ -101,13 +119,19 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
       }
      } catch (_e) {
         // User-cancelled: stay silent, the overlay is already gone.
-        if (!ctrl.signal.aborted) Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.');
+        if (ctrl.signal.aborted) return;
+        const retry = lastAttempt.current;
+        Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.', [
+          ...(retry ? [{ text: 'Retry', onPress: () => analyzeRef.current?.(retry.uri, retry.kind) }] : []),
+          { text: 'Cancel', style: 'cancel' },
+        ]);
     } finally {
       setScanning(false);
       setBusy(false);
       if (scanCtrl.current === ctrl) scanCtrl.current = null;
     }
   }, [onResult]);
+  useEffect(() => { analyzeRef.current = analyze; });
 
   const takePicture = useCallback(async () => {
     if (busy || !cameraRef.current || !cameraReady) return;

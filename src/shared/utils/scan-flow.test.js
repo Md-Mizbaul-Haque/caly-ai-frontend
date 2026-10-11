@@ -56,7 +56,7 @@ describe('scan flow robustness', () => {
   it('saved meals never carry dead or bloated image URLs', () => {
     const screen = read('features/scan/screens/ScanResultScreen.js');
     assert.match(screen, /uploadMealImage/, 'kept photos must persist via Cloudinary, not local URIs');
-    assert.match(screen, /startsWith\('file:'\)/, 'only native file URIs go up for storage');
+    assert.match(screen, /startsWith\('http'\)/, 'only already-remote URLs may skip storage upload');
   });
 
   it('scan items show their pictured serving', () => {
