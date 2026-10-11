@@ -38,7 +38,7 @@ export default function ProgressScreen({
   weights = [],
   weightGoal = null,
   meals = [], // current calendar week (freshest, includes optimistic rows)
-  rangeMeals = [], // ~1 year of meals fetched for this screen
+  rangeMeals = [], // long-horizon meals (365d+, extended for ALL)
   loading = false,
   error = null,
   timeZone,
@@ -106,6 +106,15 @@ export default function ProgressScreen({
     () => (start ? entries.filter(e => e.date >= start) : entries),
     [entries, start]
   );
+
+  // ALL spans full weight history (unbounded fetch) — extend the meals
+  // horizon back to the first log (capped at 5 years) so the average truly
+  // covers "all time". The wider-horizon guard makes this a no-op when covered.
+  useEffect(() => {
+    if (range !== 'ALL' || !isFocused || !entries.length) return;
+    const days = Math.min(1825, Math.max(365, Math.ceil((Date.now() - entries[0].date.getTime()) / 86400000) + 1));
+    onLoadRangeMeals?.(days)?.catch?.(() => {});
+  }, [range, isFocused, entries, onLoadRangeMeals]);
   const [chartW, setChartW] = useState(0);
 
   const goalPct = useMemo(() => {
@@ -150,7 +159,7 @@ const encouragement = (() => {
     } else if (streak >= 3) {
       return 'Steady progress — every log counts!';
     } else {
-      return 'Every log moves you forward';
+      return null;
     }
 })();
 
@@ -314,30 +323,35 @@ const encouragement = (() => {
         </View>
 
         <View onLayout={e => setChartW(e.nativeEvent.layout.width)}>
-          {rangeEntries.length >= 2 && chartW > 0 && (
+          {rangeEntries.length >= 2 && chartW > 0 ? (
             // Remount on range/count change so the highlight follows the data
             // (latest entry) instead of going stale; taps still work within
             // a stable dataset.
             <WeightChart key={`${range}-${rangeEntries.length}`} points={rangeEntries} width={chartW} height={210} />
+          ) : (
+            // Preview graph so the card never looks empty (same height).
+            <WeightChart key={`preview-${range}`} points={[]} width={chartW > 0 ? chartW : 280} height={210} />
           )}
         </View>
         {rangeEntries.length < 2 && (
-          <View className="items-center justify-center py-10">
+          <View className="items-center justify-center py-4">
             <Scale size={22} color="#8A8A8A" />
             <Text className="text-muted-foreground text-sm mt-2 text-center">
               {entries.length === 0
                 ? 'Tap "Log Weight" to get started'
                 : entries.length === 1
                   ? 'One log so far — keep going\nso your trend can appear.'
-                  : 'Log your weight at least twice\nto see your trend.'}
+                  : 'No logs in this range —\ntry 6M, 1Y or ALL.'}
             </Text>
           </View>
         )}
       </Card>
 
-      <Text className="text-center text-sm font-semibold mb-4 text-success">
-        {encouragement}
-      </Text>
+      {encouragement && (
+        <Text className="text-center text-sm font-semibold mb-4 text-success">
+          {encouragement}
+        </Text>
+      )}
 
       {/* Daily average calories for the selected range */}
       <Card>

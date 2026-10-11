@@ -21,13 +21,23 @@ function logApiError(id, method, path, outcome) {
   console.info(`[api #${id}] ${method} ${path} -> ${outcome}`);
 }
 
-function connectionError(id, method, path) {
-  logApiError(id, method, path, 'network-failure');
+function connectionError(id, method, path, cause) {
+  // A timer abort means the server was too slow, not unreachable — say so
+  // and mark it non-retryable (retrying a 60 s timeout burns minutes).
+  // Caller cancels (scan "Cancel") are also AbortErrors; the caller stays
+  // silent via its own signal check, so this message is timeout-only here.
+  const timedOut = cause?.name === 'AbortError';
+  logApiError(id, method, path, `network-failure: ${cause?.name || ''} ${cause?.message || cause}`);
   // Host only (no tokens/bodies): tells us instantly whether the phone is
   // pointed at a LAN URL it can't reach vs a real internet outage.
   console.info(`[api #${id}] target ${API_URL} (check same-WiFi + backend running)`);
-  const err = new Error(`Couldn't connect to the server at ${API_URL}. Check your internet connection and try again. (Ref #${id})`);
-  err.network = true;
+  const err = new Error(
+    timedOut
+      ? `The request to ${API_URL} timed out. Try a smaller photo or a stronger signal, then retry. (Ref #${id})`
+      : `Couldn't connect to the server at ${API_URL}. Check your internet connection and try again. (Ref #${id})`
+  );
+  err.network = !timedOut;
+  err.timeout = timedOut;
   err.reportId = id;
   return err;
 }
@@ -62,8 +72,8 @@ async function request(method, path, { headers = {}, body } = {}) {
       body,
       signal: ctrl.signal,
     });
-   } catch (_e) {
-     throw connectionError(id, method, path);
+   } catch (e) {
+     throw connectionError(id, method, path, e);
   } finally {
     clearTimeout(timer);
   }
@@ -77,7 +87,9 @@ async function request(method, path, { headers = {}, body } = {}) {
     }
     throw await parseError(res, method, path, id);
   }
-  return res.json();
+  // Guarded like parseError: a 200 with non-JSON (proxy error page) must
+  // not surface as a raw SyntaxError.
+  return res.json().catch(() => ({}));
 }
 
 export async function apiGet(path) {
@@ -109,16 +121,22 @@ export async function authedFetch(path, options = {}) {
   const id = newReportId();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS);
+  // A caller abort (e.g. Scan "Cancel") must stop our request too — fetch
+  // only honors one signal, so link the caller's to ours.
+  const { timeoutMs: _timeoutMs, signal: externalSignal, ...fetchOptions } = options;
+  if (externalSignal) {
+    if (externalSignal.aborted) ctrl.abort();
+    else externalSignal.addEventListener('abort', () => ctrl.abort(), { once: true });
+  }
   let res;
-  const { timeoutMs: _timeoutMs, ...fetchOptions } = options;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...fetchOptions,
       headers: { ...(await authHeaders()), ...(options.headers || {}) },
       signal: ctrl.signal,
     });
-   } catch (_e) {
-     throw connectionError(id, options.method || 'GET', path);
+   } catch (e) {
+     throw connectionError(id, options.method || 'GET', path, e);
   } finally {
     clearTimeout(timer);
   }

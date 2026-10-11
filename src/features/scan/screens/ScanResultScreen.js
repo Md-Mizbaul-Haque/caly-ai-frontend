@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
 import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
+import { uploadMealImage } from '../../../shared/lib/scanApi';
 import Card from '../../../shared/components/ui/Card';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import Chip from '../../../shared/components/ui/Chip';
@@ -16,9 +17,18 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   const close = onClose ?? onDone ?? (() => {});
   const [items, setItems] = useState(() =>
-    result.kind === 'barcode' ? [result.item] : result.items
+    result.kind === 'barcode' ? [result.item].filter(Boolean) : (result.items ?? [])
   );
-  const [type, setType] = useState('Snack');
+  const [type, setType] = useState(() => {
+    // Sensible default by time of day; the user can still override.
+    const h = new Date().getHours();
+    if (h >= 5 && h < 11) return 'Breakfast';
+    if (h >= 11 && h < 16) return 'Lunch';
+    if (h >= 17 && h < 23) return 'Dinner';
+    return 'Snack';
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   function updateItem(idx, field, value) {
     setItems(prev => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
@@ -43,16 +53,37 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   );
 
-  function handleSave() {
-    onSave({
-      name,
-      kcal: Math.round(activeTotals.kcal),
-      protein: Math.round(activeTotals.protein),
-      carbs: Math.round(activeTotals.carbs),
-      fat: Math.round(activeTotals.fat),
-      mealType: type,
-      ...(result.imageUri ? { imageUrl: result.imageUri } : {}),
-    });
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // Persist kept photos to Cloudinary so the diary shows them on every
+      // device. A failed upload must not lose the meal — save without it.
+      // Anything not already remote (file:, content:, data:) is uploadable.
+      let imageUrl;
+      if (result.imageUri && !result.imageUri.startsWith('http')) {
+        try {
+          ({ imageUrl } = await uploadMealImage(result.imageUri));
+        } catch {
+          imageUrl = undefined;
+        }
+      }
+      const r1 = v => Math.round(Number(v) * 10) / 10;
+      await onSave({
+        name,
+        kcal: Math.round(activeTotals.kcal),
+        protein: r1(activeTotals.protein),
+        carbs: r1(activeTotals.carbs),
+        fat: r1(activeTotals.fat),
+        mealType: type,
+        ...(imageUrl ? { imageUrl } : {}),
+      });
+    } catch (e) {
+      setSaveError(e.message || 'Could not save this meal.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -83,11 +114,23 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       <Text className="text-base font-bold text-ink mb-2">
         {result.kind === 'barcode' ? 'Product' : `Detected foods (${items.length})`}
       </Text>
+      {result.kind === 'barcode' && items[0] && (
+        <Text className="text-xs text-muted-foreground mb-2">
+          {items[0].serving
+            ? `Nutrition scaled to a ${items[0].serving} serving.`
+            : 'Nutrition is per 100g — edit the fields to match your serving.'}
+        </Text>
+      )}
+      {!items.length && (
+        <Text className="text-sm text-muted-foreground mb-2">
+          Nothing detected — retake the photo with the meal filling the frame.
+        </Text>
+      )}
 
       {items.map((item, idx) => (
         <Card key={`${item.name}-${idx}`} style={{ marginBottom: 10, opacity: item.excluded ? 0.45 : 1 }}>
           <Pressable onPress={() => toggleItem(idx)} hitSlop={6}>
-            <Text className="font-bold text-ink">{item.excluded ? '🚫 ' : ''}{item.name}</Text>
+            <Text className="font-bold text-ink">{item.excluded ? '🚫 ' : ''}{item.name}{item.serving ? ` — ${item.serving}` : ''}</Text>
           </Pressable>
           <View className="flex-row mt-2" style={{ gap: 8 }}>
             <View className="flex-1">
@@ -140,17 +183,17 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
           </View>
           <View className="items-center">
             <Beef size={18} color="#f2470c" />
-            <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.protein)}g</Text>
+            <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.protein * 10) / 10}g</Text>
             <Text className="text-xs text-muted-foreground">protein</Text>
           </View>
           <View className="items-center">
             <Wheat size={18} color="#FACC15" />
-            <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.carbs)}g</Text>
+            <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.carbs * 10) / 10}g</Text>
             <Text className="text-xs text-muted-foreground">carbs</Text>
           </View>
           <View className="items-center">
             <Droplet size={18} color="#22C55E" />
-            <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.fat)}g</Text>
+            <Text className="text-lg font-extrabold text-ink">{Math.round(activeTotals.fat * 10) / 10}g</Text>
             <Text className="text-xs text-muted-foreground">fat</Text>
           </View>
         </View>
@@ -167,10 +210,15 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
 
       <View className="mt-6 mb-8">
         <PrimaryButton
-          title={`Save meal — ${Math.round(activeTotals.kcal)} kcal`}
-          disabled={activeTotals.kcal <= 0}
+          title={saving ? 'Saving…' : `Save meal — ${Math.round(activeTotals.kcal)} kcal`}
+          disabled={activeTotals.kcal <= 0 || saving || !items.length}
           onPress={handleSave}
         />
+        {saveError && (
+          <Text className="text-xs text-destructive text-center mt-2">
+            {saveError}
+          </Text>
+        )}
         {activeTotals.kcal <= 0 && (
           <Text className="text-xs text-muted-foreground text-center mt-2">
             Totals are zero — enter estimates in the fields above to save.

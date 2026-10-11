@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Image, Alert, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import NetInfo from '@react-native-community/netinfo';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, CircleQuestionMark, Zap, ZapOff, ScanLine, ScanBarcode, FileText, Images } from '../../../shared/components/ui/icons';
 import { scanImage, lookupBarcode } from '../../../shared/lib/scanApi';
@@ -35,6 +37,13 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
   const [previewUri, setPreviewUri] = useState(null);
   const cameraRef = useRef(null);
   const barcodeLock = useRef(false);
+  const scanCtrl = useRef(null);
+  // Last attempt (uri + kind) so a transient failure can offer Retry
+  // without forcing the user to retake the photo.
+  const lastAttempt = useRef(null);
+  // Ref mirror of analyze (below) so the Retry button can call the latest
+  // version without closing over the callback during its own definition.
+  const analyzeRef = useRef(null);
   // Ask the OS once on mount — re-firing requestPermission on every render
   // can loop the system dialog on some Android skins.
   const askedOnce = useRef(false);
@@ -51,45 +60,104 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     }
   }, [permission, requestPermission]);
 
+  // Leaving the camera mid-scan cancels the upload so a late result never
+  // pops up over a screen the user already left.
+  useEffect(() => () => scanCtrl.current?.abort(), []);
+
   const analyze = useCallback(async (uri, kind = 'scan') => {
+    // Offline now means a 60 s timeout + retries later — fail fast instead.
+    const net = await NetInfo.fetch().catch(() => null);
+    if (net && net.isConnected === false) {
+      Alert.alert("You're offline", 'Reconnect to Wi-Fi or mobile data, then try again.');
+      return;
+    }
+    lastAttempt.current = { uri, kind };
+    // A new scan supersedes any in-flight one.
+    scanCtrl.current?.abort();
+    const ctrl = new AbortController();
+    scanCtrl.current = ctrl;
+    // Web gallery URIs are transient blob: URLs that the browser can revoke
+    // mid-session (dead preview on re-render). Convert once to a data: URL
+    // so preview + upload use a stable reference. Native file:// URIs skip this.
+    let stableUri = uri;
+    if (kind !== 'barcode' && typeof uri === 'string' && uri.startsWith('blob:')) {
+      try {
+        const blob = await (await fetch(uri)).blob();
+        stableUri = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(blob);
+        });
+      } catch {
+        stableUri = uri;
+      }
+    }
     setScanning(true);
     try {
       if (kind === 'barcode') {
-        const { item } = await lookupBarcode(uri); // uri is the barcode digits here
+        const { item } = await lookupBarcode(uri, { signal: ctrl.signal }); // uri is the barcode digits here
         onResult({ kind: 'barcode', item });
       } else {
-        const { items, placeholder } = await scanImage(uri);
-        setPreviewUri(uri);
-        onResult({ kind: 'scan', imageUri: uri, items, placeholder });
+        // Shrink camera/gallery photos before upload: multi-MB originals
+        // stall on some mobile networks (and burn AI bytes) while 1280px
+        // is plenty for food recognition. Falls back to the original.
+        let uploadUri = stableUri;
+        try {
+          const shrunk = await manipulateAsync(
+            stableUri,
+            [{ resize: { width: 1280 } }],
+            { compress: 0.7, format: SaveFormat.JPEG }
+          );
+          if (shrunk?.uri) uploadUri = shrunk.uri;
+        } catch {
+          // keep the original
+        }
+        const { items, placeholder } = await scanImage(uploadUri, { signal: ctrl.signal });
+        setPreviewUri(stableUri);
+        onResult({ kind: 'scan', imageUri: stableUri, items, placeholder });
       }
      } catch (_e) {
-       Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.');
+        // User-cancelled: stay silent, the overlay is already gone.
+        if (ctrl.signal.aborted) return;
+        const retry = lastAttempt.current;
+        Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.', [
+          ...(retry ? [{ text: 'Retry', onPress: () => analyzeRef.current?.(retry.uri, retry.kind) }] : []),
+          { text: 'Cancel', style: 'cancel' },
+        ]);
     } finally {
       setScanning(false);
       setBusy(false);
+      if (scanCtrl.current === ctrl) scanCtrl.current = null;
     }
   }, [onResult]);
+  useEffect(() => { analyzeRef.current = analyze; });
 
   const takePicture = useCallback(async () => {
     if (busy || !cameraRef.current || !cameraReady) return;
     setBusy(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      if (photo?.uri) await analyze(photo.uri, mode === 'label' ? 'label' : 'scan');
+      // 'label' mode uses the same AI pipeline as 'scan' — no separate kind.
+      if (photo?.uri) await analyze(photo.uri, 'scan');
      } catch (_e) {
        setBusy(false);
        Alert.alert('Camera error', 'Could not take the picture. Try again.');
     }
-  }, [busy, cameraReady, mode, analyze]);
+  }, [busy, cameraReady, analyze]);
 
   const pickFromLibrary = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setBusy(true);
-      await analyze(result.assets[0].uri, 'scan');
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setBusy(true);
+        await analyze(result.assets[0].uri, 'scan');
+      }
+    } catch {
+      Alert.alert('Gallery unavailable', 'Could not open your photo library.');
     }
   }, [analyze]);
 
@@ -210,6 +278,9 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
           {previewUri && (
             <Image source={{ uri: previewUri }} className="w-40 h-40 rounded-2xl mt-6" resizeMode="cover" />
           )}
+          <Pressable onPress={() => scanCtrl.current?.abort()} className="mt-6 px-6 py-2.5 rounded-full bg-white/15">
+            <Text className="text-white font-bold">Cancel</Text>
+          </Pressable>
         </View>
       )}
 

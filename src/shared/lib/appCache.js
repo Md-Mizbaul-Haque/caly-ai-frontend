@@ -13,6 +13,7 @@ const KEYS = {
 const TTL = {
   user: Number.POSITIVE_INFINITY, // revalidated against the server at startup
   weekMeals: 15 * 60 * 1000, // 15 min — keeps a prior day's meals from flashing
+  rangeMeals: 60 * 60 * 1000, // 1h — Progress streak/average paints instantly, revalidates silently
   weights: 24 * 60 * 60 * 1000,
   weightGoal: 24 * 60 * 60 * 1000,
 };
