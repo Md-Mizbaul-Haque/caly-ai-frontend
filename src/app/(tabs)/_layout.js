@@ -309,7 +309,7 @@ if (hydratedForRef.current === key) return;
           setLoading(false); // Hide loading state if we have cached meals
         }
         if (weightsResult?.data) setWeights(weightsResult.data);
-        if (weightGoalResult?.data !== null) setWeightGoalState(weightGoalResult.data);
+        if (weightGoalResult?.data !== undefined) setWeightGoalState(weightGoalResult.data);
         if (restoredDate) {
           const d = restoredDate;
           setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
@@ -358,7 +358,11 @@ if (hydratedForRef.current === key) return;
           await fetchWeightsAndGoal().catch(() => {});
         }
         if (alive && hydratedForRef.current === key) setLoading(false);
-     })();
+        // Guarantee: any unexpected throw above (e.g. corrupt cache date
+        // handling) must still release the spinner so Home can never hang.
+      })().catch(() => {
+        if (alive && hydratedForRef.current === key) setLoading(false);
+      });
      return () => { alive = false; };
    }, [authChecked, user, loadWeek, fetchWeightsAndGoal, timeZone]);
 

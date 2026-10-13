@@ -160,6 +160,10 @@ export default function DashboardScreen({
   // Bumped after every pull-to-refresh so the day strip re-centers on the
   // (possibly resized) selected pill.
   const [recenterSignal, setRecenterSignal] = useState(0);
+  // Pull-to-refresh owns its own flag: the shared `loading` covers first
+  // load / hydration (incl. ~30 s offline revalidation), so binding
+  // RefreshControl to it pins the native Android spinner over Home.
+  const [refreshing, setRefreshing] = useState(false);
   const s = useTabShell();
   const { selectedDate } = s;
   // Use setSelectedDate from context directly - the context provider ensures
@@ -325,6 +329,7 @@ export default function DashboardScreen({
     : `${WEEKDAY_NAMES[zonedParts(selectedDate, timeZone).weekday] ?? "Selected day"}'s Meals`;
 
   async function handleRefresh() {
+    setRefreshing(true);
     try {
       if (onRetry) await onRetry();
       else await s.loadWeek?.({ reference: selectedDate }); // Refresh meals data
@@ -332,6 +337,7 @@ export default function DashboardScreen({
     } catch (err) {
       console.error("Refresh failed:", err);
     } finally {
+      setRefreshing(false);
       setRecenterSignal((n) => n + 1);
     }
   }
@@ -349,7 +355,7 @@ export default function DashboardScreen({
         paddingBottom: 96,
       }}
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
       <View style={{ width: "100%", maxWidth: 480, alignSelf: "center" }}>
