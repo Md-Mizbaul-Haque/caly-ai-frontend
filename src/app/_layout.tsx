@@ -39,6 +39,7 @@ function RouteGuard() {
         '/calorie-macro-targets',
         '/favorites',
         '/find-recipes',
+        '/day-strip-lab', // dev-only strip playground (itself __DEV__-gated)
       ];
       if (!allowedRoutes.includes(pathname)) {
         router.replace('/(tabs)/dashboard');

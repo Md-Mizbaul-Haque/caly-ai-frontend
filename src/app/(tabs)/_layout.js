@@ -20,6 +20,9 @@ import { useCameraPermissions } from 'expo-camera';
    import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SPLASH_MIN_MS = 450;
+// Freshness window for one cached calendar week. Module scope (not state)
+// so week-scoped fetchers can depend on it without re-creating.
+const WEEK_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -30,13 +33,31 @@ export default function TabsLayout() {
    const [navHeight, setNavHeight] = useState(0);
    const [showScan, setShowScan] = useState(false);
    const [scanResult, setScanResult] = useState(null);
-   const [meals, setMeals] = useState([]); // current calendar week (dashboard view)
-   const [mealsTimestamp, setMealsTimestamp] = useState(0); // Timestamp of last successful fetch
+   const [meals, setMeals] = useState([]); // visible calendar week (dashboard view)
+   // Per-week cache so week navigation preserves progress: weekId -> { meals, fetchedAt }.
+   // The old single-week freshness check ignored the requested week and
+   // silent-skipped refetches for any week within 5 min of the last load.
+   const [weekCache, setWeekCache] = useState({});
    // Always a valid Date from first render. The cached day is restored
    // asynchronously in the hydration effect below: readCache is async, and
    // new Date(promise) is an Invalid Date whose empty dateKey makes the day
    // strip rebuild its window on every render (infinite "Too many re-renders").
    const [selectedDate, setSelectedDate] = useState(() => new Date());
+   // Ref mirror so loadWeek (a useCallback) can compare the requested week
+   // against the selected week without re-creating on every date change.
+    const selectedDateRef = useRef(selectedDate);
+    useEffect(() => {
+      selectedDateRef.current = selectedDate;
+    }, [selectedDate]);
+    // Ref mirrors so week/range fetchers stay referentially stable: they read
+    // UI state via refs and write via functional setState, never subscribing
+    // to it. Without this, loadWeek's identity changes on every setMeals /
+    // setWeekCache, which re-fires every consumer effect that (correctly)
+    // lists it in deps — the Dashboard spinner loop.
+    const mealsRef = useRef(meals);
+    useEffect(() => { mealsRef.current = meals; }, [meals]);
+    const weekCacheRef = useRef(weekCache);
+    useEffect(() => { weekCacheRef.current = weekCache; }, [weekCache]);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState(null);
    const [weights, setWeights] = useState([]);
@@ -69,48 +90,68 @@ export default function TabsLayout() {
   // it so client days match the server's ?from/?to windows.
   const timeZone = useMemo(() => effectiveTimeZone(user), [user]);
 
-    // eslint-disable-next-line react-hooks/immutability
+  // Mirrors for the stable fetchers below (see mealsRef/weekCacheRef above).
+  const timeZoneRef = useRef(timeZone);
+  useEffect(() => { timeZoneRef.current = timeZone; }, [timeZone]);
+  const userKeyRef = useRef(userKey);
+  useEffect(() => { userKeyRef.current = userKey; }, [userKey]);
+  const hydratedForRef = useRef(null);
+  const loadWeekRequestRef = useRef(null);
+  const loadWeekPromiseRef = useRef(null);
+
     const loadWeek = useCallback(async ({ silent, reference } = {}) => {
-     // Silent refreshes (background revalidation over cached data) must not
-     // flip the UI back into its loading state. `reference` selects which
-     // calendar week to load (defaults to the current week) so the dashboard
-     // can fetch the week containing the user-selected day.
-     
-     // Check if we have sufficiently fresh data already
-     const weekMealsStale = !meals.length || (Date.now() - mealsTimestamp > 5 * 60 * 1000); // 5 minutes threshold
-     
+     // Stable identity: reads UI state via refs, writes via functional
+     // setState — so consumers can safely list it in effect deps without
+     // re-firing on every setMeals/setWeekCache (the Dashboard loop).
+     const tz = timeZoneRef.current;
+     const key = userKeyRef.current;
+     const refDate = reference || selectedDateRef.current || new Date();
+     const { from: refFrom } = weekRange(refDate, tz);
+     const weekId = `${refFrom}|${tz}`;
+     const selectedWeekId = `${weekRange(selectedDateRef.current || new Date(), tz).from}|${tz}`;
+     const isSelectedWeek = weekId === selectedWeekId;
+
+     // Per-week freshness: a fresh week-A cache must never satisfy a
+     // week-B request (the old global check did exactly that and left
+     // other weeks' rings permanently empty).
+     const cached = weekCacheRef.current[weekId];
+     const weekFresh = cached?.meals && (Date.now() - (cached.fetchedAt || 0) < WEEK_CACHE_TTL_MS);
+
      // If we have fresh data and this is a background request, resolve immediately
-     if (!weekMealsStale && silent) {
-       return meals;
+     if (weekFresh && silent) {
+       if (isSelectedWeek && cached.meals !== mealsRef.current) {
+         setMeals(cached.meals);
+       }
+       return cached.meals;
      }
-     
+
      // Request deduplication: prevent multiple simultaneous requests for the same week
-     const weekId = `${weekRange(reference || new Date(), timeZone).from}|${timeZone}`;
      if (loadWeekRequestRef.current === weekId && loadWeekPromiseRef.current) {
        return loadWeekPromiseRef.current;
      }
-     
-     // Set up loading state for non-silent requests
+
+     // Set up loading state for non-silent requests (always the visible week)
      if (!silent) {
        setLoading(true);
        setError(null);
      }
-     
+
       // Create the fetch promise
       const fetchPromise = (async () => {
         try {
-          const mealsData = await fetchWeek(reference || new Date(), timeZone);
+          const mealsData = await fetchWeek(refDate, tz);
           // Account switched while this request was in flight: drop the
           // result so the previous owner's meals never overwrite the new
           // owner's state (their hydration repopulates separately).
-          // (Safe to read here: this runs after render, when the ref below
-          // is initialized.)
-          if (hydratedForRef.current && hydratedForRef.current !== userKey) {
+          if (hydratedForRef.current && hydratedForRef.current !== userKeyRef.current) {
             return mealsData;
           }
-          setMeals(mealsData);
-          setMealsTimestamp(Date.now()); // Update timestamp when we get fresh data
-          writeCache(scopedKey('weekMeals', userKey), mealsData);
+          const stamped = Date.now();
+          setWeekCache((prev) => ({ ...prev, [weekId]: { meals: mealsData, fetchedAt: stamped } }));
+          if (isSelectedWeek || weekId === `${weekRange(selectedDateRef.current || new Date(), tz).from}|${tz}`) {
+            setMeals(mealsData);
+            writeCache(scopedKey('weekMeals', key), mealsData);
+          }
           return mealsData;
         } catch (e) {
           // Error UI only appears when there's nothing cached to show.
@@ -127,28 +168,29 @@ export default function TabsLayout() {
          }
        }
      })();
-     
+
       // Store request info for deduplication
       loadWeekRequestRef.current = weekId;
-      // eslint-disable-next-line react-hooks/immutability
       loadWeekPromiseRef.current = fetchPromise;
 
       return fetchPromise;
-    }, [meals, mealsTimestamp, timeZone, userKey]);
+    }, []);
 
    // Load meals for a horizon ending today (e.g. 365 days for the Progress
    // screen's daily-average card). Skipped when a wider horizon is already
    // loaded; results merge under the week view so both screens stay correct.
+   // Stable identity (reads zone via ref) for the same reason as loadWeek.
    const loadRangeMeals = useCallback(async (days) => {
+     const tz = timeZoneRef.current;
      const end = new Date();
      const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - days);
-     const from = dateKey(start, timeZone);
+     const from = dateKey(start, tz);
      // A wider horizon already covers this one ??" nothing to fetch.
      if (rangeFromRef.current && rangeFromRef.current <= from) return;
-     const data = await fetchMeals(from, dateKey(end, timeZone), undefined, timeZone);
+     const data = await fetchMeals(from, dateKey(end, tz), undefined, tz);
      rangeFromRef.current = from;
      setRangeMeals(data);
-   }, [timeZone]);
+   }, []);
 
    const fetchWeightsAndGoal = useCallback(async () => {
     if (!user) return;
@@ -164,11 +206,7 @@ export default function TabsLayout() {
     }
   }, [user, userKey]);
 
-   const hydratedForRef = useRef(null);
-    // Refs for loadWeek request deduplication
-    const loadWeekRequestRef = useRef(null);
-    const loadWeekPromiseRef = useRef(null);
-    const rangePersistedRef = useRef(null);
+   const rangePersistedRef = useRef(null);
 
     // Cache persists run only for the hydrated owner: on account switch the
     // first render still holds the previous owner's state, and an unguarded
@@ -191,18 +229,21 @@ export default function TabsLayout() {
       writeCache(scopedKey('rangeMeals', userKey), { meals: rangeMeals, from: rangeFromRef.current });
     }, [rangeMeals, userKey]);
 
-    // eslint-disable-next-line react-hooks/immutability
+    // Selection changes are painted by the dashboard's silent week-fill
+    // (loadWeek paints the selected week from the per-week cache on a hit,
+    // fetches it on a miss), so no render-phase sync is needed here.
+
     useEffect(() => {
      if (!(authChecked && user)) return;
      const key = user._id || user.id || user.email;
 if (hydratedForRef.current === key) return;
-    // eslint-disable-next-line react-hooks/immutability
     hydratedForRef.current = key;
      // New account (login / switch): drop the previous owner's in-memory
      // state first so their meals/weights never flash, then hydrate from
      // that owner's namespaced cache while the network revalidates.
      setCacheOwner(key);
      setMeals([]);
+     setWeekCache({});
      setRangeMeals([]);
      setWeights([]);
      setWeightGoalState(null);
@@ -247,21 +288,32 @@ if (hydratedForRef.current === key) return;
 
        if (!alive) return;
 
-       // Set data from cache if available
-       if (weekMealsResult?.data) {
-         setMeals(weekMealsResult.data);
-         setMealsTimestamp(weekMealsResult.fetchedAt);
-         setLoading(false); // Hide loading spinner if we have cached meals
-       }
-       if (weightsResult?.data) setWeights(weightsResult.data);
-       if (weightGoalResult?.data !== null) setWeightGoalState(weightGoalResult.data);
-       if (selectedDateResult?.data) {
-         const d = new Date(selectedDateResult.data);
-         // Corrupt cache must never resurrect an Invalid Date (see above).
-         if (!Number.isNaN(d.getTime())) {
-           setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
-         }
-       }
+        // Set data from cache if available
+        // The cached week belongs to the last-selected week (weekMeals is
+        // written on every selected-week load), so seed it under the
+        // RESTORED selected week — not the current week. Landing then
+        // paints the selected week instantly and correctly; the skeleton
+        // only appears when there is genuinely no cache (emergency).
+        let restoredDate = null;
+        if (selectedDateResult?.data) {
+          const d = new Date(selectedDateResult.data);
+          // Corrupt cache must never resurrect an Invalid Date (see above).
+          if (!Number.isNaN(d.getTime())) restoredDate = d;
+        }
+        if (weekMealsResult?.data) {
+          setMeals(weekMealsResult.data);
+          // Seed the per-week map so landing paints instantly instead of
+          // refetching (and the current week never mistakes this for its own data).
+          const seedId = `${weekRange(restoredDate || new Date(), timeZone).from}|${timeZone}`;
+          setWeekCache({ [seedId]: { meals: weekMealsResult.data, fetchedAt: weekMealsResult.fetchedAt } });
+          setLoading(false); // Hide loading state if we have cached meals
+        }
+        if (weightsResult?.data) setWeights(weightsResult.data);
+        if (weightGoalResult?.data !== null) setWeightGoalState(weightGoalResult.data);
+        if (restoredDate) {
+          const d = restoredDate;
+          setSelectedDate((prev) => (dateKey(prev, timeZone) === dateKey(d, timeZone) ? prev : d));
+        }
        // Long-horizon meals paint the Progress streak/average instantly.
        // Fresh cache also restores the horizon guard so the focus fetch
        // stays a no-op; stale cache paints but refetches silently on focus.
@@ -310,26 +362,43 @@ if (hydratedForRef.current === key) return;
      return () => { alive = false; };
    }, [authChecked, user, loadWeek, fetchWeightsAndGoal, timeZone]);
 
-  // Handle meal deletion: persist via API, then drop from both the week
-  // view and the long-horizon range so Dashboard + Progress stay in sync.
-  // Rolls back on failure so the row never silently vanishes.
+  // Handle meal deletion: persist via API, then drop from every cached
+  // week, the visible week, and the long-horizon range so Dashboard +
+  // Progress stay in sync. Rolls back on failure so the row never silently
+  // vanishes.
    const handleMealDeleted = useCallback(async (mealId) => {
      const id = String(mealId);
      const prevWeek = meals;
+     const prevCache = weekCache;
      const prevRange = rangeMeals;
-     setMeals(prevWeek.filter((meal) => String(meal.id) !== id));
-     setRangeMeals(prevRange.filter((meal) => String(meal.id || meal._id) !== id));
-     try {
-       await deleteMealById(mealId);
-       setMealsTimestamp(Date.now()); // Update timestamp since we confirmed deletion with server
-       toastSuccess('Meal deleted!');
-     } catch (e) {
-       setMeals(prevWeek);
-       setRangeMeals(prevRange);
-       toastError('Could not delete', e.message);
-       throw e;
-     }
-   }, [meals, rangeMeals]);
+     const dropId = (list) => list.filter((meal) => String(meal.id || meal._id) !== id);
+     setMeals((prev) => dropId(prev));
+     setWeekCache((prev) => {
+       const next = {};
+       for (const [k, entry] of Object.entries(prev)) {
+         next[k] = { ...entry, meals: dropId(entry.meals || []) };
+       }
+       return next;
+     });
+      setRangeMeals((prev) => dropId(prev));
+      try {
+        await deleteMealById(mealId);
+        toastSuccess('Meal deleted!');
+      } catch (e) {
+        // Already gone on the server (double-tap, stale phone cache): the
+        // row is already in the desired state, so keep it dropped instead
+        // of resurrecting it. The toast below covers real failures; nothing
+        // rethrows, so delete can never redbox the screen.
+        if (e?.status === 404) {
+          toastSuccess('Meal deleted!');
+          return;
+        }
+        setMeals(prevWeek);
+        setWeekCache(prevCache);
+        setRangeMeals(prevRange);
+        toastError('Could not delete', e.message);
+      }
+   }, [meals, weekCache, rangeMeals]);
 
   // Handle weight logging via WeightLogSheet's onSave({ value }): POSTs the
   // weight and merges the result (same-day re-logs replace in place). The
@@ -361,23 +430,35 @@ if (hydratedForRef.current === key) return;
   }, [weights]);
 
   // Save a meal (manual entry, catalog sheet, scan): POST then merge into the
-  // week view so Dashboard/today totals update immediately. Stamps the
-  // client-side loggedAt (ISO with offset) when callers omit it so the meal
-  // lands on the device's calendar day instead of the server clock's.
+  // saved meal's week (id-deduped, so double-taps never double-count) and the
+  // long-horizon range so Dashboard + calendar + Progress stay in sync.
+  // Stamps the client-side loggedAt (ISO with offset) when callers omit it so
+  // the meal lands on the device's calendar day instead of the server clock's.
   // Throws so the caller (sheet/form) can show the error inline instead of guessing.
    const handleSave = useCallback(async (meal) => {
      const payload = meal && meal.loggedAt ? meal : { ...meal, loggedAt: new Date().toISOString() };
      const saved = await createMeal(payload);
-     setMeals((prev) => [...prev, saved]);
-     setMealsTimestamp(Date.now()); // Update timestamp since we got fresh data from server
-     setRangeMeals((prev) => {
-       const id = String(saved.id || saved._id);
-       if (prev.some((m) => String(m.id || m._id) === id)) return prev;
-       return [...prev, saved];
+     const savedId = String(saved.id || saved._id);
+     const mergeUnique = (prev) => (prev.some((m) => String(m.id || m._id) === savedId) ? prev : [...prev, saved]);
+     const stamped = Date.now();
+     // Per "always today": callers omit loggedAt and the stamp is now, so the
+     // saved week is normally the visible one — but merge by the saved date,
+     // never blindly into whatever week happens to be on screen.
+     const savedWeekId = `${weekRange(new Date(saved.loggedAt), timeZone).from}|${timeZone}`;
+     const selectedWeekId = `${weekRange(selectedDateRef.current || new Date(), timeZone).from}|${timeZone}`;
+     setWeekCache((prev) => {
+       const entry = prev[savedWeekId];
+       if (!entry) return prev;
+       return { ...prev, [savedWeekId]: { meals: mergeUnique(entry.meals || []), fetchedAt: stamped } };
      });
+     if (savedWeekId === selectedWeekId) {
+       setMeals((prev) => mergeUnique(prev));
+       writeCache(scopedKey('weekMeals', userKey), mergeUnique(meals));
+     }
+     setRangeMeals((prev) => mergeUnique(prev));
      toastSuccess('Meal logged!');
      return saved;
-   }, []);
+   }, [meals, timeZone, userKey]);
 
   const latestWeight = useMemo(() => {
     let best = null;
@@ -395,8 +476,13 @@ if (hydratedForRef.current === key) return;
       const d = new Date(m.loggedAt);
       return !Number.isNaN(d.getTime()) && dateKey(d, timeZone) === key;
     });
-    return Math.round(calcTotals(todays, goal).remaining);
+    return Math.round(calcTotals(todays, goal).remaining ?? 0);
   }, [meals, goal, timeZone]);
+   // Derived spinner flag: raw `loading` starts true and is cleared by
+   // hydration — which never runs when logged out or expired (its effect
+   // bails without a user). Deriving here instead of clearing in an effect
+   // guarantees Home can never sit on a spinner forever after sign-out.
+   const displayLoading = loading && (user != null || !authChecked);
    // Value to expose through TabShell context. Declared AFTER the handlers it
    // references — building it earlier reads the handler consts before
    // initialization (TDZ) and crashes the whole tab layout on first render.
@@ -406,7 +492,8 @@ if (hydratedForRef.current === key) return;
    const tabShellValue = useMemo(() => ({
      progressCache,
      goal,
-     loading,
+     user,
+     loading: displayLoading,
      error,
      meals,
      rangeMeals,
@@ -426,7 +513,7 @@ if (hydratedForRef.current === key) return;
      handleWeightSave,
      handleDeleteWeight,
    }), [
-     progressCache, goal, loading, error, meals, rangeMeals, weights, weightGoal,
+     progressCache, goal, user, displayLoading, error, meals, rangeMeals, weights, weightGoal,
      selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal,
      handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
    ]);

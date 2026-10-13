@@ -12,14 +12,16 @@ function groupMealsForDay(dayMeals) {
   const groups = new Map();
   const order = [];
   for (const m of dayMeals || []) {
-    const nameKey = String(m?.name ?? '').trim().toLowerCase();
-    if (!nameKey) continue;
+    const rawName = String(m?.name ?? '').trim();
+    // Nameless rows stay visible as "Unnamed" so their calories can never go
+    // invisible (previously skipped from the list but still counted in totals).
+    const nameKey = rawName ? rawName.toLowerCase() : 'unnamed';
     const typeKey = String(m?.mealType ?? '');
     const key = `${typeKey}|${nameKey}`;
     let g = groups.get(key);
     if (!g) {
       g = {
-        name: String(m?.name ?? '').trim(),
+        name: rawName || 'Unnamed',
         mealType: m?.mealType ?? 'Snack',
         kcal: 0,
         protein: 0,

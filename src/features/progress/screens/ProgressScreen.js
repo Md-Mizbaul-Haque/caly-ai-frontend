@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
+import { Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
 import { useIsFocused } from 'expo-router/react-navigation';
 import Card from '../../../shared/components/ui/Card';
 import Chip from '../../../shared/components/ui/Chip';
 import WeightChart from '../../../shared/components/WeightChart';
 import { ArrowRight, Flame, Pencil, Scale, Target, TrendingDown, TrendingUp } from '../../../shared/components/ui/icons';
 import { dateKey } from '../../../shared/utils/format';
+import { zonedParts } from '../../../shared/utils/mealDates';
+
+// Step whole calendar days in the user's zone (noon-anchored UTC so DST
+// transitions can't skip or double a day). Shared by streak + average.
+function shiftCalKey(key, delta, timeZone) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || '');
+  if (!m) return '';
+  return dateKey(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + delta, 12)), timeZone);
+}
 
 const RANGES = [
   { key: '90D', days: 90, label: 'last 90 days' },
@@ -33,6 +42,53 @@ function rangeStart(rangeKey) {
  * optimistic updates like logging a weight are visible immediately) and is
  * revalidated against /api/weights + /api/meals whenever the tab focuses.
  */
+
+// First-load placeholder (loading with no cached weights/meals yet).
+// Mirrors the real cards so content doesn't jump when data lands.
+// Plain Views + animate-pulse only; emergency fallback, never a refresh state.
+function ProgressSkeleton() {
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel="Loading your progress">
+      <Card style={{ marginBottom: 12 }}>
+        <View className="flex-row items-center">
+          <View className="flex-1">
+            <View className="w-20 h-3 rounded-md bg-[#F1E8E0] animate-pulse mb-2" />
+            <View className="w-28 h-8 rounded-md bg-[#F1E8E0] animate-pulse" />
+            <View className="w-24 h-6 rounded-full bg-[#F1E8E0] animate-pulse mt-2" />
+          </View>
+          <View className="w-24 h-10 rounded-full bg-[#F1E8E0] animate-pulse" />
+        </View>
+      </Card>
+      <Card style={{ marginBottom: 12 }}>
+        <View className="flex-row items-center mb-3">
+          <View className="w-10 h-10 rounded-full bg-[#F1E8E0] animate-pulse" />
+          <View className="w-24 h-6 rounded-md bg-[#F1E8E0] animate-pulse ml-3" />
+        </View>
+        <View className="flex-row justify-between px-1">
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} className="w-3 h-3 rounded-full bg-[#F1E8E0] animate-pulse" />
+          ))}
+        </View>
+      </Card>
+      <Card style={{ marginBottom: 12 }}>
+        <View className="w-32 h-4 rounded-md bg-[#F1E8E0] animate-pulse mb-3" />
+        <View className="flex-row mb-3">
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} className="w-14 h-7 rounded-full bg-[#F1E8E0] animate-pulse" style={{ marginRight: 8 }} />
+          ))}
+        </View>
+        <View className="h-[210px] rounded-2xl bg-[#F1E8E0] animate-pulse" />
+      </Card>
+      <Card>
+        <View className="flex-row items-center justify-between">
+          <View className="w-28 h-10 rounded-md bg-[#F1E8E0] animate-pulse" />
+          <View className="w-20 h-8 rounded-md bg-[#F1E8E0] animate-pulse" />
+        </View>
+      </Card>
+    </View>
+  );
+}
+
 export default function ProgressScreen({
   bottomOffset = 0,
   weights = [],
@@ -129,25 +185,21 @@ export default function ProgressScreen({
 
   const { streak, weekDays } = useMemo(() => {
     const logged = new Set(mergedMeals.map(m => dateKey(m.loggedAt, timeZone)).filter(Boolean));
-    // Step back whole calendar days in the user's zone (noon-anchored UTC
-    // so DST transitions can't skip or double a day).
-    const shiftKey = (key, delta) => {
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || '');
-      if (!m) return '';
-      return dateKey(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + delta, 12)), timeZone);
-    };
     let count = 0;
     let cursor = dateKey(new Date(), timeZone);
-    if (!logged.has(cursor)) cursor = shiftKey(cursor, -1);
+    if (!logged.has(cursor)) cursor = shiftCalKey(cursor, -1, timeZone);
     while (cursor && logged.has(cursor)) {
       count += 1;
-      cursor = shiftKey(cursor, -1);
+      cursor = shiftCalKey(cursor, -1, timeZone);
     }
+    // Week strip in the user's zone: weekday comes from zoned parts, not the
+    // device calendar, so travel across zones can't shift the Sunday anchor.
     const now = new Date();
-    const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const todayKey = dateKey(now, timeZone);
+    const sundayKey = shiftCalKey(todayKey, -zonedParts(now, timeZone).weekday, timeZone);
     const days = WEEKDAY_LABELS.map((label, i) => {
-      const day = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i);
-      return { label, logged: logged.has(dateKey(day, timeZone)), isToday: dateKey(day, timeZone) === dateKey(now, timeZone) };
+      const key = shiftCalKey(sundayKey, i, timeZone);
+      return { label, logged: logged.has(key), isToday: key === todayKey };
     });
     return { streak: count, weekDays: days };
   }, [mergedMeals, timeZone]);
@@ -165,10 +217,16 @@ const encouragement = (() => {
 
   const average = useMemo(() => {
     const now = new Date();
+    // Meal windows compare calendar-day keys in the user's zone (not device-
+    // local instants), so a 00:30 log in Dhaka stays on its Dhaka day even
+    // when the device sits in another zone.
+    const endKey = dateKey(now, timeZone);
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const spanDays = start ? Math.max(1, Math.round((end - start) / 86400000)) : 0;
+    const startKey = start ? shiftCalKey(endKey, -spanDays, timeZone) : null;
     const inRange = m => {
-      const t = new Date(m.loggedAt);
-      return !Number.isNaN(t.getTime()) && t <= end && (!start || t >= start);
+      const k = dateKey(m.loggedAt, timeZone);
+      return !!k && k <= endKey && (!startKey || k >= startKey);
     };
     const current = mergedMeals.filter(inRange);
     const kcalOf = list => list.reduce((sum, m) => sum + (Number(m.kcal) || 0), 0);
@@ -176,13 +234,12 @@ const encouragement = (() => {
     const curDays = daysOf(current);
     const avg = curDays ? Math.round(kcalOf(current) / curDays) : 0;
     let trend = null;
-    if (start) {
+    if (startKey) {
       // Compare against the equally long window just before this range.
-      const spanMs = end - start;
-      const prevStart = new Date(start.getTime() - spanMs);
+      const prevStartKey = shiftCalKey(startKey, -spanDays, timeZone);
       const prev = mergedMeals.filter(m => {
-        const t = new Date(m.loggedAt);
-        return t >= prevStart && t < start;
+        const k = dateKey(m.loggedAt, timeZone);
+        return !!k && k >= prevStartKey && k < startKey;
       });
       const prevDays = daysOf(prev);
       if (prevDays) {
@@ -215,12 +272,9 @@ const encouragement = (() => {
       <Text className="text-2xl font-bold text-ink mb-4">Progress</Text>
 
       {loading && !entries.length && !mergedMeals.length && (
-        <Card style={{ marginBottom: 12 }}>
-          <View className="items-center py-4">
-            <ActivityIndicator color="#f2470c" />
-            <Text className="text-xs text-muted-foreground mt-2">Loading your progress…</Text>
-          </View>
-        </Card>
+        <View style={{ marginBottom: 12 }}>
+          <ProgressSkeleton />
+        </View>
       )}
 
       {error && emptyAll && (

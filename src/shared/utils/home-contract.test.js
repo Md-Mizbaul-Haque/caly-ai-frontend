@@ -19,6 +19,7 @@ describe('home data contract (TabShell provider vs consumers)', () => {
   for (const key of [
     'progressCache',
     'goal',
+    'user',
     'loading',
     'error',
     'weights',
@@ -45,45 +46,75 @@ describe('home data contract (TabShell provider vs consumers)', () => {
 describe('calendar/day filtering', () => {
   it('DaySelector strip stays within fetched week (no out-of-range leak)', () => {
     const src = read('shared/components/dashboard/DaySelector.js');
-    // Old buildDays leaked Thu..Sat of adjacent weeks (today±3 clamped to
-    // week bounds) while fetchWeek only loads Sun..Sat -> empty days.
-    // Fixed version builds exactly the selected week's Sun..Sat.
+    // The strip renders exactly the Sun..Sat week containing the selection
+    // (the same week loadWeek fetches) — never a rolling today±N window.
     assert.doesNotMatch(src, /day\s*-\s*3|day\s*\+\s*3/, 'DaySelector still renders today±3 outside the fetched week');
+    assert.doesNotMatch(src, /buildWindow|extendWindow/, 'DaySelector must not render a rolling window outside the fetched week');
+    assert.match(src, /weekRange/, 'DaySelector must derive visible days from weekRange (the fetched week)');
     assert.match(src, /selected/, 'DaySelector must derive visible days from the selected date');
     assert.match(src, /timeZone/, 'DaySelector must render the week in the user zone');
   });
 
-  it('DaySelector snaps and re-centers like real-world apps', () => {
+  it('DaySelector is tap-only with week nav (no auto behavior)', () => {
     const src = read('shared/components/dashboard/DaySelector.js');
-    assert.match(src, /onMomentumScrollEnd/, 'swipe release must snap the nearest day to center');
-    assert.match(src, /nearestToCenter/, 'snap target must use the shared centering math');
-    assert.match(src, /centerTarget/, 'scrolling must use the shared centering math');
-    assert.match(src, /edgePadding/, 'edge days need symmetric padding to center');
-    assert.match(src, /onContentSizeChange/, 'must wait for measured content before centering (mount race)');
-    assert.match(src, /recenterSignal/, 'parent refresh must be able to trigger a re-center');
+    assert.doesNotMatch(src, /onMomentumScrollEnd/, 'swipe release must not auto-select (tap-only strip)');
+    assert.doesNotMatch(src, /nearestToCenter|centerTarget|edgePadding/, 'no auto-centering scroll math (tap-only strip)');
+    assert.doesNotMatch(src, /requestCenter|tryCenter|flushPending/, 'no programmatic auto-centering');
+    assert.doesNotMatch(src, /handleSnap/, 'no swipe-release auto-select handler');
+    assert.match(src, /onPress/, 'day pills must be tappable');
+    assert.match(src, /hitSlop/, 'day pills need generous touch targets');
+    assert.match(src, /Previous week/, 'strip needs a previous-week button');
+    assert.match(src, /Next week/, 'strip needs a next-week button');
+    assert.match(src, /onSelect/, 'taps and week nav must call onSelect explicitly');
   });
 
-  it('DaySelector browses without dead ends and never swipe-selects', () => {
+  it('DaySelector renders exactly the selected week (panels follow taps)', () => {
     const src = read('shared/components/dashboard/DaySelector.js');
-    assert.match(src, /buildWindow/, 'strip must render a rolling window of day-blocks');
-    assert.match(src, /extendWindow/, 'swiping to an edge must instantly reveal more blocks');
-    const snap = /function handleSnap\(\) \{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(snap, 'handleSnap must exist');
-    assert.doesNotMatch(snap[1], /onSelect/, 'swipe release must snap only — only taps change the selection');
-    assert.match(src, /needsSnap/, 'snap must skip sub-pixel corrections (programmatic echo loop)');
-    assert.match(src, /MAX_BLOCKS/, 'window growth must be capped (unbounded SVG pills jank low-end devices)');
-    assert.match(src, /rotated/, 'rotation must recompute padding and re-center');
+    assert.match(src, /weekRange\(/, 'strip must render the week containing the selection');
+    assert.match(src, /for \(let i = 0; i < 7/, 'strip must render exactly 7 day pills');
+    assert.doesNotMatch(src, /MAX_BLOCKS/, 'no unbounded window growth (fixed 7 pills)');
+    assert.doesNotMatch(src, /retainedStrip/, 'no retained scroll state across unmounts (fixed week rebuilds)');
+    assert.match(src, /totalsByDate\[key\]/, 'each pill must read its own day total (no cross-day leak)');
   });
 
-  it('DaySelector retains strip state across tab-switch unmounts (no blank flash)', () => {
+  it('home strip rings cover past days (trailing horizon merged, title follows selection)', () => {
+    const dash = read('features/dashboard/screens/DashboardScreen.js');
+    assert.match(dash, /loadRangeMeals\?*\.\(14\)/, 'dashboard must prefetch the trailing 14 days for past-day rings');
+    assert.match(dash, /rangeMeals/, 'totalsByDate must merge the horizon so past pills paint real rings');
+    assert.match(dash, /byId/, 'week/horizon overlap must dedupe by id (no double-count)');
+    assert.doesNotMatch(dash, /\{"Today's Meals"\}/, 'meal list title must follow the selected day, not hard-code today');
+  });
+
+  it('home shows a whole-screen skeleton while first loading (no spinner)', () => {
+    const dash = read('features/dashboard/screens/DashboardScreen.js');
+    assert.match(dash, /DashboardSkeleton/, 'dashboard must render a skeleton while first loading');
+    assert.match(dash, /showSkeleton/, 'skeleton must gate on first load (loading with no meals)');
+    assert.match(dash, /animate-pulse/, 'skeleton placeholders must pulse');
+    assert.match(dash, /Loading your week/, 'skeleton must keep an accessible loading label');
+    assert.doesNotMatch(dash, /ActivityIndicator/, 'spinner must not compete with the skeleton');
+  });
+
+  it('progress shows a skeleton while first loading (no spinner)', () => {
+    const src = read('features/progress/screens/ProgressScreen.js');
+    assert.match(src, /ProgressSkeleton/, 'progress must render a skeleton while first loading');
+    assert.match(src, /loading && !entries\.length && !mergedMeals\.length/, 'skeleton must keep the first-load gate (cached data paints instantly)');
+    assert.match(src, /animate-pulse/, 'skeleton placeholders must pulse');
+    assert.match(src, /Loading your progress/, 'skeleton must keep an accessible loading label');
+    assert.doesNotMatch(src, /ActivityIndicator/, 'spinner must not compete with the skeleton');
+  });
+
+  it('meals suggestions show a skeleton on cache miss (search spinners stay)', () => {
+    const src = read('features/meals/screens/MealsScreen.js');
+    assert.match(src, /SuggestionSkeletons/, 'suggestions row must skeletonize on cache miss');
+    assert.match(src, /suggestionsLoading \? <SuggestionSkeletons \/>/, 'skeleton must keep the exact suggestionsLoading gate');
+    assert.match(src, /Loading suggestions/, 'skeleton must keep an accessible loading label');
+    assert.match(src, /\{searching && <ActivityIndicator/, 'typing search keeps its inline spinner (no flicker)');
+  });
+
+  it('DaySelector rebuilds from props every mount (no stale retained strip)', () => {
     const src = read('shared/components/dashboard/DaySelector.js');
-    assert.match(src, /retainedStrip/, 'DaySelector must retain window/pad/scroll across unmounts');
-    assert.match(src, /windowDaysRef/, 'unmount save must persist the latest window, not the mount closure');
-    // Focus return is a state restore, not a user action — animating it
-    // reads as a re-render flash.
-    const focusFx = /wasFocused[\s\S]*?requestCenter\(selectedKeyRef\.current,\s*(true|false)\)/.exec(src);
-    assert.ok(focusFx, 'focus-return re-center must exist');
-    assert.equal(focusFx[1], 'false', 'tab-return re-center must not animate');
+    assert.doesNotMatch(src, /retainedStrip/, 'DaySelector must not retain window/pad/scroll across unmounts');
+    assert.match(src, /useMemo/, 'week pills must derive from props (selected + zone), not retained state');
   });
 
   it('selecting another week triggers a fetch for that week', () => {
@@ -92,6 +123,41 @@ describe('calendar/day filtering', () => {
     const supportsRef = /loadWeek\s*=\s*useCallback\s*\(\s*async\s*\(\s*\{[^}]*\}?\s*=?\s*\{?[^)]*reference|loadWeek\([^)]*reference|weekRange\(selected/i.test(layout)
       || /fetchMeals\(\s*from/.test(layout);
     assert.equal(supportsRef, true, 'loadWeek cannot fetch an arbitrary selected week');
+  });
+
+  it('hydration seeds the week cache under the restored week (instant landing)', () => {
+    const layout = read('app/(tabs)/_layout.js');
+    assert.doesNotMatch(layout, /weekRange\(new Date\(\)/, 'seed must not assume the cached week is the current week');
+    assert.match(layout, /restoredDate/, 'hydration must parse the restored selected date before seeding');
+    assert.match(layout, /weekRange\(restoredDate/, 'seed week must derive from the restored selection so landing paints instantly');
+  });
+
+  it('week cache is per-week (fresh week A never satisfies week B)', () => {
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(layout, /weekCache/, 'no per-week cache: week navigation reuses one global freshness check');
+    assert.match(layout, /weekFresh|weekCache\[weekId\]/, 'freshness must be checked per requested weekId');
+  });
+
+  it('saved meals merge id-deduped into their own week (no double-count)', () => {
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(layout, /mergeUnique/, 'handleSave must dedupe by id so double-taps never double-count');
+    assert.match(layout, /savedWeekId/, 'handleSave must merge into the saved meal\u2019s week, not blindly into the visible one');
+  });
+
+  it('no phantom 2000 goal: unset goal stays null with an explicit setup prompt', () => {
+    const route = read('app/(tabs)/dashboard.js');
+    const dash = read('features/dashboard/screens/DashboardScreen.js');
+    const session = read('features/auth/session.js');
+    assert.doesNotMatch(route, /\?\? 2000/, 'dashboard route fabricates 2000 for a missing goal');
+    assert.doesNotMatch(dash, /s\.goal \?\? 2000/, 'DashboardScreen fabricates 2000 for a missing goal');
+    assert.match(dash, /Set your calorie goal/, 'missing goal must render an explicit setup prompt');
+    assert.match(session, /useState\(null\)/, 'goal must start null, not 2000');
+  });
+
+  it('dashboard macros prefer the plan split over fixed 25/50/25', () => {
+    const dash = read('features/dashboard/screens/DashboardScreen.js');
+    assert.match(dash, /calcPlan/, 'dashboard must derive plan macros (backend split wins)');
+    assert.match(dash, /missingOnboardingFields/, 'plan macros need the completeness gate with 25/50/25 fallback');
   });
 });
 
@@ -123,5 +189,25 @@ describe('per-user + write paths', () => {
     const mealsApi = read('shared/lib/mealsApi.js');
     const stamps = /loggedAt/.test(layout) || /loggedAt/.test(mealsApi);
     assert.equal(stamps, true, 'no loggedAt stamped on create -> server Date.now decides the day');
+  });
+
+  it('meal delete is safe: guarded, id-less rows hide trash, 404 stays deleted', () => {
+    const row = read('shared/components/dashboard/MealRow.js');
+    assert.match(row, /deleting/, 'trash needs an in-flight guard (double-tap 404s)');
+    assert.match(row, /meal\?\.id/, 'trash must hide when the row has no id');
+    const layout = read('app/(tabs)/_layout.js');
+    const delIx = layout.indexOf('const handleMealDeleted');
+    assert.ok(delIx >= 0, 'handleMealDeleted must exist');
+    const delBody = layout.slice(delIx, layout.indexOf('}, [meals, weekCache, rangeMeals]', delIx));
+    assert.match(delBody, /status === 404/, 'delete must treat 404 as already-gone, not roll back');
+    assert.doesNotMatch(delBody, /throw e/, 'delete must not rethrow to the UI (redbox)');
+  });
+
+  it('day-strip lab renders the same DaySelector module as home (no fork)', () => {
+    const lab = read('app/day-strip-lab.js');
+    assert.match(lab, /shared\/components\/dashboard\/DaySelector/, 'lab must import the real DaySelector, not a copy');
+    assert.match(lab, /__DEV__/, 'lab must be dev-gated (never a production screen)');
+    const rootLayout = read('app/_layout.tsx');
+    assert.match(rootLayout, /day-strip-lab/, 'lab route must be reachable for authed users (allowedRoutes)');
   });
 });

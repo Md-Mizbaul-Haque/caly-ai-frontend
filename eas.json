@@ -16,7 +16,8 @@
     "production": {
       "android": {
         "buildType": "apk"
-      }
+      },
+      "uploadSourceMaps": true
     }
   },
   "submit": {

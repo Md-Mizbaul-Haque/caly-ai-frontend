@@ -150,6 +150,27 @@ function CategoryTile({ tile, size = 64, onPress }) {
   );
 }
 
+// First-load placeholder for the suggestions row (cache miss only — cached
+// rows paint instantly and keep the same gate). FoodCard-shaped boxes so the
+// layout doesn't jump when data lands. Plain Views + animate-pulse only.
+function SuggestionSkeletons() {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading suggestions"
+      className="flex-row -mx-4 px-4"
+    >
+      {[0, 1, 2, 3].map((i) => (
+        <View key={i} className="w-28 mr-3">
+          <View className="w-28 h-24 rounded-2xl bg-[#F1E8E0] animate-pulse mb-1.5" />
+          <View className="w-20 h-3 rounded-md bg-[#F1E8E0] animate-pulse" />
+          <View className="w-14 h-3 rounded-md bg-[#F1E8E0] animate-pulse mt-1" />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
   const [mealType, setMealType] = useState(() => defaultMealType(new Date().getHours()));
   const [query, setQuery] = useState('');
@@ -380,7 +401,7 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
             )}
 
             <SectionHeader title={`Suggestions for ${mealLower}`} />
-            {suggestionsLoading ? <ActivityIndicator className="my-2" /> : (
+            {suggestionsLoading ? <SuggestionSkeletons /> : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
                 {(suggestions.length ? suggestions : (FALLBACK_SUGGESTIONS[mealType] || [])).map((item) => (
                   <FoodCard
