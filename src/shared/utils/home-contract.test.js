@@ -111,6 +111,37 @@ describe('calendar/day filtering', () => {
     assert.match(src, /\{searching && <ActivityIndicator/, 'typing search keeps its inline spinner (no flicker)');
   });
 
+  it('meals shows a first-load skeleton while hydration fetches (no empty flash)', () => {
+    const src = read('features/meals/screens/MealsScreen.js');
+    assert.match(src, /MealsFirstLoadSkeleton/, 'meals must render a first-load skeleton while hydration fetches');
+    assert.match(src, /showFirstLoad/, 'skeleton must gate on first load (loading with no data)');
+    assert.match(src, /Loading meals/, 'skeleton must keep an accessible loading label');
+    assert.match(src, /animate-pulse/, 'skeleton placeholders must pulse');
+    assert.match(src, /\{searching && <ActivityIndicator/, 'typing search keeps its inline spinner (no flicker)');
+  });
+
+  it('meals route passes loading so the first-load gate can fire', () => {
+    const route = read('app/(tabs)/meals.js');
+    assert.match(route, /loading=\{s\.loading/, 'meals route must pass tab-shell loading to MealsScreen');
+  });
+
+  it('progress focus revalidates weights only when stale (no refetch storm)', () => {
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(layout, /refreshWeightsIfStale/, 'shell must expose a stale-guarded weights refresher');
+    assert.match(layout, /weightsRefreshedAt/, 'guard needs a last-fetch timestamp shared with hydration');
+    const dash = read('features/progress/screens/ProgressScreen.js');
+    assert.match(dash, /refreshWeightsIfStale/, 'progress focus must use the stale-guarded refresher');
+    const route = read('app/(tabs)/history.js');
+    assert.match(route, /refreshWeightsIfStale/, 'history route must pass the guarded refresher through');
+  });
+
+  it('meals never re-prefetches the same food image', () => {
+    const src = read('features/meals/screens/MealsScreen.js');
+    assert.match(src, /prefetchedUrlsRef/, 'prefetch needs a ref of already-prefetched URLs');
+  });
+
+
+
   it('DaySelector rebuilds from props every mount (no stale retained strip)', () => {
     const src = read('shared/components/dashboard/DaySelector.js');
     assert.doesNotMatch(src, /retainedStrip/, 'DaySelector must not retain window/pad/scroll across unmounts');

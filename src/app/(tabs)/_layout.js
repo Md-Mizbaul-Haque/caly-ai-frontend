@@ -23,6 +23,9 @@ const SPLASH_MIN_MS = 450;
 // Freshness window for one cached calendar week. Module scope (not state)
 // so week-scoped fetchers can depend on it without re-creating.
 const WEEK_CACHE_TTL_MS = 5 * 60 * 1000;
+// Background weights refreshes (focus effects) skip when a fetch landed
+// within this window. Module scope so the stable callback needs no dep.
+const WEIGHTS_REFRESH_TTL_MS = 5 * 60 * 1000;
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -95,9 +98,12 @@ export default function TabsLayout() {
   useEffect(() => { timeZoneRef.current = timeZone; }, [timeZone]);
   const userKeyRef = useRef(userKey);
   useEffect(() => { userKeyRef.current = userKey; }, [userKey]);
-  const hydratedForRef = useRef(null);
-  const loadWeekRequestRef = useRef(null);
-  const loadWeekPromiseRef = useRef(null);
+   const hydratedForRef = useRef(null);
+   const loadWeekRequestRef = useRef(null);
+   const loadWeekPromiseRef = useRef(null);
+   // Last weights/goal fetch (hydration, focus, or explicit refresh). Focus
+   // effects skip when recent so tab visits don't refetch every time.
+   const weightsRefreshedAt = useRef(0);
 
     const loadWeek = useCallback(async ({ silent, reference } = {}) => {
      // Stable identity: reads UI state via refs, writes via functional
@@ -192,7 +198,7 @@ export default function TabsLayout() {
      setRangeMeals(data);
    }, []);
 
-   const fetchWeightsAndGoal = useCallback(async () => {
+    const fetchWeightsAndGoal = useCallback(async () => {
     if (!user) return;
     try {
       const [w, g] = await Promise.all([fetchWeights(), fetchWeightGoal()]);
@@ -200,11 +206,22 @@ export default function TabsLayout() {
       setWeightGoalState(g);
       writeCache(scopedKey('weights', userKey), w);
       writeCache(scopedKey('weightGoal', userKey), g);
+      weightsRefreshedAt.current = Date.now();
     } catch {
       // Offline / 403 (unverified) / server errors: keep cached data as-is
       // instead of an unhandled rejection that leaves state stale.
     }
   }, [user, userKey]);
+
+  // Background refresher for focus effects: skips when a fetch landed
+  // recently (hydration or a prior focus) so tab visits don't fire 2 GETs
+  // every time. Explicit refreshes (pull-to-refresh, retry) keep calling
+  // fetchWeightsAndGoal directly and always hit the network.
+  const refreshWeightsIfStale = useCallback(async () => {
+    if (!user) return;
+    if (Date.now() - weightsRefreshedAt.current < WEIGHTS_REFRESH_TTL_MS) return;
+    await fetchWeightsAndGoal();
+  }, [user, fetchWeightsAndGoal]);
 
    const rangePersistedRef = useRef(null);
 
@@ -251,6 +268,7 @@ if (hydratedForRef.current === key) return;
      setError(null);
      setLoading(true);
      rangeFromRef.current = null;
+     weightsRefreshedAt.current = 0;
      let alive = true;
       (async () => {
         // Read cache with timestamps to check freshness. Stale-while-revalidate:
@@ -356,6 +374,10 @@ if (hydratedForRef.current === key) return;
         }
         if (weightsStale || weightGoalStale) {
           await fetchWeightsAndGoal().catch(() => {});
+        } else if (weightsResult) {
+          // Fresh cache and no fetch: seed the guard so the first focus
+          // doesn't duplicate a request hydration just proved unnecessary.
+          weightsRefreshedAt.current = weightsResult.fetchedAt;
         }
         if (alive && hydratedForRef.current === key) setLoading(false);
         // Guarantee: any unexpected throw above (e.g. corrupt cache date
@@ -510,6 +532,7 @@ if (hydratedForRef.current === key) return;
      loadWeek,
      loadRangeMeals,
      refreshWeights: fetchWeightsAndGoal,
+     refreshWeightsIfStale,
      setSheetOpen,
      setLogWeightOpen,
      deleteMeal: handleMealDeleted,
@@ -518,7 +541,7 @@ if (hydratedForRef.current === key) return;
      handleDeleteWeight,
    }), [
      progressCache, goal, user, displayLoading, error, meals, rangeMeals, weights, weightGoal,
-     selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal,
+      selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal, refreshWeightsIfStale,
      handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
    ]);
 
@@ -560,7 +583,6 @@ if (hydratedForRef.current === key) return;
         />
         {sheetOpen && (
           <QuickLogSheet
-            bottomOffset={navHeight}
             onClose={() => setSheetOpen(false)}
             remaining={remainingToday}
             onLogFood={() => {

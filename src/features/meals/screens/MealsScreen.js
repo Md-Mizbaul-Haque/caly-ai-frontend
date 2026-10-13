@@ -171,7 +171,29 @@ function SuggestionSkeletons() {
   );
 }
 
-export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
+// First-load placeholder for the previous-logs row while tab-shell
+// hydration is still fetching (loading with no data yet). Cached logs paint
+// instantly; this only covers the emergent empty window so the row doesn't
+// flash "No logs yet" before real data lands. Plain Views + animate-pulse.
+function MealsFirstLoadSkeleton() {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading meals"
+      className="flex-row -mx-4 px-4"
+    >
+      {[0, 1, 2, 3].map((i) => (
+        <View key={i} className="w-28 mr-3">
+          <View className="w-28 h-24 rounded-2xl bg-[#F1E8E0] animate-pulse mb-1.5" />
+          <View className="w-20 h-3 rounded-md bg-[#F1E8E0] animate-pulse" />
+          <View className="w-14 h-3 rounded-md bg-[#F1E8E0] animate-pulse mt-1" />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export default function MealsScreen({ meals = [], loading = false, onSave, onOpenQuickLog }) {
   const [mealType, setMealType] = useState(() => defaultMealType(new Date().getHours()));
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -202,8 +224,18 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
     return (filtered.length ? filtered : recents).slice(0, 8);
   }, [meals, mealLower]);
 
+  // Emergent first load only: hydration still fetching and nothing cached to
+  // paint. Cached logs paint instantly and never see the skeleton.
+  const showFirstLoad = loading && previousLogs.length === 0 && !showResults;
+
+  // URLs already warmed so repeat renders (e.g. after a refetch returns
+  // the same rows) never re-prefetch the same image.
+  const prefetchedUrlsRef = useRef(null);
   useEffect(() => {
-    prefetchFoodImages(previousLogs);
+    const seen = prefetchedUrlsRef.current ?? (prefetchedUrlsRef.current = new Set());
+    const fresh = previousLogs.filter((f) => f?.imageUrl && !seen.has(f.imageUrl));
+    fresh.forEach((f) => seen.add(f.imageUrl));
+    prefetchFoodImages(fresh);
   }, [previousLogs]);
 
   function selectMealType(t) {
@@ -385,7 +417,9 @@ export default function MealsScreen({ meals = [], onSave, onOpenQuickLog }) {
         ) : (
           <View>
             <SectionHeader title={`Previous ${mealLower} logs`} />
-            {previousLogs.length === 0 ? (
+            {showFirstLoad ? (
+              <MealsFirstLoadSkeleton />
+            ) : previousLogs.length === 0 ? (
               <Text className="text-muted-foreground text-sm">No {mealLower} logs yet — log your first one below.</Text>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">

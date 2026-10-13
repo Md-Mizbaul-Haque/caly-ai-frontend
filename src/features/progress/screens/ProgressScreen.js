@@ -102,6 +102,7 @@ export default function ProgressScreen({
   onEditGoal,
   onRetry,
   onRefreshWeights,
+  refreshWeightsIfStale,
   onLoadRangeMeals,
   onDeleteWeight,
 }) {
@@ -109,14 +110,16 @@ export default function ProgressScreen({
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused();
 
-  // Revalidate on every focus: weights/goal + the year of meals this screen
-  // needs for streak and daily-average. Fire-and-forget — cached data paints
-  // meanwhile, failures just leave the cache as-is.
+  // Revalidate on every focus: weights/goal (skipped when freshly fetched)
+  // + the year of meals this screen needs for streak and daily-average.
+  // Fire-and-forget — cached data paints meanwhile, failures just leave
+  // the cache as-is. Pull-to-refresh below still always refetches.
   useEffect(() => {
     if (!isFocused) return;
-    onRefreshWeights?.();
+    if (refreshWeightsIfStale) refreshWeightsIfStale();
+    else onRefreshWeights?.();
     onLoadRangeMeals?.(365)?.catch?.(() => {});
-  }, [isFocused, onRefreshWeights, onLoadRangeMeals]);
+  }, [isFocused, onRefreshWeights, refreshWeightsIfStale, onLoadRangeMeals]);
 
   async function handleRefresh() {
     setRefreshing(true);
