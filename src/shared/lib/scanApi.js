@@ -51,11 +51,13 @@ export async function scanImage(imageUri, { signal } = {}) {
   // boundary; a hardcoded 'multipart/form-data' breaks every native upload.
   // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
   const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000, signal });
+  
   let res;
   try {
     res = await fetchWithRetry(fetchFn, 2, 1000, signal);
   } catch (error) {
-    // If we exhausted retries, throw the last error
+    // Log BEFORE throwing — anything after throw never runs.
+    console.warn('[scanApi] scanImage retries exhausted:', error?.message || error);
     throw error;
   }
   const data = await res.json().catch(() => ({}));
@@ -67,7 +69,9 @@ export async function scanImage(imageUri, { signal } = {}) {
       };
     }
     if (res.status === 422) {
-      throw new Error('No food detected in this photo — try again with the meal filling the frame.');
+      // No food in frame: not a failure — the result sheet opens with
+      // zeros and the photo so the user can enter estimates.
+      return { items: [], noFood: true };
     }
     // Map known backend error messages to user-friendly ones
     let errorMessage = data.error || `scan failed: ${res.status}`;
@@ -76,7 +80,20 @@ export async function scanImage(imageUri, { signal } = {}) {
     } else if (errorMessage && errorMessage.includes('Cannot read')) {
       errorMessage = 'Unable to process the image. Please ensure the image is clear and try again.';
     }
-    throw new Error(errorMessage);
+    const httpErr = new Error(errorMessage);
+    httpErr.status = res.status;
+    httpErr.code = res.status === 401 ? 'UNAUTHORIZED' : 'HTTP_4xx';
+    throw httpErr;
+  }
+  // A 200 without an items array (proxy error page, wrong route) must be
+  // diagnosable — never paint an empty success. The server echoes our
+  // X-Request-Id, which doubles as the Ref #.
+  if (!data || !Array.isArray(data.items)) {
+    const bad = new Error(
+      `Unexpected server response (Ref #${(res.headers && res.headers.get('X-Request-Id')) || 'n/a'}). Please retry.`
+    );
+    bad.code = 'BAD_RESPONSE';
+    throw bad;
   }
   return data; // { items }
 }
@@ -118,7 +135,10 @@ export async function lookupBarcode(code, { signal } = {}) {
     } else if (errorMessage && errorMessage.includes('Cannot read')) {
       errorMessage = 'Unable to process the image. Please ensure the image is clear and try again.';
     }
-    throw new Error(errorMessage);
+    const httpErr = new Error(errorMessage);
+    httpErr.status = res.status;
+    httpErr.code = res.status === 401 ? 'UNAUTHORIZED' : res.status >= 500 ? 'HTTP_5xx' : 'HTTP_4xx';
+    throw httpErr;
   }
   return data; // { item }
 }

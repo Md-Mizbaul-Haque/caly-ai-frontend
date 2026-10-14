@@ -173,4 +173,17 @@ describe('scan flow robustness', () => {
     assert.match(api, /UNREACHABLE/, 'non-timeout network failures must keep the UNREACHABLE code');
     assert.match(api, /\.timeout = true/, 'timeout errors must carry timeout=true for the wake-up dialog');
   });
+
+  it('scanImage logs retry-exhaustion instead of dead code after throw', () => {
+    const scanApi = read('shared/lib/scanApi.js');
+    assert.doesNotMatch(scanApi, /throw error;\s*\n\s*console\.log/, 'console.log after throw never runs');
+  });
+
+  it('barcode failures carry status and code for dialog branching', () => {
+    const scanApi = read('shared/lib/scanApi.js');
+    const fn = /export async function lookupBarcode[\s\S]*?\n}/.exec(scanApi);
+    assert.ok(fn, 'lookupBarcode missing');
+    assert.match(fn[0], /\.status\s*=/, 'barcode error must carry HTTP status');
+    assert.match(fn[0], /\.code\s*=/, 'barcode error must carry a taxonomy code');
+  });
 });
