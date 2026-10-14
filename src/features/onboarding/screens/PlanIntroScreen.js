@@ -2,9 +2,9 @@ import { Text, View } from 'react-native';
 import { Target } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 
-export default function PlanIntroScreen({ onNext, onBack }) {
+export default function PlanIntroScreen({ onNext }) {
   return (
-    <AuthScaffold title="Let's create your plan" subtitle="Your personalized health journey" onBack={onBack}
+    <AuthScaffold title="Let's create your plan" subtitle="Your personalized health journey"
       ctaLabel="Let's Begin" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
         <View style={{ width: 96, height: 96, borderRadius: 28, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>

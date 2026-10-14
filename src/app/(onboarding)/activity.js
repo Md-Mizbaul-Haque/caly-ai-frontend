@@ -7,7 +7,6 @@ export default function ActivityRoute() {
   return (
     <ActivityScreen
       onNext={() => router.push(nextPath('activity'))}
-      onBack={() => router.back()}
     />
   );
 }

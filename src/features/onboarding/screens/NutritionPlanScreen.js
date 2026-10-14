@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Check, ChevronLeft } from '../../../shared/components/ui/icons';
+import { ScrollView, Text, View } from 'react-native';
+import { Check } from '../../../shared/components/ui/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
 import MacroDots from '../../../shared/components/auth/MacroDots';
@@ -35,13 +35,11 @@ function Row({ label, value }) {
   );
 }
 
-export default function NutritionPlanScreen({ onNext, onBack }) {
+export default function NutritionPlanScreen({ onNext }) {
   const insets = useSafeAreaInsets();
   const { state } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  // Plain-object style only (see BottomCTA): pressed state tracked manually.
-  const [backPressed, setBackPressed] = useState(false);
   // Completeness gate: plan renders/saves ONLY when every field is present.
   // normalizeBirthDate accepts Date (local flow) or ISO string (hydrated).
   const birthDate = normalizeBirthDate(state.birthDate);
@@ -64,7 +62,7 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
   async function finish() {
     if (!complete || !birthDate) {
       setFailed(true);
-      toastError('Finish your details first', `Missing: ${missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Go back to complete each step.`);
+      toastError('Finish your details first', `Missing: ${missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device's back button to complete each step.`);
       return;
     }
     setBusy(true);
@@ -98,13 +96,6 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
   return (
     <View className="flex-1 bg-white">
       <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 16 }}>
-        <Pressable onPress={onBack} testID="plan-back" accessibilityRole="button" accessibilityLabel="Go back"
-          onPressIn={() => setBackPressed(true)}
-          onPressOut={() => setBackPressed(false)}
-          className="w-12 h-12 rounded-2xl border border-[#F1E8E0] bg-white items-center justify-center mb-4"
-          style={{ opacity: backPressed ? 0.6 : 1 }}>
-          <ChevronLeft size={26} color="#1A1A1A" />
-        </Pressable>
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-[26px] font-extrabold text-[#1A1A1A]">Your Nutrition Plan</Text>
           <View className="w-9 h-9 rounded-full border-2 border-[#f2470c] bg-[#FFF1E9] items-center justify-center">
@@ -114,7 +105,7 @@ export default function NutritionPlanScreen({ onNext, onBack }) {
         {!complete && (
           <View className="bg-[#FFF1E9] rounded-3xl p-5 mb-5 border border-[#f2470c]">
             <Text className="text-[17px] font-semibold text-[#1A1A1A] mb-1">A few details are still missing</Text>
-            <Text className="text-[15px] text-[#8A8A8A]">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use the back button to complete each step — your plan is created only after all information is received.</Text>
+            <Text className="text-[15px] text-[#8A8A8A]">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device's back button to complete each step — your plan is created only after all information is received.</Text>
           </View>
         )}
         <Text className="text-[22px] font-bold text-[#1A1A1A] mb-2">Your Goal</Text>

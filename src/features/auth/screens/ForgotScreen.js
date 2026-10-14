@@ -8,7 +8,7 @@ import { toastSuccess, toastError } from '../../../shared/utils/toast';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ForgotScreen({ onBack, onDone }) {
+export default function ForgotScreen({ onDone }) {
   const [phase, setPhase] = useState('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -44,7 +44,7 @@ export default function ForgotScreen({ onBack, onDone }) {
   if (phase === 'email') {
     const valid = EMAIL_RE.test(email.trim());
     return (
-      <AuthScaffold title="Reset your password" subtitle="Enter your account email and we'll send a reset code." onBack={onBack}
+      <AuthScaffold title="Reset your password" subtitle="Enter your account email and we'll send a reset code."
         ctaLabel={busy ? 'Sending…' : 'Send reset code'} ctaDisabled={!valid || busy} onCta={send}>
         <AuthInput value={email} onChangeText={setEmail} placeholder="Enter your email" keyboardType="email-address" testID="forgot-email" />
       </AuthScaffold>
@@ -53,7 +53,7 @@ export default function ForgotScreen({ onBack, onDone }) {
   const clean = sanitizeCode(code);
   const valid = clean.length === 6 && password.length >= 8;
   return (
-    <AuthScaffold title="Enter your reset code" subtitle={`Code sent to ${email.trim()}`} onBack={onBack}
+    <AuthScaffold title="Enter your reset code" subtitle={`Code sent to ${email.trim()}`}
       ctaLabel={busy ? 'Resetting…' : 'Reset password'} ctaDisabled={!valid || busy} onCta={reset}>
       <AuthInput value={code} onChangeText={(t) => setCode(sanitizeCode(t))} placeholder="------" keyboardType="numeric" testID="forgot-code" />
       <PasswordInput value={password} onChangeText={setPassword} placeholder="New password (8+ chars)" testID="forgot-password" />

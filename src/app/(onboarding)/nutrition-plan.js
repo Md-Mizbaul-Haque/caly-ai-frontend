@@ -7,7 +7,6 @@ export default function NutritionPlanRoute() {
   return (
     <NutritionPlanScreen
       onNext={() => router.push(nextPath('nutritionPlan'))}
-      onBack={() => router.back()}
     />
   );
 }

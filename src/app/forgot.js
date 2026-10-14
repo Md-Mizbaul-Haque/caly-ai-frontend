@@ -7,7 +7,6 @@ export default function ForgotRoute() {
   const { setStageEmail } = useSession();
   return (
     <ForgotScreen
-      onBack={() => router.replace('/login')}
       onDone={(em) => { setStageEmail(em); router.replace('/login'); }}
     />
   );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ScrollView, View, Text, Image, TextInput, Pressable, BackHandler } from 'react-native';
+import { ScrollView, View, Text, Image, TextInput, Pressable, BackHandler, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
+import { Flame, Beef, Wheat, Droplet, X } from '../../../shared/components/ui/icons';
 import { uploadMealImage } from '../../../shared/lib/scanApi';
 import Card from '../../../shared/components/ui/Card';
 import PrimaryButton from '../../../shared/components/ui/Button';
@@ -123,15 +123,29 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 40 + Math.max(insets.bottom, 0) }}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mb-4 -mx-4 px-4"
-      >
-        {TYPES.map(t => (
-          <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
-        ))}
-      </ScrollView>
+      <View className="flex-row items-center mb-4">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-1 -mx-4 px-4"
+        >
+          {TYPES.map(t => (
+            <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
+          ))}
+        </ScrollView>
+        {/* iOS has no hardware back button, so the overlay gets a close
+            affordance there only — Android uses the device back button. */}
+        {Platform.OS === 'ios' && (
+          <Pressable
+            onPress={onClose ?? onDone}
+            accessibilityLabel="Close"
+            hitSlop={8}
+            className="ml-2 w-10 h-10 rounded-full bg-black/5 items-center justify-center"
+          >
+            <X size={20} color="#1A1A1A" />
+          </Pressable>
+        )}
+      </View>
 
       {result.placeholder && (
         <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">

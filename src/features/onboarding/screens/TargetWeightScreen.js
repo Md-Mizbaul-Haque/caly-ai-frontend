@@ -10,7 +10,7 @@ import { goalLabel, lbToKg, snapWeight, snapWeightKg } from '../../../shared/uti
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-export default function TargetWeightScreen({ onNext, onBack }) {
+export default function TargetWeightScreen({ onNext }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -36,7 +36,7 @@ export default function TargetWeightScreen({ onNext, onBack }) {
   }), [state.targetWeightKg, update]);
   return (
     <AuthScaffold title="What is your target weight?" subtitle="This helps us determine your nutrition goals."
-      onBack={onBack} ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
+      ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
       onCta={async () => { if (busy) return; setBusy(true); try { const ok = await savePartial({ targetWeightKg: round1(toKg(shownTarget)) }); if (ok) onNext(); } finally { setBusy(false); } }}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={handleUnit} testID="target-unit" compact={compact} />
       <Text className={`text-center font-extrabold text-[#1A1A1A] ${compact ? 'text-5xl' : 'text-[64px]'}`}>{display}</Text>

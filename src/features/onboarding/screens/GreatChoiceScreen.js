@@ -19,7 +19,7 @@ const COPY = {
   },
 };
 
-export default function GreatChoiceScreen({ onNext, onBack }) {
+export default function GreatChoiceScreen({ onNext }) {
   const { state } = useOnboarding();
   // Label from the same snapped grid values the rulers display, so the copy
   // can never contradict the numbers the user just saw.
@@ -29,7 +29,7 @@ export default function GreatChoiceScreen({ onNext, onBack }) {
   );
   const copy = COPY[label];
   return (
-    <AuthScaffold title="Great choice!" titleColor="#f2470c" onBack={onBack} ctaLabel="See your plan" onCta={onNext}>
+    <AuthScaffold title="Great choice!" titleColor="#f2470c" ctaLabel="See your plan" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
           <PartyPopper size={44} color="#f2470c" />

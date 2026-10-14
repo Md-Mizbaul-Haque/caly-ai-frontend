@@ -15,7 +15,7 @@ export default function Index() {
     return (
       <SafeAreaView edges={['top']} className="flex-1 bg-white">
         <OnboardingProvider email="dev@preview.local">
-          <GenderScreen onNext={() => {}} onBack={() => {}} />
+          <GenderScreen onNext={() => {}} />
         </OnboardingProvider>
         <ThemedToast />
       </SafeAreaView>

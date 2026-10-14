@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { BackHandler, View } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import BottomNav from '../../shared/components/ui/BottomNav';
 import QuickLogSheet from '../../shared/components/ui/QuickLogSheet';
@@ -358,27 +358,31 @@ if (hydratedForRef.current === key) return;
          rangeFromRef.current = null;
        }
 
-        // Trigger background revalidation for stale data
+        // Trigger background revalidation for stale data in parallel:
+        // week + weights used to await sequentially (sum of both roundtrips
+        // blocked first paint on cold start). Promise.all cuts it to the max.
         // Use silent:true to avoid showing loading spinner for background updates.
         // Failures keep painted (possibly stale) cache; when nothing was
         // cached at all, surface the error and clear loading so the UI shows
         // the retry card instead of spinning forever offline.
-        if (weekMealsStale) {
-          try {
-            await loadWeek({ silent: true });
-          } catch (e) {
-            if (alive && hydratedForRef.current === key && !weekMealsResult?.data) {
-              setError(e?.message || 'Could not load meals');
-            }
-          }
-        }
-        if (weightsStale || weightGoalStale) {
-          await fetchWeightsAndGoal().catch(() => {});
-        } else if (weightsResult) {
-          // Fresh cache and no fetch: seed the guard so the first focus
-          // doesn't duplicate a request hydration just proved unnecessary.
-          weightsRefreshedAt.current = weightsResult.fetchedAt;
-        }
+        const weekJob = weekMealsStale
+          ? loadWeek({ silent: true }).catch((e) => {
+              if (alive && hydratedForRef.current === key && !weekMealsResult?.data) {
+                setError(e?.message || 'Could not load meals');
+              }
+            })
+          : Promise.resolve();
+        const weightsJob =
+          weightsStale || weightGoalStale
+            ? fetchWeightsAndGoal().catch(() => {})
+            : Promise.resolve().then(() => {
+                if (weightsResult) {
+                  // Fresh cache and no fetch: seed the guard so the first focus
+                  // doesn't duplicate a request hydration just proved unnecessary.
+                  weightsRefreshedAt.current = weightsResult.fetchedAt;
+                }
+              });
+        await Promise.all([weekJob, weightsJob]);
         if (alive && hydratedForRef.current === key) setLoading(false);
         // Guarantee: any unexpected throw above (e.g. corrupt cache date
         // handling) must still release the spinner so Home can never hang.
@@ -568,6 +572,20 @@ if (hydratedForRef.current === key) return;
   const handleNavHeight = useCallback((h) => {
     setNavHeight((prev) => (prev === h ? prev : h));
   }, []);
+
+  // Native device back closes the camera overlay. It is state-rendered, not
+  // a router screen, so the OS back press needs an explicit handler.
+  // Sibling overlays handle themselves: ScanResultScreen owns its own
+  // BackHandler, WeightLogSheet is a Modal (onRequestClose), and
+  // QuickLogSheet owns its own.
+  useEffect(() => {
+    if (!showScan) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setShowScan(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [showScan]);
 
   // Render the layout
   return (

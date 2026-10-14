@@ -7,7 +7,6 @@ export default function BirthdayRoute() {
   return (
     <BirthdayScreen
       onNext={() => router.push(nextPath('birthday'))}
-      onBack={() => router.back()}
     />
   );
 }

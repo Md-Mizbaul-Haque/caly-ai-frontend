@@ -10,13 +10,12 @@ const OPTIONS = [
   { key: 'nonbinary', title: 'Non-binary', Icon: Circle },
 ];
 
-export default function GenderScreen({ onNext, onBack }) {
+export default function GenderScreen({ onNext }) {
   const { state, update } = useOnboarding();
   return (
     <AuthScaffold
       title="What is your gender?"
       subtitle="This helps us create your personalized health plan."
-      onBack={onBack}
       ctaLabel="Continue"
       ctaDisabled={!state.gender}
       onCta={onNext}

@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarDays, ChevronLeft, UserRound } from '../../../shared/components/ui/icons';
+import { CalendarDays, UserRound } from '../../../shared/components/ui/icons';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
 import WheelPicker, { WHEEL_ITEM_H } from '../../../shared/components/auth/WheelPicker';
 import { useCompactAuth } from '../../../shared/components/auth/useCompact';
@@ -16,10 +16,9 @@ function daysInMonth(year, month1) {
   return new Date(year, month1, 0).getDate();
 }
 
-export default function BirthdayScreen({ onNext, onBack }) {
+export default function BirthdayScreen({ onNext }) {
   const insets = useSafeAreaInsets();
   const compact = useCompactAuth();
-  const [backPressed, setBackPressed] = useState(false);
   const { state, update } = useOnboarding();
   const d = state.birthDate;
   const y = d.getFullYear();
@@ -48,15 +47,6 @@ export default function BirthdayScreen({ onNext, onBack }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
       >
-        {onBack && (
-          <Pressable onPress={onBack} testID="auth-back" accessibilityRole="button" accessibilityLabel="Go back"
-            onPressIn={() => setBackPressed(true)}
-            onPressOut={() => setBackPressed(false)}
-            className="w-12 h-12 rounded-2xl border border-[#F1E8E0] bg-white items-center justify-center mb-2"
-            style={{ opacity: backPressed ? 0.6 : 1 }}>
-            <ChevronLeft size={26} color="#1A1A1A" />
-          </Pressable>
-        )}
         <View className={`items-center ${compact ? 'mt-1 mb-2' : 'mt-2 mb-3'}`}>
           <View style={{ width: 112, height: 112, borderRadius: 30, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
             <CalendarDays size={52} color="#f2470c" />

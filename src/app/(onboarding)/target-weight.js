@@ -7,7 +7,6 @@ export default function TargetWeightRoute() {
   return (
     <TargetWeightScreen
       onNext={() => router.push(nextPath('targetWeight'))}
-      onBack={() => router.back()}
     />
   );
 }

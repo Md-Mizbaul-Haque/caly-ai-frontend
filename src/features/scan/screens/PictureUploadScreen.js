@@ -330,6 +330,14 @@ export default function PictureUploadScreen({
       permission.status === "denied" && permission.canAskAgain === false;
     return (
       <View className="flex-1 bg-black items-center justify-center px-8">
+        <Pressable
+          onPress={close}
+          accessibilityLabel="Close camera"
+          className="absolute left-5 w-10 h-10 rounded-full bg-black/60 items-center justify-center"
+          style={{ top: Math.max(insets.top, 16) }}
+        >
+          <X size={20} color="#FFFFFF" />
+        </Pressable>
         <Text className="text-white text-center text-base mb-2">
           {permanentlyDenied ? "Camera is blocked" : "Camera access needed"}
         </Text>
@@ -360,9 +368,6 @@ export default function PictureUploadScreen({
             <Text className="text-white font-bold">Grant permission</Text>
           </Pressable>
         )}
-        <Pressable onPress={close} className="mt-4 px-4 py-2">
-          <Text className="text-white/70">Go back</Text>
-        </Pressable>
       </View>
     );
   }
@@ -421,8 +426,13 @@ export default function PictureUploadScreen({
               Use a photo from the gallery instead
             </Text>
           </Pressable>
-          <Pressable onPress={close} className="mt-2 px-4 py-2">
-            <Text className="text-white/70">Go back</Text>
+          <Pressable
+            onPress={close}
+            accessibilityLabel="Close camera"
+            className="absolute left-5 w-10 h-10 rounded-full bg-black/60 items-center justify-center"
+            style={{ top: Math.max(insets.top, 16) }}
+          >
+            <X size={20} color="#FFFFFF" />
           </Pressable>
         </View>
       )}

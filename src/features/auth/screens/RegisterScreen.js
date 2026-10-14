@@ -6,7 +6,7 @@ import PasswordInput from '../../../shared/components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, online = true, prefillEmail }) {
+export default function RegisterScreen({ onSubmit, onSwitchLogin, busy, online = true, prefillEmail }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
@@ -15,7 +15,6 @@ export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, 
     <AuthScaffold
       title="Hello! Register now to get started."
       titleSize={26}
-      onBack={onBack}
       ctaLabel={busy ? 'Creating…' : 'Register'}
       ctaDisabled={!valid || busy || !online}
       ctaBorderRadius={14}

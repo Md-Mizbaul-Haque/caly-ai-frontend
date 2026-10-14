@@ -4,7 +4,7 @@ import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import AuthInput from '../../../shared/components/auth/AuthInput';
 import { sanitizeCode } from '../../../shared/utils/nutrition';
 
-export default function VerifyScreen({ email, onBack, onVerify, onResend, onSkip, busy }) {
+export default function VerifyScreen({ email, onVerify, onResend, onSkip, busy }) {
   const [code, setCode] = useState('');
   const [skipVisible, setSkipVisible] = useState(false);
   const clean = sanitizeCode(code);
@@ -15,7 +15,6 @@ export default function VerifyScreen({ email, onBack, onVerify, onResend, onSkip
   return (
     <AuthScaffold
       title="Almost there! Just verify your email."
-      onBack={onBack}
       ctaLabel={busy ? 'Verifying…' : 'Verify'}
       ctaDisabled={clean.length !== 6 || busy}
       onCta={() => onVerify(email, clean)}

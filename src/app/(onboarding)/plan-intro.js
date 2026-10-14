@@ -7,7 +7,6 @@ export default function PlanIntroRoute() {
   return (
     <PlanIntroScreen
       onNext={() => router.push(nextPath('planIntro'))}
-      onBack={() => router.back()}
     />
   );
 }

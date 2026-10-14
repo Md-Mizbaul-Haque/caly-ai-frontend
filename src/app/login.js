@@ -9,7 +9,6 @@ export default function LoginRoute() {
   const online = useIsOnline();
   return (
     <LoginScreen
-      onBack={() => router.replace('/welcome')}
       onSubmit={handleLogin}
       onForgot={() => router.replace('/forgot')}
       onSwitchRegister={() => router.replace('/register')}
