@@ -1,4 +1,7 @@
 import { authedFetch } from './api';
+import { buildUploadPart } from './uploadPart';
+import { File as FilesystemFile } from 'expo-file-system';
+import { Blob as ExpoBlob } from 'expo-blob';
 
 /**
  * Retry a fetch function on network errors.
@@ -38,17 +41,15 @@ async function fetchWithRetry(fetchFn, maxRetries = 2, retryDelay = 1000, signal
  * (503) so the log-a-meal flow always completes.
  */
 export async function scanImage(imageUri, { signal } = {}) {
+  const file = await buildUploadPart(imageUri, {
+    signal,
+    FileSystemFileImpl: FilesystemFile,
+    BlobImpl: ExpoBlob,
+  });
   const form = new FormData();
-  // Web gallery URIs are blob:/data: URLs — the {uri,name,type} shape only
-  // uploads on native. Resolve to a real File first so web uploads bytes.
-  let file = { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' };
-  if (typeof imageUri === 'string' && /^(blob|data):/.test(imageUri)) {
-    const blob = await (await fetch(imageUri, { signal })).blob();
-    file = new File([blob], 'meal.jpg', { type: blob.type || 'image/jpeg' });
-  }
-  form.append('image', file);
   // Never set Content-Type manually here — fetch generates the multipart
   // boundary; a hardcoded 'multipart/form-data' breaks every native upload.
+  form.append('image', file, 'meal.jpg');
   // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
   const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000, signal });
   
@@ -105,8 +106,18 @@ export async function scanImage(imageUri, { signal } = {}) {
  */
 export async function uploadMealImage(imageUri, { signal } = {}) {
   const form = new FormData();
+  // Same uploader as scanImage: real bytes on every platform, explicit
+  // filename (the fetch serializer reads name/type off the part).
   // Never set Content-Type manually — fetch generates the multipart boundary.
-  form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
+  form.append(
+    'image',
+    await buildUploadPart(imageUri, {
+      signal,
+      FileSystemFileImpl: FilesystemFile,
+      BlobImpl: ExpoBlob,
+    }),
+    'meal.jpg'
+  );
   const fetchFn = () => authedFetch('/api/scan/image', { method: 'POST', body: form, timeoutMs: 30000, signal });
   const res = await fetchWithRetry(fetchFn, 2, 1000, signal);
   const data = await res.json().catch(() => ({}));

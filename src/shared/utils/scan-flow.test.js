@@ -48,9 +48,17 @@ describe('scan flow robustness', () => {
     assert.match(upload, /resize/, 'no resize bound on the upload');
   });
 
-  it('web uploads send real bytes, not a stringified object', () => {
+  it('uploads resolve every URI to real bytes via the shared helper', () => {
     const scanApi = read('shared/lib/scanApi.js');
-    assert.match(scanApi, /new File\(/, 'blob:/data: URIs must be resolved to a File before append');
+    assert.match(scanApi, /buildUploadPart/, 'scanImage/uploadMealImage must build real byte parts, not raw {uri} objects');
+    assert.match(scanApi, /'meal\.jpg'/, 'multipart part needs an explicit filename');
+  });
+
+  it('native file:// uploads use real Blobs (expo WinterCG fetch rejects {uri} parts)', () => {
+    const scanApi = read('shared/lib/scanApi.js');
+    assert.doesNotMatch(scanApi, /\{\s*uri:\s*imageUri/, 'raw {uri} parts throw Unsupported FormDataPart implementation');
+    assert.match(scanApi, /expo-blob/, "native bytes need expo-blob (RN's Blob cannot hold JS binary)");
+    assert.match(scanApi, /expo-file-system/, 'native file:// bytes must be read via expo-file-system');
   });
 
   it('saved meals never carry dead or bloated image URLs', () => {
