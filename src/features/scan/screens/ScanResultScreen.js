@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable, BackHandler, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Flame, Beef, Wheat, Droplet, X } from '../../../shared/components/ui/icons';
+import { useTheme } from '../../../shared/theme/theme';
 import { uploadMealImage } from '../../../shared/lib/scanApi';
 import Card from '../../../shared/components/ui/Card';
 import PrimaryButton from '../../../shared/components/ui/Button';
@@ -17,6 +18,7 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
  */
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
   const [items, setItems] = useState(() => {
     if (result.kind === 'barcode') return [result.item].filter(Boolean);
     // No food in frame: seed one editable zero row so the photo, the 0/0/0
@@ -118,7 +120,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
 
   return (
     <ScrollView
-      className="flex-1 bg-white px-4 pt-12"
+      className="flex-1 bg-background px-4 pt-12"
       showsVerticalScrollIndicator={false}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 40 + Math.max(insets.bottom, 0) }}
@@ -140,15 +142,15 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
             onPress={onClose ?? onDone}
             accessibilityLabel="Close"
             hitSlop={8}
-            className="ml-2 w-10 h-10 rounded-full bg-black/5 items-center justify-center"
+            className="ml-2 w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <X size={20} color="#1A1A1A" />
+            <X size={20} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
           </Pressable>
         )}
       </View>
 
       {result.placeholder && (
-        <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
+        <View className="mb-4 rounded-xl bg-accent border border-border px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
             AI scan unavailable — showing an estimate you can edit. The server needs an image-scanning key for real detection.
           </Text>
@@ -156,7 +158,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       )}
 
       {result.noFood && (
-        <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
+        <View className="mb-4 rounded-xl bg-accent border border-border px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
             No food detected — showing 0. Enter your estimates below to log it.
           </Text>
@@ -197,7 +199,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.kcal ?? '')}
                 onChangeText={v => updateItem(idx, 'kcal', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
             <View className="flex-1">
@@ -206,7 +208,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.protein ?? '')}
                 onChangeText={v => updateItem(idx, 'protein', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
             <View className="flex-1">
@@ -215,7 +217,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.carbs ?? '')}
                 onChangeText={v => updateItem(idx, 'carbs', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
             <View className="flex-1">
@@ -224,7 +226,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.fat ?? '')}
                 onChangeText={v => updateItem(idx, 'fat', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
           </View>

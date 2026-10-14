@@ -21,7 +21,7 @@ export default function RegisterScreen({ onSubmit, onSwitchLogin, busy, online =
       onCta={() => onSubmit(name.trim(), email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">
-          <Text className="text-[14px] text-black/60">Already have an account? </Text>
+          <Text className="text-[14px] text-muted-foreground">Already have an account? </Text>
           <Pressable onPress={onSwitchLogin}><Text className="text-[14px] text-[#2D9CDB] font-medium">Login Now</Text></Pressable>
         </View>
       }

@@ -55,7 +55,7 @@ export default function WeightTrackerScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScreenHeader title="Weight Tracker" subtitle="Set your weight goal" />
       <ScrollView
         className="flex-1"
@@ -73,7 +73,7 @@ export default function WeightTrackerScreen() {
           ) : (
             <Card>
               <View className="flex-row items-center mb-1">
-                <View className="w-9 h-9 rounded-full items-center justify-center mr-3" style={{ backgroundColor: '#F1E8E0' }}>
+                <View className="w-9 h-9 rounded-full items-center justify-center mr-3 bg-muted">
                   <Scale size={18} color="#f2470c" />
                 </View>
                 <View className="flex-1">
@@ -89,7 +89,7 @@ export default function WeightTrackerScreen() {
                 keyboardType="decimal-pad"
                 placeholder="e.g. 140"
                 accessibilityLabel="Weight goal in pounds"
-                className="bg-cream rounded-xl px-3 py-2.5 text-ink mb-2 mt-3"
+                className="bg-input rounded-xl px-3 py-2.5 text-ink mb-2 mt-3"
               />
               {draft.trim() !== '' && !valid && (
                 <Text className="text-destructive text-[13px] mb-2">Enter a goal between {MIN_LBS}–{MAX_LBS} lbs</Text>

@@ -29,8 +29,8 @@ const FIELD_LABEL = {
 function Row({ label, value }) {
   return (
     <View className="flex-row justify-between items-center py-3">
-      <Text className="text-[18px] text-[#8A8A8A]">{label}</Text>
-      <Text className="text-[18px] font-medium text-[#1A1A1A]">{value}</Text>
+      <Text className="text-[18px] text-muted-foreground">{label}</Text>
+      <Text className="text-[18px] font-medium text-ink">{value}</Text>
     </View>
   );
 }
@@ -94,39 +94,39 @@ export default function NutritionPlanScreen({ onNext }) {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-[26px] font-extrabold text-[#1A1A1A]">Your Nutrition Plan</Text>
-          <View className="w-9 h-9 rounded-full border-2 border-[#f2470c] bg-[#FFF1E9] items-center justify-center">
+          <Text className="text-[26px] font-extrabold text-ink">Your Nutrition Plan</Text>
+          <View className="w-9 h-9 rounded-full border-2 border-[#f2470c] bg-accent items-center justify-center">
             <Check size={20} color="#f2470c" />
           </View>
         </View>
         {!complete && (
-          <View className="bg-[#FFF1E9] rounded-3xl p-5 mb-5 border border-[#f2470c]">
-            <Text className="text-[17px] font-semibold text-[#1A1A1A] mb-1">A few details are still missing</Text>
-            <Text className="text-[15px] text-[#8A8A8A]">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device's back button to complete each step — your plan is created only after all information is received.</Text>
+          <View className="bg-accent rounded-3xl p-5 mb-5 border border-[#f2470c]">
+            <Text className="text-[17px] font-semibold text-ink mb-1">A few details are still missing</Text>
+            <Text className="text-[15px] text-muted-foreground">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device&apos;s back button to complete each step — your plan is created only after all information is received.</Text>
           </View>
         )}
-        <Text className="text-[22px] font-bold text-[#1A1A1A] mb-2">Your Goal</Text>
-        <View className="bg-white rounded-3xl p-5 mb-5 border border-[#F1E8E0]">
-          <Text className="text-[20px] font-semibold text-[#1A1A1A] mb-1">{goal.title}</Text>
-          <Text className="text-[16px] text-[#8A8A8A]">{goal.body}</Text>
+        <Text className="text-[22px] font-bold text-ink mb-2">Your Goal</Text>
+        <View className="bg-card rounded-3xl p-5 mb-5 border border-border">
+          <Text className="text-[20px] font-semibold text-ink mb-1">{goal.title}</Text>
+          <Text className="text-[16px] text-muted-foreground">{goal.body}</Text>
         </View>
-        <Text className="text-[22px] font-bold text-[#1A1A1A] mb-1">Daily Targets</Text>
-        <Text className="text-[15px] text-[#8A8A8A] mb-3">Your personalized nutrition plan. You can adjust these targets later.</Text>
-        <View className="bg-white rounded-3xl p-5 mb-5 border border-[#F1E8E0]">
+        <Text className="text-[22px] font-bold text-ink mb-1">Daily Targets</Text>
+        <Text className="text-[15px] text-muted-foreground mb-3">Your personalized nutrition plan. You can adjust these targets later.</Text>
+        <View className="bg-card rounded-3xl p-5 mb-5 border border-border">
           {validPlan ? (
             <>
-              <Text className="text-[40px] font-extrabold text-[#1A1A1A]">{plan.amr} <Text className="text-[20px] font-normal text-[#8A8A8A]">calories</Text></Text>
+              <Text className="text-[40px] font-extrabold text-ink">{plan.amr} <Text className="text-[20px] font-normal text-muted-foreground">calories</Text></Text>
               <MacroDots proteinG={plan.proteinG} fatG={plan.fatG} carbsG={plan.carbsG} />
             </>
           ) : (
-            <Text className="text-[16px] text-[#8A8A8A]">Your calorie and macro targets will appear here once all steps are complete.</Text>
+            <Text className="text-[16px] text-muted-foreground">Your calorie and macro targets will appear here once all steps are complete.</Text>
           )}
         </View>
-        <Text className="text-[22px] font-bold text-[#1A1A1A] mb-2">Details</Text>
-        <View className="bg-white rounded-3xl px-5 py-2 mb-4 border border-[#F1E8E0]">
+        <Text className="text-[22px] font-bold text-ink mb-2">Details</Text>
+        <View className="bg-card rounded-3xl px-5 py-2 mb-4 border border-border">
           <Row label="Age" value={Number.isFinite(age) ? `${age} years` : '—'} />
           <Row label="Height" value={state.heightCm ? heightStr : '—'} />
           <Row label="Weight" value={state.weightKg ? weightStr : '—'} />
@@ -138,7 +138,7 @@ export default function NutritionPlanScreen({ onNext }) {
           <View className="w-6 h-6 rounded-full bg-[#f2470c] items-center justify-center mr-2 mt-0.5">
             <Text className="text-white text-[13px] font-bold">!</Text>
           </View>
-          <Text className="flex-1 text-[13px] italic text-[#8A8A8A]">Dietary guidance is for informational purposes only. Consult your healthcare provider before making changes, especially with existing health conditions.</Text>
+          <Text className="flex-1 text-[13px] italic text-muted-foreground">Dietary guidance is for informational purposes only. Consult your healthcare provider before making changes, especially with existing health conditions.</Text>
         </View>
       </ScrollView>
       <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 32) + 20 }}>

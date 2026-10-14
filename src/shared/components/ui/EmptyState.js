@@ -1,11 +1,18 @@
 import { View, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
+import { useTheme } from '../../theme/theme';
 
-const SKELETON = {
+const SKELETON_LIGHT = {
   square: '#EFE6DC',
   line: '#EFE6DC',
   lineSoft: '#F5EEE7',
+};
+
+const SKELETON_DARK = {
+  square: '#2E2E2E',
+  line: '#2E2E2E',
+  lineSoft: '#383838',
 };
 
 /**
@@ -14,23 +21,25 @@ const SKELETON = {
  * The whole illustration is pressable when `onCta` is provided.
  */
 export default function EmptyState({ caption = 'Tap + to log a meal', onCta }) {
+  const { isDark } = useTheme();
+  const SKELETON = isDark ? SKELETON_DARK : SKELETON_LIGHT;
   const body = (
     <View className="items-center py-6">
       {/* Stacked-cards illustration */}
       <View style={{ width: 240, height: 88 }}>
         {/* bottom-most card */}
         <View
-          className="absolute bg-white rounded-2xl border border-[#F1E8E0]"
+          className="absolute bg-card rounded-2xl border border-border"
           style={{ top: 38, left: 27, width: 186, height: 46 }}
         />
         {/* middle card */}
         <View
-          className="absolute bg-white rounded-2xl border border-[#F1E8E0]"
+          className="absolute bg-card rounded-2xl border border-border"
           style={{ top: 26, left: 15, width: 210, height: 46 }}
         />
         {/* front card with skeleton meal-row content */}
         <View
-          className="absolute bg-white rounded-2xl border border-[#F1E8E0] flex-row items-center"
+          className="absolute bg-card rounded-2xl border border-border flex-row items-center"
           style={{
             top: 0,
             left: 0,

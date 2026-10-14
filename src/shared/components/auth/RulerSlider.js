@@ -10,8 +10,8 @@ function round1(n) { return Math.round(n * 10) / 10; }
 const Tick = memo(function Tick({ major, label }) {
   return (
     <View style={{ width: TICK_W }} className="items-center">
-      <View style={{ width: 2, height: major ? 40 : 22, backgroundColor: '#1A1A1A' }} />
-      {major && <Text className="text-[11px] text-[#8A8A8A] mt-1">{label}</Text>}
+      <View style={{ width: 2, height: major ? 40 : 22 }} className="bg-ink" />
+      {major && <Text className="text-[11px] text-muted-foreground mt-1">{label}</Text>}
     </View>
   );
 });

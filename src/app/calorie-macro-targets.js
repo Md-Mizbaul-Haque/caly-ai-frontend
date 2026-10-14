@@ -22,7 +22,7 @@ export default function CalorieMacroTargetsScreen() {
   ];
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScreenHeader title="Calorie and Macro Targets" subtitle="Adjust your daily goal" />
       <ScrollView
         className="flex-1"
@@ -39,7 +39,7 @@ export default function CalorieMacroTargetsScreen() {
               onChangeText={setDraft}
               keyboardType="numeric"
               accessibilityLabel="Daily calorie goal"
-              className="bg-cream rounded-xl px-3 py-2.5 text-ink mb-2"
+              className="bg-input rounded-xl px-3 py-2.5 text-ink mb-2"
             />
             {!valid && (
               <Text className="text-destructive text-[13px] mb-2">Enter 500–10000 kcal</Text>
@@ -72,8 +72,7 @@ export default function CalorieMacroTargetsScreen() {
                   <View key={m.label}>
                     <View className="flex-row items-center py-2.5">
                       <View
-                        className="w-9 h-9 rounded-full items-center justify-center mr-3"
-                        style={{ backgroundColor: '#F1E8E0' }}
+                        className="w-9 h-9 rounded-full items-center justify-center mr-3 bg-muted"
                       >
                          <m.Icon size={18} color={m.color} />
                       </View>
@@ -81,7 +80,7 @@ export default function CalorieMacroTargetsScreen() {
                       <Text className="text-[15px] font-bold text-ink">{m.grams}g</Text>
                     </View>
                     {i < macros.length - 1 && (
-                      <View style={{ height: 1, backgroundColor: '#F1E8E0', marginLeft: 48 }} />
+                      <View className="bg-border" style={{ height: 1, marginLeft: 48 }} />
                     )}
                   </View>
                 ))}

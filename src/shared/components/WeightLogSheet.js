@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import PrimaryButton from './ui/Button';
 import { X } from './ui/icons';
 import { MIN_LBS, MAX_LBS, sanitizeDecimalInput, parseWeight, isValidWeight } from '../utils/weightLog';
+import { useTheme, useThemeClass } from '../theme/theme';
 /**
  * Docked sheet for logging weight. Weight (lbs) is required and prefills with
  * the latest entry. The weight goal lives on the Weight Tracker screen
@@ -17,6 +18,8 @@ import { MIN_LBS, MAX_LBS, sanitizeDecimalInput, parseWeight, isValidWeight } fr
  */
 export default function WeightLogSheet({ latestWeight = null, onClose, onSave }) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  const themeClass = useThemeClass();
   const [progress] = useState(() => new Animated.Value(0));
   const [weight, setWeight] = useState(latestWeight != null ? String(latestWeight) : '');
   const [busy, setBusy] = useState(false);
@@ -57,7 +60,7 @@ export default function WeightLogSheet({ latestWeight = null, onClose, onSave })
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => dismiss()}>
-      <View className="flex-1" pointerEvents="box-none">
+      <View className={`flex-1 ${themeClass ?? ''}`} pointerEvents="box-none">
         <Animated.View
           style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -82,7 +85,7 @@ export default function WeightLogSheet({ latestWeight = null, onClose, onSave })
             <View className="flex-row items-start justify-between mb-3">
               <Text className="text-xl font-bold text-ink flex-1 mr-2">Log Weight</Text>
               <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
-                <X size={22} color="#1A1A1A" />
+                <X size={22} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
               </Pressable>
             </View>
 
@@ -94,7 +97,7 @@ export default function WeightLogSheet({ latestWeight = null, onClose, onSave })
               placeholder={latestWeight != null ? String(latestWeight) : 'e.g. 132.1'}
               selectTextOnFocus
               accessibilityLabel="Weight in pounds"
-              className="bg-cream rounded-xl px-3 py-3 text-ink mb-4"
+              className="bg-input rounded-xl px-3 py-3 text-ink mb-4"
             />
 
             {error ? <Text className="text-red-500 mb-2">{error}</Text> : null}

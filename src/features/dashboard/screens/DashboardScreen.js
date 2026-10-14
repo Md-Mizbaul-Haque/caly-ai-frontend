@@ -112,33 +112,33 @@ function DashboardSkeleton() {
         {Array.from({ length: 7 }).map((_, i) => (
           <View
             key={i}
-            className="flex-1 h-[72px] rounded-card bg-[#F1E8E0] animate-pulse"
+            className="flex-1 h-[72px] rounded-card bg-muted animate-pulse"
           />
         ))}
       </View>
       <Card style={{ marginTop: 16 }}>
         <View className="flex-row items-center">
           <View className="flex-1 pr-2">
-            <View className="w-32 h-10 rounded-md bg-[#F1E8E0] animate-pulse" />
-            <View className="w-24 h-3 rounded-md bg-[#F1E8E0] animate-pulse mt-2" />
+            <View className="w-32 h-10 rounded-md bg-muted animate-pulse" />
+            <View className="w-24 h-3 rounded-md bg-muted animate-pulse mt-2" />
           </View>
-          <View className="w-[92px] h-[92px] rounded-full bg-[#F1E8E0] animate-pulse" />
+          <View className="w-[92px] h-[92px] rounded-full bg-muted animate-pulse" />
         </View>
       </Card>
       <View className="flex-row mt-4" style={{ gap: 8 }}>
         {[0, 1, 2].map((i) => (
           <View
             key={i}
-            className="flex-1 h-[92px] rounded-card bg-[#F1E8E0] animate-pulse"
+            className="flex-1 h-[92px] rounded-card bg-muted animate-pulse"
           />
         ))}
       </View>
-      <View className="w-32 h-4 rounded-md bg-[#F1E8E0] animate-pulse mt-6 mb-3" />
+      <View className="w-32 h-4 rounded-md bg-muted animate-pulse mt-6 mb-3" />
       <View style={{ gap: 12 }}>
         {[0, 1, 2].map((i) => (
           <View
             key={i}
-            className="h-16 rounded-card bg-[#F1E8E0] animate-pulse"
+            className="h-16 rounded-card bg-muted animate-pulse"
           />
         ))}
       </View>
@@ -210,6 +210,10 @@ export default function DashboardScreen({
 
   useEffect(() => {
     if (!ownerKey) return;
+    // Defer the 14-day horizon until the week paints: on cold start this
+    // effect used to race the week fetch for bandwidth/backend, delaying the
+    // skeleton -> content transition. Rings fill in silently when it lands.
+    if (loading && meals.length === 0) return;
 
     const tz = timeZone ?? "";
     const todayKey = dateKey(new Date(), timeZone);
@@ -221,7 +225,7 @@ export default function DashboardScreen({
     loadRangeMeals?.(14)?.catch?.((err) =>
       console.error("Range meals fetch failed:", err),
     );
-  }, [ownerKey, timeZone, loadRangeMeals]);
+  }, [ownerKey, timeZone, loadRangeMeals, loading, meals.length]);
 
   // Day blocks rebuild Date objects every render: compare calendar keys so
   // re-tapping the selected pill is a no-op instead of churning the dashboard.
@@ -348,7 +352,9 @@ export default function DashboardScreen({
 
   return (
     <ScrollView
-      className="flex-1 bg-white"
+      className="flex-1 bg-background"
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
       contentContainerStyle={{
         paddingHorizontal: 16,
         paddingTop: 12,

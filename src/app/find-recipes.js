@@ -11,7 +11,7 @@ const SAMPLES = [
 
 export default function FindRecipesScreen() {
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScreenHeader title="Find Recipes" subtitle="Meals that fit your remaining calories" />
       <ScrollView
         className="flex-1"
@@ -21,8 +21,7 @@ export default function FindRecipesScreen() {
           <Card>
             <View className="flex-row items-center mb-1">
               <View
-                className="w-9 h-9 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: '#F1E8E0' }}
+                className="w-9 h-9 rounded-full items-center justify-center mr-3 bg-muted"
               >
                  <BookOpen size={18} color="#f2470c" />
               </View>
@@ -38,7 +37,7 @@ export default function FindRecipesScreen() {
                   <Text className="text-[12px] text-muted-foreground mt-0.5">{r.detail}</Text>
                 </View>
                 {i < SAMPLES.length - 1 && (
-                  <View style={{ height: 1, backgroundColor: '#F1E8E0' }} />
+                  <View className="bg-border" style={{ height: 1 }} />
                 )}
               </View>
             ))}

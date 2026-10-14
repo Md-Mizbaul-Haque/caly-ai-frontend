@@ -27,7 +27,7 @@ export default function ReferralCodeScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScreenHeader title="Referral Code" subtitle="Share Caly AI with a friend" />
       <ScrollView
         className="flex-1"
@@ -37,8 +37,7 @@ export default function ReferralCodeScreen() {
           <Card>
             <View className="items-center py-4">
               <View
-                className="w-14 h-14 rounded-full items-center justify-center mb-3"
-                style={{ backgroundColor: '#F1E8E0' }}
+                className="w-14 h-14 rounded-full items-center justify-center mb-3 bg-muted"
               >
                  <TicketPercent size={24} color="#f2470c" />
               </View>

@@ -21,8 +21,7 @@ export default function MenuRow({ icon: Icon, label, description, onPress, tint 
       style={{ opacity: pressed ? 0.55 : 1 }}
     >
       <View
-        className="w-9 h-9 rounded-full items-center justify-center mr-3"
-        style={{ backgroundColor: danger ? '#FEECEC' : '#F1E8E0' }}
+        className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${danger ? 'bg-destructive/10' : 'bg-muted'}`}
       >
          {Icon ? <Icon size={18} color={danger ? '#D92D20' : tint} /> : null}
       </View>
@@ -53,7 +52,7 @@ export function MenuGroup({ children }) {
       {items.map((item, i) => (
         <View key={i}>
           {item}
-          {i < items.length - 1 && <View style={{ height: 1, backgroundColor: '#F1E8E0', marginLeft: 58 }} />}
+          {i < items.length - 1 && <View className="bg-border" style={{ height: 1, marginLeft: 58 }} />}
         </View>
       ))}
     </View>

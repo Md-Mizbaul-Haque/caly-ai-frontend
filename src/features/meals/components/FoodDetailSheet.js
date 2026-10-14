@@ -7,6 +7,7 @@ import Chip from '../../../shared/components/ui/Chip';
 import CachedImage from '../../../shared/components/image/CachedImage';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import { scaleByFactor, clampGrams, defaultMealType } from '../../../shared/utils/foodScale';
+import { useTheme, useThemeClass } from '../../../shared/theme/theme';
 
 const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const GRAM_STEP = 50;
@@ -24,6 +25,8 @@ const SERVING_STEP = 0.5;
  */
 export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  const themeClass = useThemeClass();
   const [progress] = useState(() => new Animated.Value(0));
   const [amount, setAmount] = useState(mode === 'grams' ? 100 : 1);
   const [type, setType] = useState(() => defaultMealType(new Date().getHours()));
@@ -87,7 +90,7 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => dismiss()}>
-      <View className="flex-1" pointerEvents="box-none">
+      <View className={`flex-1 ${themeClass ?? ''}`} pointerEvents="box-none">
         <Animated.View
           style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -112,7 +115,7 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
           <View className="flex-row items-start justify-between mb-3">
             <Text className="text-xl font-bold text-ink flex-1 mr-2">{food.name}</Text>
             <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
-              <X size={22} color="#1A1A1A" />
+              <X size={22} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
             </Pressable>
           </View>
 
@@ -124,8 +127,8 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
 
           <View className="flex-row mb-4" style={{ gap: 8 }}>
             {macros.map(({ Icon, value, unit }) => (
-              <View key={unit} className="flex-1 bg-cream rounded-xl items-center py-2">
-                <Icon size={16} color="#1A1A1A" />
+              <View key={unit} className="flex-1 bg-input rounded-xl items-center py-2">
+                <Icon size={16} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
                 <Text className="font-bold text-ink text-sm mt-1">{value}</Text>
                 <Text className="text-muted-foreground text-[11px]">{unit}</Text>
               </View>
@@ -139,11 +142,11 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
             <Pressable
               onPress={() => bump(isGrams ? -GRAM_STEP : -SERVING_STEP)}
               accessibilityLabel="Decrease quantity"
-              className="w-11 h-11 rounded-full bg-cream items-center justify-center"
+              className="w-11 h-11 rounded-full bg-input items-center justify-center"
             >
-              <Minus size={20} color="#1A1A1A" />
+              <Minus size={20} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
             </Pressable>
-            <View className="flex-row items-center flex-1 bg-cream rounded-xl px-3">
+            <View className="flex-row items-center flex-1 bg-input rounded-xl px-3">
               <TextInput
                 value={isGrams ? String(amount) : String(amount).replace(/\.0$/, '')}
                 onChangeText={onAmountText}
@@ -156,9 +159,9 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
             <Pressable
               onPress={() => bump(isGrams ? GRAM_STEP : SERVING_STEP)}
               accessibilityLabel="Increase quantity"
-              className="w-11 h-11 rounded-full bg-cream items-center justify-center"
+              className="w-11 h-11 rounded-full bg-input items-center justify-center"
             >
-              <Plus size={20} color="#1A1A1A" />
+              <Plus size={20} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
             </Pressable>
           </View>
 

@@ -7,7 +7,7 @@ export default function UnitToggle({ options, value, onChange, testID = 'unit-to
   // Native, which silently dropped the pressed opacity and active shadow.
   const [pressedKey, setPressedKey] = useState(null);
   return (
-    <View testID={testID} className={`self-center flex-row bg-[#F1E8E0] rounded-full p-1 ${compact ? 'mb-5' : 'mb-8'}`}>
+    <View testID={testID} className={`self-center flex-row bg-muted rounded-full p-1 ${compact ? 'mb-5' : 'mb-8'}`}>
       {options.map((opt) => {
         const active = opt === value;
         return (
@@ -24,7 +24,7 @@ export default function UnitToggle({ options, value, onChange, testID = 'unit-to
               active ? { elevation: 2, shadowColor: '#f2470c', shadowOpacity: 0.25, shadowRadius: 4 } : null,
             ]}
           >
-            <Text className={`text-[18px] ${active ? 'text-white font-medium' : 'text-[#8A8A8A]'}`}>{opt}</Text>
+            <Text className={`text-[18px] ${active ? 'text-white font-medium' : 'text-muted-foreground'}`}>{opt}</Text>
           </Pressable>
         );
       })}

@@ -13,7 +13,7 @@ const FAQS = [
 
 export default function HelpScreen() {
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScreenHeader title="Help" subtitle="FAQs and contact support" />
       <ScrollView
         className="flex-1"
@@ -23,8 +23,7 @@ export default function HelpScreen() {
           <Card>
             <View className="flex-row items-center mb-2">
               <View
-                className="w-9 h-9 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: '#F1E8E0' }}
+                className="w-9 h-9 rounded-full items-center justify-center mr-3 bg-muted"
               >
                  <CircleQuestionMark size={18} color="#f2470c" />
               </View>
@@ -37,7 +36,7 @@ export default function HelpScreen() {
                   <Text className="text-[13px] text-muted-foreground">{f.a}</Text>
                 </View>
                 {i < FAQS.length - 1 && (
-                  <View style={{ height: 1, backgroundColor: '#F1E8E0' }} />
+                  <View className="bg-border" style={{ height: 1 }} />
                 )}
               </View>
             ))}

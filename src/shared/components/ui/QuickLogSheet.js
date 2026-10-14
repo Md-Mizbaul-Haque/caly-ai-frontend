@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Animated, BackHandler, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
@@ -24,6 +24,13 @@ export default function QuickLogSheet({ remaining = 0, onClose, onLogFood, onLog
     Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
   }, [progress]);
 
+  const dismiss = useCallback((after) => {
+    const close = after === undefined ? onClose : after;
+    Animated.timing(progress, { toValue: 0, duration: 160, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) close?.();
+    });
+  }, [onClose, progress]);
+
   // Native device back dismisses the sheet (state overlay, not a route).
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -31,13 +38,7 @@ export default function QuickLogSheet({ remaining = 0, onClose, onLogFood, onLog
       return true;
     });
     return () => sub.remove();
-  }, []);
-
-  function dismiss(after = onClose) {
-    Animated.timing(progress, { toValue: 0, duration: 160, useNativeDriver: true }).start(({ finished }) => {
-      if (finished) after?.();
-    });
-  }
+  }, [dismiss]);
 
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [28, 0] });
 

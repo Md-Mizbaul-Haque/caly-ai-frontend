@@ -18,7 +18,7 @@ function FoodRow({ item, subtitle, onPress }) {
     <Pressable
       onPress={onPress}
       accessibilityLabel={`Log ${item.name}`}
-      className="flex-row items-center bg-cream rounded-2xl px-3 py-2.5 mb-2"
+      className="flex-row items-center bg-card border border-border rounded-2xl px-3 py-2.5 mb-2"
     >
       {item.imageUrl ? (
         <CachedImage uri={item.imageUrl} className="w-12 h-12 rounded-xl mr-3" resizeMode="cover" />
@@ -96,7 +96,7 @@ export default function LogFoodScreen({ meals = [], onSave, photo = null, onRemo
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <FlatList
         className="flex-1 px-4 pt-12"
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -118,7 +118,7 @@ export default function LogFoodScreen({ meals = [], onSave, photo = null, onRemo
                 </View>
               </View>
             )}
-            <View className="flex-row items-center bg-cream rounded-2xl px-3 mb-2">
+            <View className="flex-row items-center bg-card border border-border rounded-2xl px-3 mb-2">
               <Search size={18} color="#71717A" />
               <TextInput
                 value={query}
@@ -174,11 +174,11 @@ export default function LogFoodScreen({ meals = [], onSave, photo = null, onRemo
           <View className="mt-4">
             <Card>
               <Text className="font-bold text-ink mb-2">Manual entry</Text>
-              <TextInput value={name} onChangeText={setName} placeholder="Food name" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-              <TextInput value={kcal} onChangeText={setKcal} placeholder="kcal" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-              <TextInput value={protein} onChangeText={setProtein} placeholder="protein g" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-              <TextInput value={carbs} onChangeText={setCarbs} placeholder="carbs g" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
-              <TextInput value={fat} onChangeText={setFat} placeholder="fat g" keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
+              <TextInput value={name} onChangeText={setName} placeholder="Food name" className="bg-input rounded-xl px-3 py-2 mb-2" />
+              <TextInput value={kcal} onChangeText={setKcal} placeholder="kcal" keyboardType="numeric" className="bg-input rounded-xl px-3 py-2 mb-2" />
+              <TextInput value={protein} onChangeText={setProtein} placeholder="protein g" keyboardType="numeric" className="bg-input rounded-xl px-3 py-2 mb-2" />
+              <TextInput value={carbs} onChangeText={setCarbs} placeholder="carbs g" keyboardType="numeric" className="bg-input rounded-xl px-3 py-2 mb-2" />
+              <TextInput value={fat} onChangeText={setFat} placeholder="fat g" keyboardType="numeric" className="bg-input rounded-xl px-3 py-2 mb-2" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 12, paddingVertical: 2 }} className="mb-4">{TYPES.map((t) => <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />)}</ScrollView>
               {!canSave && <Text className="text-red-500 mb-2">Enter a name and kcal &gt; 0</Text>}
               <PrimaryButton title="Save meal" disabled={!canSave} onPress={() => onSave({ name: name.trim(), kcal: Number(kcal), protein: Number(protein) || 0, carbs: Number(carbs) || 0, fat: Number(fat) || 0, mealType: type, ...(photo ? { imageUrl: photo } : {}) })} />

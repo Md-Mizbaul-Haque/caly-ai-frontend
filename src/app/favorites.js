@@ -5,7 +5,7 @@ import { Utensils } from '../shared/components/ui/icons';
 
 export default function FavoritesScreen() {
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <ScreenHeader title="Favorites, Foods, and Recipes" subtitle="Quickly re-log what you eat often" />
       <ScrollView
         className="flex-1"
@@ -14,10 +14,9 @@ export default function FavoritesScreen() {
         <View style={{ width: '100%', maxWidth: 480, alignSelf: 'center' }}>
           <Card>
             <View className="items-center py-6">
-              <View
-                className="w-14 h-14 rounded-full items-center justify-center mb-3"
-                style={{ backgroundColor: '#F1E8E0' }}
-              >
+                <View
+                  className="w-14 h-14 rounded-full items-center justify-center mb-3 bg-muted"
+                >
                  <Utensils size={24} color="#f2470c" />
               </View>
               <Text className="text-[16px] font-bold text-ink mb-1">No favorites yet</Text>

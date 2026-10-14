@@ -13,7 +13,7 @@ export default function ProfileScreen() {
 
   if (!authChecked) {
     return (
-      <ScrollView className="flex-1 bg-white px-4 pt-12">
+      <ScrollView className="flex-1 bg-background px-4 pt-12">
         <View className="items-center pt-16">
           <ActivityIndicator size="large" color="#f2470c" />
           <Text className="mt-4 text-muted-foreground">Loading profile...</Text>
@@ -26,7 +26,7 @@ export default function ProfileScreen() {
   const valid = draft.trim().length > 0 && Number.isFinite(parsed) && parsed >= 500 && parsed <= 10000;
 
   return (
-    <ScrollView className="flex-1 bg-white px-4 pt-12">
+    <ScrollView className="flex-1 bg-background px-4 pt-12">
       <Text className="text-2xl font-bold text-ink mb-4">Profile</Text>
       <View className="space-y-6">
         {/* User info card */}
@@ -47,7 +47,7 @@ export default function ProfileScreen() {
         {/* Daily goal card */}
         <Card>
           <Text className="font-bold mb-2">Daily goal (kcal)</Text>
-          <TextInput value={draft} onChangeText={setDraft} keyboardType="numeric" className="bg-cream rounded-xl px-3 py-2 mb-2" />
+          <TextInput value={draft} onChangeText={setDraft} keyboardType="numeric" className="bg-input rounded-xl px-3 py-2 mb-2" />
           {!valid && <Text className="text-red-500 mb-2">Enter 500–10000 kcal</Text>}
           <Text className="text-muted-foreground text-sm mb-2">API: {API_URL}</Text>
           <PrimaryButton

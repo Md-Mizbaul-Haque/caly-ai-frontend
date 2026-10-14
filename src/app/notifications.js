@@ -6,7 +6,7 @@ export default function NotificationsScreen() {
   const { user } = useSession();
 
   return (
-    <ScrollView className="flex-1 bg-white px-4 pt-12">
+    <ScrollView className="flex-1 bg-background px-4 pt-12">
       <Text className="text-2xl font-bold text-ink mb-4">Notification Settings</Text>
       
       {!user ? (
@@ -14,16 +14,16 @@ export default function NotificationsScreen() {
       ) : (
         <View className="space-y-6">
           <Card className="mb-4">
-            <Text className="font-bold mb-2">Push Notifications</Text>
+            <Text className="font-bold mb-2 text-ink">Push Notifications</Text>
             <View className="flex flex-row items-center justify-between p-4">
-              <Text>Meal reminders</Text>
+              <Text className="text-ink">Meal reminders</Text>
               <Switch 
                 value={true} 
                 onValueChange={(value) => console.log('Meal reminders:', value)}
               />
             </View>
             <View className="flex flex-row items-center justify-between p-4 border-t">
-              <Text>Weekly progress</Text>
+              <Text className="text-ink">Weekly progress</Text>
               <Switch 
                 value={false} 
                 onValueChange={(value) => console.log('Weekly progress:', value)}
@@ -32,16 +32,16 @@ export default function NotificationsScreen() {
           </Card>
           
           <Card>
-            <Text className="font-bold mb-2">Email Notifications</Text>
+            <Text className="font-bold mb-2 text-ink">Email Notifications</Text>
             <View className="flex flex-row items-center justify-between p-4">
-              <Text>Newsletter</Text>
+              <Text className="text-ink">Newsletter</Text>
               <Switch 
                 value={true} 
                 onValueChange={(value) => console.log('Newsletter:', value)}
               />
             </View>
             <View className="flex flex-row items-center justify-between p-4 border-t">
-              <Text>Promotional offers</Text>
+              <Text className="text-ink">Promotional offers</Text>
               <Switch 
                 value={false} 
                 onValueChange={(value) => console.log('Promotional offers:', value)}

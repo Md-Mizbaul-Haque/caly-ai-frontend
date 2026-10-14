@@ -31,13 +31,13 @@ export default function GreatChoiceScreen({ onNext }) {
   return (
     <AuthScaffold title="Great choice!" titleColor="#f2470c" ctaLabel="See your plan" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
-        <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#FFF1E9', alignItems: 'center', justifyContent: 'center' }}>
+        <View className="w-24 h-24 rounded-full bg-accent items-center justify-center">
           <PartyPopper size={44} color="#f2470c" />
         </View>
       </View>
-      <Text className="text-[24px] font-semibold text-[#1A1A1A] leading-[32px] mb-5">{copy.head}</Text>
-      <Text className="text-[19px] text-[#1A1A1A] leading-[28px] mb-5">{copy.mid}</Text>
-      <Text className="text-[19px] text-[#1A1A1A] leading-[28px]">Consistency is key to long-term success.</Text>
+      <Text className="text-[24px] font-semibold text-ink leading-[32px] mb-5">{copy.head}</Text>
+      <Text className="text-[19px] text-ink leading-[28px] mb-5">{copy.mid}</Text>
+      <Text className="text-[19px] text-ink leading-[28px]">Consistency is key to long-term success.</Text>
     </AuthScaffold>
   );
 }

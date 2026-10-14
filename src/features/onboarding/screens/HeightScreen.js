@@ -34,7 +34,7 @@ export default function HeightScreen({ onNext }) {
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
       onCta={async () => { if (busy) return; setBusy(true); try { const ok = await savePartial({ heightCm: Math.round(imperial ? slider.value * CM_PER_IN : slider.value) }); if (ok) onNext(); } finally { setBusy(false); } }}>
       <UnitToggle options={['ft/in', 'cm']} value={state.heightUnit} onChange={handleUnit} testID="height-unit" compact={compact} />
-      <Text className={`text-center font-extrabold text-[#1A1A1A] ${compact ? 'text-5xl mb-5' : 'text-[64px] mb-8'}`}>{display}</Text>
+      <Text className={`text-center font-extrabold text-ink ${compact ? 'text-5xl mb-5' : 'text-[64px] mb-8'}`}>{display}</Text>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="height-ruler"
         onChange={handleRuler} />
     </AuthScaffold>

@@ -7,6 +7,7 @@ import WeightChart from '../../../shared/components/WeightChart';
 import { ArrowRight, Flame, Pencil, Scale, Target, TrendingDown, TrendingUp } from '../../../shared/components/ui/icons';
 import { dateKey } from '../../../shared/utils/format';
 import { zonedParts } from '../../../shared/utils/mealDates';
+import { useTheme } from '../../../shared/theme/theme';
 
 // Step whole calendar days in the user's zone (noon-anchored UTC so DST
 // transitions can't skip or double a day). Shared by streak + average.
@@ -52,37 +53,37 @@ function ProgressSkeleton() {
       <Card style={{ marginBottom: 12 }}>
         <View className="flex-row items-center">
           <View className="flex-1">
-            <View className="w-20 h-3 rounded-md bg-[#F1E8E0] animate-pulse mb-2" />
-            <View className="w-28 h-8 rounded-md bg-[#F1E8E0] animate-pulse" />
-            <View className="w-24 h-6 rounded-full bg-[#F1E8E0] animate-pulse mt-2" />
+            <View className="w-20 h-3 rounded-md bg-muted animate-pulse mb-2" />
+            <View className="w-28 h-8 rounded-md bg-muted animate-pulse" />
+            <View className="w-24 h-6 rounded-full bg-muted animate-pulse mt-2" />
           </View>
-          <View className="w-24 h-10 rounded-full bg-[#F1E8E0] animate-pulse" />
+          <View className="w-24 h-10 rounded-full bg-muted animate-pulse" />
         </View>
       </Card>
       <Card style={{ marginBottom: 12 }}>
         <View className="flex-row items-center mb-3">
-          <View className="w-10 h-10 rounded-full bg-[#F1E8E0] animate-pulse" />
-          <View className="w-24 h-6 rounded-md bg-[#F1E8E0] animate-pulse ml-3" />
+          <View className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+          <View className="w-24 h-6 rounded-md bg-muted animate-pulse ml-3" />
         </View>
         <View className="flex-row justify-between px-1">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <View key={i} className="w-3 h-3 rounded-full bg-[#F1E8E0] animate-pulse" />
+            <View key={i} className="w-3 h-3 rounded-full bg-muted animate-pulse" />
           ))}
         </View>
       </Card>
       <Card style={{ marginBottom: 12 }}>
-        <View className="w-32 h-4 rounded-md bg-[#F1E8E0] animate-pulse mb-3" />
+        <View className="w-32 h-4 rounded-md bg-muted animate-pulse mb-3" />
         <View className="flex-row mb-3">
           {[0, 1, 2, 3].map((i) => (
-            <View key={i} className="w-14 h-7 rounded-full bg-[#F1E8E0] animate-pulse" style={{ marginRight: 8 }} />
+            <View key={i} className="w-14 h-7 rounded-full bg-muted animate-pulse" style={{ marginRight: 8 }} />
           ))}
         </View>
-        <View className="h-[210px] rounded-2xl bg-[#F1E8E0] animate-pulse" />
+        <View className="h-[210px] rounded-2xl bg-muted animate-pulse" />
       </Card>
       <Card>
         <View className="flex-row items-center justify-between">
-          <View className="w-28 h-10 rounded-md bg-[#F1E8E0] animate-pulse" />
-          <View className="w-20 h-8 rounded-md bg-[#F1E8E0] animate-pulse" />
+          <View className="w-28 h-10 rounded-md bg-muted animate-pulse" />
+          <View className="w-20 h-8 rounded-md bg-muted animate-pulse" />
         </View>
       </Card>
     </View>
@@ -109,6 +110,11 @@ export default function ProgressScreen({
   const [range, setRange] = useState('6M');
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused();
+  const { isDark } = useTheme();
+  // Unlogged-day dot: light peach in light mode, dark gray in dark mode.
+  const idleDot = isDark ? '#383838' : '#F1E8E0';
+  // Near-white icon ink for use on dark (bg-ink) buttons in either mode.
+  const onDarkBtn = isDark ? '#F5F5F5' : '#FFFFFF';
 
   // Revalidate on every focus: weights/goal (skipped when freshly fetched)
   // + the year of meals this screen needs for streak and daily-average.
@@ -264,7 +270,7 @@ const encouragement = (() => {
 
   return (
     <ScrollView
-      className="flex-1 bg-white px-4 pt-12"
+      className="flex-1 bg-background px-4 pt-12"
       // Clearance above the tab bar: the measured tab height plus breathing
       // room, so the last card is never flush against (or hidden behind) it.
       contentContainerStyle={{ paddingBottom: 32 + (bottomOffset || 0) }}
@@ -289,7 +295,7 @@ const encouragement = (() => {
               accessibilityLabel="Retry loading"
               className="self-start bg-ink rounded-full px-4 py-2"
             >
-              <Text className="text-white text-xs font-bold">Retry</Text>
+              <Text className="text-background text-xs font-bold">Retry</Text>
             </Pressable>
           )}
         </Card>
@@ -322,8 +328,8 @@ const encouragement = (() => {
             accessibilityRole="button"
             className="bg-ink rounded-full px-4 py-2.5 flex-row items-center"
           >
-            <Text className="text-white text-sm font-bold">Log Weight</Text>
-            <ArrowRight size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            <Text className="text-background text-sm font-bold">Log Weight</Text>
+            <ArrowRight size={14} color={onDarkBtn} style={{ marginLeft: 4 }} />
           </Pressable>
         </View>
       </Card>
@@ -345,7 +351,7 @@ const encouragement = (() => {
               <View
                 className="w-3 h-3 rounded-full"
                 style={{
-                  backgroundColor: d.logged ? '#f2470c' : '#F1E8E0',
+                  backgroundColor: d.logged ? '#f2470c' : idleDot,
                   borderWidth: d.isToday && !d.logged ? 1.5 : 0,
                   borderColor: '#f2470c',
                 }}

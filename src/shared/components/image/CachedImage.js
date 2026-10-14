@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
+import { useTheme } from '../../theme/theme';
 
 // Lightweight image with loading + error states.
 // Spinner is delayed so cached images paint instantly without a flash;
 // image bytes are warmed via Image.prefetch by the calling screen.
 export default function CachedImage({ uri, source, style, className, fallbackContent = null, ...props }) {
+  const { isDark } = useTheme();
+  const placeholder = isDark ? '#242424' : '#f8f6f0';
   const resolvedUri = uri ?? source?.uri;
   const [loading, setLoading] = useState(!!resolvedUri);
   const [showSpinner, setShowSpinner] = useState(false);
@@ -27,11 +30,11 @@ export default function CachedImage({ uri, source, style, className, fallbackCon
   }, [loading]);
 
   if (!resolvedUri || failed) {
-    return <View className={className} style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f6f0', overflow: 'hidden' }, style]}>{fallbackContent}</View>;
+    return <View className={className} style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: placeholder, overflow: 'hidden' }, style]}>{fallbackContent}</View>;
   }
 
   return (
-    <View className={className} style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f6f0', overflow: 'hidden' }, style]}>
+    <View className={className} style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: placeholder, overflow: 'hidden' }, style]}>
       {loading && showSpinner ? <ActivityIndicator size="small" color="#f2470c" style={{ position: 'absolute' }} /> : null}
       <Image
         source={{ uri: resolvedUri, cache: 'force-cache' }}

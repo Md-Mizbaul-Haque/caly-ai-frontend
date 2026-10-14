@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/caly-logo.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
@@ -63,7 +63,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {

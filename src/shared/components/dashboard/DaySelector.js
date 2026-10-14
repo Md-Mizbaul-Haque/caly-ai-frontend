@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useTheme } from '../../theme/theme';
 import { dateKey } from '../../utils/format';
 import { weekRange, zonedParts } from '../../utils/mealDates';
 import ProgressRing from '../ui/ProgressRing';
@@ -20,6 +21,7 @@ export default function DaySelector({
   recenterSignal, // accepted for compat, intentionally ignored (no auto-center)
 }) {
   void recenterSignal;
+  const { isDark } = useTheme();
   const safeSelected = selected instanceof Date && !Number.isNaN(selected.getTime()) ? selected : new Date();
   const todayKey = dateKey(new Date(), timeZone);
   const selectedKey = dateKey(safeSelected, timeZone);
@@ -68,7 +70,7 @@ export default function DaySelector({
           hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="Previous week"
-          className="px-3 py-2 rounded-card border border-[#F1E8E0] bg-white"
+          className="px-3 py-2 rounded-card border border-border bg-card"
         >
           <Text className="text-base font-bold text-ink">‹</Text>
         </Pressable>
@@ -78,7 +80,7 @@ export default function DaySelector({
           hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="Next week"
-          className="px-3 py-2 rounded-card border border-[#F1E8E0] bg-white"
+          className="px-3 py-2 rounded-card border border-border bg-card"
         >
           <Text className="text-base font-bold text-ink">›</Text>
         </Pressable>
@@ -99,7 +101,7 @@ export default function DaySelector({
               accessibilityLabel={`${DAY_LABELS[parts.weekday]} ${parts.d}${isToday ? ', today' : ''}${isSelected ? ', selected' : ''}`}
               accessibilityState={{ selected: isSelected }}
               className={`flex-1 items-center rounded-card px-1 py-2 min-w-[40px] ${
-                isSelected ? 'bg-primary' : isToday ? 'bg-white border border-[#F1E8E0]' : 'bg-transparent'
+                isSelected ? 'bg-primary' : isToday ? 'bg-card border border-border' : 'bg-transparent'
               }`}
             >
               <Text className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>{DAY_LABELS[parts.weekday]}</Text>
@@ -111,7 +113,7 @@ export default function DaySelector({
                   size={36}
                   strokeWidth={4}
                   color={isSelected ? '#FFFFFF' : '#f2470c'}
-                  trackColor={isSelected ? 'rgba(255,255,255,0.35)' : '#F1E8E0'}
+                  trackColor={isSelected ? 'rgba(255,255,255,0.35)' : isDark ? '#383838' : '#F1E8E0'}
                 />
               </View>
             </Pressable>
