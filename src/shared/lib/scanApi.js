@@ -1,4 +1,6 @@
 import { authedFetch } from './api';
+import { buildMultipartPayload } from './uploadPart';
+import { File as FilesystemFile } from 'expo-file-system';
 
 /**
  * Retry a fetch function on network errors.
@@ -38,19 +40,16 @@ async function fetchWithRetry(fetchFn, maxRetries = 2, retryDelay = 1000, signal
  * (503) so the log-a-meal flow always completes.
  */
 export async function scanImage(imageUri, { signal } = {}) {
-  const form = new FormData();
-  // Web gallery URIs are blob:/data: URLs — the {uri,name,type} shape only
-  // uploads on native. Resolve to a real File first so web uploads bytes.
-  let file = { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' };
-  if (typeof imageUri === 'string' && /^(blob|data):/.test(imageUri)) {
-    const blob = await (await fetch(imageUri, { signal })).blob();
-    file = new File([blob], 'meal.jpg', { type: blob.type || 'image/jpeg' });
-  }
-  form.append('image', file);
-  // Never set Content-Type manually here — fetch generates the multipart
-  // boundary; a hardcoded 'multipart/form-data' breaks every native upload.
-  // Photo upload + AI inference can exceed the default 15 s timeout on 4G.
-  const fetchFn = () => authedFetch('/api/scan', { method: 'POST', body: form, timeoutMs: 60000, signal });
+  // Manual multipart body (raw bytes + explicit boundary Content-Type):
+  // the fetch serializer drops the filename for non-global Blobs, and
+  // multer only creates req.file for parts WITH a filename.
+  const { body, contentType } = await buildMultipartPayload(imageUri, {
+    signal,
+    FileSystemFileImpl: FilesystemFile,
+  });
+  // The Content-Type MUST carry our boundary — fetch cannot infer one for
+  // raw bytes (the old "never set Content-Type" rule applied to FormData).
+  const fetchFn = () => authedFetch('/api/scan', { method: 'POST', headers: { 'Content-Type': contentType }, body, timeoutMs: 60000, signal });
   
   let res;
   try {
@@ -104,10 +103,12 @@ export async function scanImage(imageUri, { signal } = {}) {
  * Called once at Save (never for discarded scans) -> { imageUrl }.
  */
 export async function uploadMealImage(imageUri, { signal } = {}) {
-  const form = new FormData();
-  // Never set Content-Type manually — fetch generates the multipart boundary.
-  form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' });
-  const fetchFn = () => authedFetch('/api/scan/image', { method: 'POST', body: form, timeoutMs: 30000, signal });
+  // Same manual multipart uploader as scanImage (see above for why).
+  const { body, contentType } = await buildMultipartPayload(imageUri, {
+    signal,
+    FileSystemFileImpl: FilesystemFile,
+  });
+  const fetchFn = () => authedFetch('/api/scan/image', { method: 'POST', headers: { 'Content-Type': contentType }, body, timeoutMs: 30000, signal });
   const res = await fetchWithRetry(fetchFn, 2, 1000, signal);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import { uploadMealImage } from '../../../shared/lib/scanApi';
 import Card from '../../../shared/components/ui/Card';
@@ -16,6 +17,7 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
  */
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   const close = onClose ?? onDone ?? (() => {});
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState(() => {
     if (result.kind === 'barcode') return [result.item].filter(Boolean);
     // No food in frame: seed one editable zero row so the photo, the 0/0/0
@@ -70,10 +72,18 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       // device. A failed upload must not lose the meal — save without it,
       // but say so instead of silently dropping the photo.
       // Anything not already remote (file:, content:, data:) is uploadable.
+      // Prefer the converted upload (shrunk JPEG) over the raw original:
+      // iPhone library originals can be HEIC, which the server rejects,
+      // while the converted copy is always a JPEG. Web blob: uploads can
+      // be revoked mid-session, so only file: uploads take precedence.
+      const persistUri =
+        result.uploadUri && result.uploadUri.startsWith('file:')
+          ? result.uploadUri
+          : result.imageUri;
       let imageUrl;
-      if (result.imageUri && !result.imageUri.startsWith('http')) {
+      if (persistUri && !persistUri.startsWith('http')) {
         try {
-          ({ imageUrl } = await uploadMealImage(result.imageUri));
+          ({ imageUrl } = await uploadMealImage(persistUri));
         } catch {
           imageUrl = undefined;
           setPhotoNotice('Saved without photo — image storage is unavailable.');
@@ -97,7 +107,10 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white px-4 pt-12" contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      className="flex-1 bg-white px-4 pt-12"
+      contentContainerStyle={{ paddingBottom: 40 + Math.max(insets.bottom, 0) }}
+    >
       <View className="flex-row items-center mb-4">
         <Pressable onPress={close} accessibilityLabel="Back" hitSlop={8} className="mr-3">
           <ChevronLeft size={26} color="#1A1A1A" />
@@ -110,7 +123,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       {result.placeholder && (
         <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
-            AI scan unavailable — showing an estimate you can edit. Add OPENAI_API_KEY on the server for real detection.
+            AI scan unavailable — showing an estimate you can edit. The server needs an image-scanning key for real detection.
           </Text>
         </View>
       )}

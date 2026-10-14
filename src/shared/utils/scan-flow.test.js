@@ -48,9 +48,18 @@ describe('scan flow robustness', () => {
     assert.match(upload, /resize/, 'no resize bound on the upload');
   });
 
-  it('web uploads send real bytes, not a stringified object', () => {
+  it('uploads send a manual multipart body with an explicit boundary', () => {
     const scanApi = read('shared/lib/scanApi.js');
-    assert.match(scanApi, /new File\(/, 'blob:/data: URIs must be resolved to a File before append');
+    assert.match(scanApi, /buildMultipartPayload/, 'uploads must bypass the serializer that drops filenames');
+    assert.match(scanApi, /'Content-Type': contentType/, 'raw bytes need the explicit boundary Content-Type from the builder');
+    assert.doesNotMatch(scanApi, /new FormData\(\)/, 'no FormData object may reach the fetch serializer');
+  });
+
+  it('native file:// uploads never rely on Blob identity (expo-blob removed)', () => {
+    const scanApi = read('shared/lib/scanApi.js');
+    assert.doesNotMatch(scanApi, /\{\s*uri:\s*imageUri/, 'raw {uri} parts throw Unsupported FormDataPart implementation');
+    assert.doesNotMatch(scanApi, /expo-blob/, 'expo-blob is unneeded: the filename never survived it');
+    assert.match(scanApi, /expo-file-system/, 'native file:// bytes must be read via expo-file-system');
   });
 
   it('saved meals never carry dead or bloated image URLs', () => {
@@ -192,5 +201,17 @@ describe('scan flow robustness', () => {
     const upload = read('features/scan/screens/PictureUploadScreen.js');
     assert.match(upload, /needsVerification/, '403 unverified must be detected via needsVerification');
     assert.match(upload, /Verify your email|verify your email/i, 'unverified users need verify guidance, not a retry loop');
+  });
+
+  it('placeholder copy never names a provider key (server uses Groq or OpenAI)', () => {
+    const screen = read('features/scan/screens/ScanResultScreen.js');
+    assert.doesNotMatch(screen, /OPENAI_API_KEY/, 'provider key names do not belong in user-facing copy');
+  });
+
+  it('kept photos persist the converted upload (HEIC-safe), not the raw original', () => {
+    const upload = read('features/scan/screens/PictureUploadScreen.js');
+    assert.match(upload, /uploadUri/, 'the shrunk/converted upload URI must travel with the result');
+    const screen = read('features/scan/screens/ScanResultScreen.js');
+    assert.match(screen, /uploadUri/, 'save must prefer the converted upload over the raw original');
   });
 });

@@ -155,7 +155,9 @@ export default function PictureUploadScreen({
           });
           console.log(uploadUri, ctrl.signal, items, placeholder);
           setPreviewUri(stableUri);
-          onResult({ kind: "scan", imageUri: stableUri, items, placeholder });
+          // imageUri stays the stable preview reference; uploadUri is the
+          // converted (shrunk JPEG) copy the result screen persists.
+          onResult({ kind: "scan", imageUri: stableUri, uploadUri, items, placeholder });
         }
       } catch (_e) {
         // User-cancelled: stay silent, the overlay is already gone.
