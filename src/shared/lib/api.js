@@ -1,8 +1,11 @@
 // Caly AI API client - point to your backend
 // Set EXPO_PUBLIC_API_URL in .env, e.g. http://localhost:5000
 import { getToken, handleUnauthorized } from './tokenStore';
+import { classifyApiError, isRetryableCode } from './apiErrors';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+export { classifyApiError, isRetryableCode };
+
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000').trim();
 
 async function authHeaders() {
   const token = await getToken();
@@ -48,6 +51,7 @@ function connectionError(id, method, path, cause) {
   err.network = !timedOut;
   err.timeout = timedOut;
   err.reportId = id;
+  err.code = timedOut ? 'TIMEOUT_WAKE' : 'UNREACHABLE';
   return err;
 }
 
@@ -59,6 +63,7 @@ async function parseError(res, method, path, id) {
     err.status = res.status;
     err.data = data;
     err.reportId = id;
+    err.code = 'HTTP_5xx';
     return err;
   }
   const detail = data.details && data.details[0] && data.details[0].message;
@@ -66,6 +71,7 @@ async function parseError(res, method, path, id) {
   const err = new Error(message);
   err.status = res.status;
   err.data = data;
+  err.code = res.status === 401 ? 'UNAUTHORIZED' : 'HTTP_4xx';
   return err;
 }
 
@@ -83,7 +89,9 @@ async function request(method, path, { headers = {}, body } = {}) {
     try {
       const res = await fetch(`${API_URL}${path}`, {
         method,
-        headers: { ...(await authHeaders()), ...headers },
+        // X-Request-Id carries the Ref # so one backend log line matches
+        // this exact request (the server echoes it back).
+        headers: { ...(await authHeaders()), 'X-Request-Id': id, ...headers },
         body,
         signal: ctrl.signal,
       });
@@ -153,7 +161,7 @@ export async function authedFetch(path, options = {}) {
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...fetchOptions,
-      headers: { ...(await authHeaders()), ...(options.headers || {}) },
+      headers: { ...(await authHeaders()), 'X-Request-Id': id, ...(options.headers || {}) },
       signal: ctrl.signal,
     });
    } catch (e) {
