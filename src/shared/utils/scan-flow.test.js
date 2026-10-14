@@ -185,5 +185,12 @@ describe('scan flow robustness', () => {
     assert.ok(fn, 'lookupBarcode missing');
     assert.match(fn[0], /\.status\s*=/, 'barcode error must carry HTTP status');
     assert.match(fn[0], /\.code\s*=/, 'barcode error must carry a taxonomy code');
+    assert.match(fn[0], /\.data\s*=/, 'barcode error must carry the response body (needsVerification)');
+  });
+
+  it('scan failures guide unverified accounts to verify instead of retrying', () => {
+    const upload = read('features/scan/screens/PictureUploadScreen.js');
+    assert.match(upload, /needsVerification/, '403 unverified must be detected via needsVerification');
+    assert.match(upload, /Verify your email|verify your email/i, 'unverified users need verify guidance, not a retry loop');
   });
 });

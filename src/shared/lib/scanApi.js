@@ -83,6 +83,7 @@ export async function scanImage(imageUri, { signal } = {}) {
     const httpErr = new Error(errorMessage);
     httpErr.status = res.status;
     httpErr.code = res.status === 401 ? 'UNAUTHORIZED' : 'HTTP_4xx';
+    httpErr.data = data;
     throw httpErr;
   }
   // A 200 without an items array (proxy error page, wrong route) must be
@@ -138,6 +139,7 @@ export async function lookupBarcode(code, { signal } = {}) {
     const httpErr = new Error(errorMessage);
     httpErr.status = res.status;
     httpErr.code = res.status === 401 ? 'UNAUTHORIZED' : res.status >= 500 ? 'HTTP_5xx' : 'HTTP_4xx';
+    httpErr.data = data;
     throw httpErr;
   }
   return data; // { item }

@@ -1,18 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Image, Alert, Linking } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-import NetInfo from '@react-native-community/netinfo';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, CircleQuestionMark, Zap, ZapOff, ScanLine, ScanBarcode, FileText, Images } from '../../../shared/components/ui/icons';
-import { scanImage, lookupBarcode } from '../../../shared/lib/scanApi';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  Image,
+  Alert,
+  Linking,
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import NetInfo from "@react-native-community/netinfo";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  X,
+  CircleQuestionMark,
+  Zap,
+  ZapOff,
+  ScanLine,
+  ScanBarcode,
+  FileText,
+  Images,
+} from "../../../shared/components/ui/icons";
+import { scanImage, lookupBarcode } from "../../../shared/lib/scanApi";
+import { classifyApiError, isRetryableCode } from "../../../shared/lib/api";
 
 const MODES = [
-  { key: 'scan', label: 'Scan Food', icon: ScanLine },
-  { key: 'barcode', label: 'Barcode', icon: ScanBarcode },
-  { key: 'label', label: 'Food Label', icon: FileText },
-  { key: 'library', label: 'Library', icon: Images },
+  { key: "scan", label: "Scan Food", icon: ScanLine },
+  { key: "barcode", label: "Barcode", icon: ScanBarcode },
+  { key: "label", label: "Food Label", icon: FileText },
+  { key: "library", label: "Library", icon: Images },
 ];
 
 /**
@@ -22,7 +40,12 @@ const MODES = [
  * - Food Label: capture a nutrition label photo (same AI pipeline).
  * - Library: pick an existing photo from the gallery.
  */
-export default function PictureUploadScreen({ onClose, onCancel, onResult, cameraPermission: cameraPermissionProp }) {
+export default function PictureUploadScreen({
+  onClose,
+  onCancel,
+  onResult,
+  cameraPermission: cameraPermissionProp,
+}) {
   const [hookPermission, requestPermission] = useCameraPermissions();
   // Parent may pass an already-loaded permission (tabs layout pre-asks on
   // mount); otherwise fall back to this screen's own hook. Either way
@@ -31,8 +54,8 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
   const close = onClose ?? onCancel ?? (() => {});
   const insets = useSafeAreaInsets();
   const [flashOn, setFlashOn] = useState(false);
-  const [mode, setMode] = useState('scan');
-  const [busy, setBusy] = useState(false);        // shutter / upload in progress
+  const [mode, setMode] = useState("scan");
+  const [busy, setBusy] = useState(false); // shutter / upload in progress
   const [scanning, setScanning] = useState(false); // AI analyzing
   const [previewUri, setPreviewUri] = useState(null);
   const cameraRef = useRef(null);
@@ -64,114 +87,225 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
   // pops up over a screen the user already left.
   useEffect(() => () => scanCtrl.current?.abort(), []);
 
-  const analyze = useCallback(async (uri, kind = 'scan') => {
-    // Offline now means a 60 s timeout + retries later — fail fast instead.
-    const net = await NetInfo.fetch().catch(() => null);
-    if (net && net.isConnected === false) {
-      Alert.alert("You're offline", 'Reconnect to Wi-Fi or mobile data, then try again.');
-      return;
-    }
-    lastAttempt.current = { uri, kind };
-    // A new scan supersedes any in-flight one.
-    scanCtrl.current?.abort();
-    const ctrl = new AbortController();
-    scanCtrl.current = ctrl;
-    // Web gallery URIs are transient blob: URLs that the browser can revoke
-    // mid-session (dead preview on re-render). Convert once to a data: URL
-    // so preview + upload use a stable reference. Native file:// URIs skip this.
-    let stableUri = uri;
-    if (kind !== 'barcode' && typeof uri === 'string' && uri.startsWith('blob:')) {
-      try {
-        const blob = await (await fetch(uri)).blob();
-        stableUri = await new Promise((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result);
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(blob);
-        });
-      } catch {
-        stableUri = uri;
+  const analyze = useCallback(
+    async (uri, kind = "scan") => {
+      // Offline now means a 60 s timeout + retries later — fail fast instead.
+      // isInternetReachable (not just isConnected) catches half-dead links
+      // that report "connected" but can't reach anything; null means NetInfo
+      // couldn't tell, so let the request itself decide.
+      const net = await NetInfo.fetch().catch(() => null);
+      if (
+        net &&
+        (net.isConnected === false || net.isInternetReachable === false)
+      ) {
+        Alert.alert(
+          "You're offline",
+          "Reconnect to Wi-Fi or mobile data, then try again.",
+        );
+        return;
       }
-    }
-    setScanning(true);
-    try {
-      if (kind === 'barcode') {
-        const { item } = await lookupBarcode(uri, { signal: ctrl.signal }); // uri is the barcode digits here
-        onResult({ kind: 'barcode', item });
-      } else {
-        // Shrink camera/gallery photos before upload: multi-MB originals
-        // stall on some mobile networks (and burn AI bytes) while 1280px
-        // is plenty for food recognition. Falls back to the original.
-        let uploadUri = stableUri;
+      lastAttempt.current = { uri, kind };
+      // A new scan supersedes any in-flight one.
+      scanCtrl.current?.abort();
+      const ctrl = new AbortController();
+      scanCtrl.current = ctrl;
+      // Web gallery URIs are transient blob: URLs that the browser can revoke
+      // mid-session (dead preview on re-render). Convert once to a data: URL
+      // so preview + upload use a stable reference. Native file:// URIs skip this.
+      let stableUri = uri;
+      if (
+        kind !== "barcode" &&
+        typeof uri === "string" &&
+        uri.startsWith("blob:")
+      ) {
         try {
-          const shrunk = await manipulateAsync(
-            stableUri,
-            [{ resize: { width: 1280 } }],
-            { compress: 0.7, format: SaveFormat.JPEG }
-          );
-          if (shrunk?.uri) uploadUri = shrunk.uri;
+          const blob = await (await fetch(uri)).blob();
+          stableUri = await new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = () => reject(fr.error);
+            fr.readAsDataURL(blob);
+          });
         } catch {
-          // keep the original
+          stableUri = uri;
         }
-        const { items, placeholder } = await scanImage(uploadUri, { signal: ctrl.signal });
-        setPreviewUri(stableUri);
-        onResult({ kind: 'scan', imageUri: stableUri, items, placeholder });
       }
-     } catch (_e) {
+      setScanning(true);
+      try {
+        if (kind === "barcode") {
+          const { item } = await lookupBarcode(uri, { signal: ctrl.signal }); // uri is the barcode digits here
+          onResult({ kind: "barcode", item });
+        } else {
+          // Shrink camera/gallery photos before upload: multi-MB originals
+          // stall on some mobile networks (and burn AI bytes) while 1280px
+          // is plenty for food recognition. Falls back to the original.
+          let uploadUri = stableUri;
+          try {
+            const shrunk = await manipulateAsync(
+              stableUri,
+              [{ resize: { width: 1280 } }],
+              { compress: 0.7, format: SaveFormat.JPEG },
+            );
+            if (shrunk?.uri) uploadUri = shrunk.uri;
+          } catch {
+            // keep the original
+          }
+          const { items, placeholder } = await scanImage(uploadUri, {
+            signal: ctrl.signal,
+          });
+          console.log(uploadUri, ctrl.signal, items, placeholder);
+          setPreviewUri(stableUri);
+          onResult({ kind: "scan", imageUri: stableUri, items, placeholder });
+        }
+      } catch (_e) {
         // User-cancelled: stay silent, the overlay is already gone.
         if (ctrl.signal.aborted) return;
         const retry = lastAttempt.current;
-        Alert.alert('Scan failed', _e.message || 'Could not analyze this photo.', [
-          ...(retry ? [{ text: 'Retry', onPress: () => analyzeRef.current?.(retry.uri, retry.kind) }] : []),
-          { text: 'Cancel', style: 'cancel' },
-        ]);
-    } finally {
-      setScanning(false);
-      setBusy(false);
-      if (scanCtrl.current === ctrl) scanCtrl.current = null;
-    }
-  }, [onResult]);
-  useEffect(() => { analyzeRef.current = analyze; });
-
-  const takePicture = useCallback(async () => {
-    if (busy || !cameraRef.current || !cameraReady) return;
-    setBusy(true);
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      // 'label' mode uses the same AI pipeline as 'scan' — no separate kind.
-      if (photo?.uri) await analyze(photo.uri, 'scan');
-     } catch (_e) {
-       setBusy(false);
-       Alert.alert('Camera error', 'Could not take the picture. Try again.');
-    }
-  }, [busy, cameraReady, analyze]);
+        const code = classifyApiError(_e);
+        // A 401 already cleared the session (the reroute follows) — explain
+        // it instead of offering a retry loop that can never succeed.
+        if (code === "UNAUTHORIZED") {
+          Alert.alert(
+            "Session expired",
+            "Please sign in again, then retry your scan.",
+          );
+          return;
+        }
+        // Verified-only endpoints (scan) return 403 + needsVerification
+        // for skip-verification accounts. Retrying can never succeed —
+        // route the user to verify instead.
+        if (_e?.status === 403 && _e?.data?.needsVerification) {
+          Alert.alert(
+            "Verify your email",
+            "Scanning unlocks after email verification. Check your inbox for the code, then verify and scan again.",
+          );
+          return;
+        }
+        // A timeout against an idle free-tier server is usually a cold
+        // start, not a dead backend — say so and invite a retry instead of
+        // the generic connection-failure dead end.
+        const waking = code === "TIMEOUT_WAKE" || _e?.timeout === true;
+        const canRetry = retry && isRetryableCode(code);
+        Alert.alert(
+          waking ? "Server is waking up" : "Scan failed",
+          waking
+            ? "The server takes about 30 seconds to wake when idle. Wait a moment, then retry."
+            : _e.message || "Could not analyze this photo.",
+          [
+            ...(canRetry
+              ? [
+                  {
+                    text: "Retry",
+                    onPress: () => analyzeRef.current?.(retry.uri, retry.kind),
+                  },
+                ]
+              : []),
+            { text: "Cancel", style: "cancel" },
+          ],
+        );
+      } finally {
+        setScanning(false);
+        setBusy(false);
+        if (scanCtrl.current === ctrl) scanCtrl.current = null;
+      }
+    },
+    [onResult],
+  );
+  useEffect(() => {
+    analyzeRef.current = analyze;
+  });
 
   const pickFromLibrary = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         quality: 0.8,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
         setBusy(true);
-        await analyze(result.assets[0].uri, 'scan');
+        await analyze(result.assets[0].uri, "scan");
       }
     } catch {
-      Alert.alert('Gallery unavailable', 'Could not open your photo library.');
+      Alert.alert("Gallery unavailable", "Could not open your photo library.");
     }
   }, [analyze]);
 
+  // In-flight capture guard (ref, not state): setBusy lands on the next
+  // render, so a double-tap enters takePicture twice and the second
+  // takePictureAsync throws on the busy native session.
+  const capturing = useRef(false);
+  const takePicture = useCallback(async () => {
+    if (busy || capturing.current || !cameraRef.current || !cameraReady) return;
+    // Stale/mismatched build: the ref resolved but the capture method is
+    // missing behind it (the on-device "undefined is not a function").
+    // Name it and offer the gallery instead of throwing into the void.
+    if (typeof cameraRef.current.takePictureAsync !== "function") {
+      console.warn(
+        `[scan] cameraUnavailable (ref=${cameraRef.current?.constructor?.name || typeof cameraRef.current} mode=${mode}):`,
+        "takePictureAsync missing on this build",
+      );
+      Alert.alert(
+        "Camera unavailable",
+        "This app build cannot access the camera. Use your gallery instead, or reinstall the latest build.",
+        [
+          { text: "Use gallery", onPress: () => pickFromLibrary() },
+          { text: "Cancel", style: "cancel" },
+        ],
+      );
+      return;
+    }
+    capturing.current = true;
+    setBusy(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+
+      // A null native ref resolves undefined instead of throwing — reset
+      // busy so the shutter never sticks disabled.
+      if (!photo?.uri) {
+        setBusy(false);
+        Alert.alert(
+          "Camera error",
+          "Could not take the picture. Try again or use your gallery.",
+          [
+            { text: "Use gallery", onPress: () => pickFromLibrary() },
+            { text: "Cancel", style: "cancel" },
+          ],
+        );
+        return;
+      }
+
+      // 'label' mode uses the same AI pipeline as 'scan' — no separate kind.
+      if (photo?.uri) await analyze(photo.uri, "scan");
+    } catch (_e) {
+      setBusy(false);
+      // Surface the native reason (session race, write failure, …) with the
+      // camera state that names the cause — never a generic dead end.
+      console.warn(
+        `[scan] shutter failed (mode=${mode} flash=${flashOn ? "on" : "off"} ready=${cameraReady}):`,
+        _e?.message || _e,
+      );
+      Alert.alert(
+        "Camera error",
+        _e?.message || "Could not take the picture. Try again.",
+      );
+    } finally {
+      capturing.current = false;
+    }
+  }, [busy, cameraReady, analyze, mode, flashOn, pickFromLibrary]);
+
   function handleMode(key) {
     setMode(key);
-    if (key === 'library') pickFromLibrary();
+    if (key === "library") pickFromLibrary();
   }
 
   function handleBarcodeScanned({ data }) {
     if (busy || barcodeLock.current) return;
     barcodeLock.current = true;
     setBusy(true);
-    analyze(data, 'barcode').finally(() => {
-      setTimeout(() => { barcodeLock.current = false; }, 1500);
+    analyze(data, "barcode").finally(() => {
+      setTimeout(() => {
+        barcodeLock.current = false;
+      }, 1500);
     });
   }
 
@@ -179,7 +313,9 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     return (
       <View className="flex-1 bg-black items-center justify-center px-8">
         <ActivityIndicator color="#FFFFFF" />
-        <Text className="text-white/70 text-center mt-4">Requesting camera access…</Text>
+        <Text className="text-white/70 text-center mt-4">
+          Requesting camera access…
+        </Text>
       </View>
     );
   }
@@ -188,28 +324,37 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     // canAskAgain === false means the OS will NEVER show the dialog again
     // (permanently denied) — re-calling requestPermission silently no-ops,
     // so the only way out is the system Settings screen.
-    const permanentlyDenied = permission.status === 'denied' && permission.canAskAgain === false;
+    const permanentlyDenied =
+      permission.status === "denied" && permission.canAskAgain === false;
     return (
       <View className="flex-1 bg-black items-center justify-center px-8">
         <Text className="text-white text-center text-base mb-2">
-          {permanentlyDenied ? 'Camera is blocked' : 'Camera access needed'}
+          {permanentlyDenied ? "Camera is blocked" : "Camera access needed"}
         </Text>
         <Text className="text-white/70 text-center mb-6">
           {permanentlyDenied
-            ? 'You denied camera access permanently, so the preview stays black. Enable it in Settings to scan meals.'
-            : 'Caly AI uses the camera to scan your meals.'}
+            ? "You denied camera access permanently, so the preview stays black. Enable it in Settings to scan meals."
+            : "Caly AI uses the camera to scan your meals."}
         </Text>
         {permanentlyDenied ? (
           <>
-            <Pressable onPress={() => Linking.openSettings()} className="bg-primary rounded-full px-6 py-3">
+            <Pressable
+              onPress={() => Linking.openSettings()}
+              className="bg-primary rounded-full px-6 py-3"
+            >
               <Text className="text-white font-bold">Open Settings</Text>
             </Pressable>
             <Pressable onPress={requestPermission} className="mt-4 px-4 py-2">
-              <Text className="text-white/70">I&apos;ve enabled it — check again</Text>
+              <Text className="text-white/70">
+                I&apos;ve enabled it — check again
+              </Text>
             </Pressable>
           </>
         ) : (
-          <Pressable onPress={requestPermission} className="bg-primary rounded-full px-6 py-3">
+          <Pressable
+            onPress={requestPermission}
+            className="bg-primary rounded-full px-6 py-3"
+          >
             <Text className="text-white font-bold">Grant permission</Text>
           </Pressable>
         )}
@@ -220,7 +365,7 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
     );
   }
 
-  const isBarcodeMode = mode === 'barcode';
+  const isBarcodeMode = mode === "barcode";
 
   return (
     <View className="flex-1 bg-black">
@@ -233,24 +378,32 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
         style={{ flex: 1 }}
         facing="back"
         mode="picture"
-        flash={flashOn ? 'on' : 'off'}
-        barcodeScannerSettings={isBarcodeMode ? { barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'] } : undefined}
+        flash={flashOn ? "on" : "off"}
+        barcodeScannerSettings={
+          isBarcodeMode
+            ? { barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128"] }
+            : undefined
+        }
         onBarcodeScanned={isBarcodeMode ? handleBarcodeScanned : undefined}
         onCameraReady={() => {
           setCameraReady(true);
           setMountError(null);
         }}
         onMountError={(e) => {
-          console.warn('[scan] camera mount error:', e?.message);
-          setMountError(e?.message || 'Camera preview failed to start.');
+          console.warn("[scan] camera mount error:", e?.message);
+          setMountError(e?.message || "Camera preview failed to start.");
         }}
       />
 
       {/* Mount failure — replaces an eternal black preview with actions. */}
       {mountError && (
         <View className="absolute inset-0 bg-black items-center justify-center px-8 z-30">
-          <Text className="text-white text-center text-base mb-2">Camera couldn&apos;t start</Text>
-          <Text className="text-white/70 text-center text-sm mb-6">{mountError}</Text>
+          <Text className="text-white text-center text-base mb-2">
+            Camera couldn&apos;t start
+          </Text>
+          <Text className="text-white/70 text-center text-sm mb-6">
+            {mountError}
+          </Text>
           <Pressable
             onPress={() => {
               setMountError(null);
@@ -262,7 +415,9 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
             <Text className="text-white font-bold">Retry camera</Text>
           </Pressable>
           <Pressable onPress={pickFromLibrary} className="mt-4 px-4 py-2">
-            <Text className="text-white/70">Use a photo from the gallery instead</Text>
+            <Text className="text-white/70">
+              Use a photo from the gallery instead
+            </Text>
           </Pressable>
           <Pressable onPress={close} className="mt-2 px-4 py-2">
             <Text className="text-white/70">Go back</Text>
@@ -274,11 +429,20 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
       {scanning && (
         <View className="absolute inset-0 bg-black/70 items-center justify-center z-10">
           <ActivityIndicator size="large" color="#f2470c" />
-          <Text className="text-white mt-4 text-base">Analyzing your food…</Text>
+          <Text className="text-white mt-4 text-base">
+            Analyzing your food…
+          </Text>
           {previewUri && (
-            <Image source={{ uri: previewUri }} className="w-40 h-40 rounded-2xl mt-6" resizeMode="cover" />
+            <Image
+              source={{ uri: previewUri }}
+              className="w-40 h-40 rounded-2xl mt-6"
+              resizeMode="cover"
+            />
           )}
-          <Pressable onPress={() => scanCtrl.current?.abort()} className="mt-6 px-6 py-2.5 rounded-full bg-white/15">
+          <Pressable
+            onPress={() => scanCtrl.current?.abort()}
+            className="mt-6 px-6 py-2.5 rounded-full bg-white/15"
+          >
             <Text className="text-white font-bold">Cancel</Text>
           </Pressable>
         </View>
@@ -299,7 +463,12 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
           <X size={20} color="#FFFFFF" />
         </Pressable>
         <Pressable
-          onPress={() => Alert.alert('How to scan', 'Scan Food: point at your meal and tap the shutter.\nBarcode: point at the product barcode.\nFood Label: capture the nutrition label.\nLibrary: choose a photo from your gallery.')}
+          onPress={() =>
+            Alert.alert(
+              "How to scan",
+              "Scan Food: point at your meal and tap the shutter.\nBarcode: point at the product barcode.\nFood Label: capture the nutrition label.\nLibrary: choose a photo from your gallery.",
+            )
+          }
           accessibilityLabel="Help"
           className="w-10 h-10 rounded-full bg-black/60 items-center justify-center"
         >
@@ -317,7 +486,9 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
         {isBarcodeMode && (
           <View className="items-center mb-6">
             <View className="px-4 py-2 rounded-full bg-black/60">
-              <Text className="text-white text-xs">Point at a product barcode</Text>
+              <Text className="text-white text-xs">
+                Point at a product barcode
+              </Text>
             </View>
           </View>
         )}
@@ -331,24 +502,35 @@ export default function PictureUploadScreen({ onClose, onCancel, onResult, camer
                 key={key}
                 onPress={() => handleMode(key)}
                 disabled={busy}
-                className={`w-[70px] rounded-2xl py-2.5 items-center ${active ? 'bg-white' : 'bg-black/60'}`}
+                className={`w-[70px] rounded-2xl py-2.5 items-center ${active ? "bg-white" : "bg-black/60"}`}
                 accessibilityLabel={label}
               >
-                <Icon size={20} color={active ? '#111111' : '#FFFFFF'} />
-                <Text className={`text-[10px] mt-1 ${active ? 'text-[#111111]' : 'text-white'}`}>{label}</Text>
+                <Icon size={20} color={active ? "#111111" : "#FFFFFF"} />
+                <Text
+                  className={`text-[10px] mt-1 ${active ? "text-[#111111]" : "text-white"}`}
+                >
+                  {label}
+                </Text>
               </Pressable>
             );
           })}
         </View>
 
         {/* Flash + shutter row */}
-        <View className="flex-row items-center justify-center" style={{ gap: 48 }}>
+        <View
+          className="flex-row items-center justify-center"
+          style={{ gap: 48 }}
+        >
           <Pressable
-            onPress={() => setFlashOn(v => !v)}
-            accessibilityLabel={flashOn ? 'Turn flash off' : 'Turn flash on'}
+            onPress={() => setFlashOn((v) => !v)}
+            accessibilityLabel={flashOn ? "Turn flash off" : "Turn flash on"}
             className="w-11 h-11 rounded-full bg-black/60 items-center justify-center"
           >
-            {flashOn ? <Zap size={18} color="#FFFFFF" fill="#FFFFFF" /> : <ZapOff size={18} color="#FFFFFF" />}
+            {flashOn ? (
+              <Zap size={18} color="#FFFFFF" fill="#FFFFFF" />
+            ) : (
+              <ZapOff size={18} color="#FFFFFF" />
+            )}
           </Pressable>
 
           <Pressable
