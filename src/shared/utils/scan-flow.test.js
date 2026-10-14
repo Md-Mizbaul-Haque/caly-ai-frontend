@@ -201,4 +201,16 @@ describe('scan flow robustness', () => {
     assert.match(upload, /needsVerification/, '403 unverified must be detected via needsVerification');
     assert.match(upload, /Verify your email|verify your email/i, 'unverified users need verify guidance, not a retry loop');
   });
+
+  it('placeholder copy never names a provider key (server uses Groq or OpenAI)', () => {
+    const screen = read('features/scan/screens/ScanResultScreen.js');
+    assert.doesNotMatch(screen, /OPENAI_API_KEY/, 'provider key names do not belong in user-facing copy');
+  });
+
+  it('kept photos persist the converted upload (HEIC-safe), not the raw original', () => {
+    const upload = read('features/scan/screens/PictureUploadScreen.js');
+    assert.match(upload, /uploadUri/, 'the shrunk/converted upload URI must travel with the result');
+    const screen = read('features/scan/screens/ScanResultScreen.js');
+    assert.match(screen, /uploadUri/, 'save must prefer the converted upload over the raw original');
+  });
 });

@@ -70,10 +70,18 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       // device. A failed upload must not lose the meal — save without it,
       // but say so instead of silently dropping the photo.
       // Anything not already remote (file:, content:, data:) is uploadable.
+      // Prefer the converted upload (shrunk JPEG) over the raw original:
+      // iPhone library originals can be HEIC, which the server rejects,
+      // while the converted copy is always a JPEG. Web blob: uploads can
+      // be revoked mid-session, so only file: uploads take precedence.
+      const persistUri =
+        result.uploadUri && result.uploadUri.startsWith('file:')
+          ? result.uploadUri
+          : result.imageUri;
       let imageUrl;
-      if (result.imageUri && !result.imageUri.startsWith('http')) {
+      if (persistUri && !persistUri.startsWith('http')) {
         try {
-          ({ imageUrl } = await uploadMealImage(result.imageUri));
+          ({ imageUrl } = await uploadMealImage(persistUri));
         } catch {
           imageUrl = undefined;
           setPhotoNotice('Saved without photo — image storage is unavailable.');
@@ -110,7 +118,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       {result.placeholder && (
         <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
-            AI scan unavailable — showing an estimate you can edit. Add OPENAI_API_KEY on the server for real detection.
+            AI scan unavailable — showing an estimate you can edit. The server needs an image-scanning key for real detection.
           </Text>
         </View>
       )}
