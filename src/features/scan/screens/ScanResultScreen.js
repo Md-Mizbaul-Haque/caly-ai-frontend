@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
 import { uploadMealImage } from '../../../shared/lib/scanApi';
 import Card from '../../../shared/components/ui/Card';
@@ -16,6 +17,7 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
  */
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   const close = onClose ?? onDone ?? (() => {});
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState(() => {
     if (result.kind === 'barcode') return [result.item].filter(Boolean);
     // No food in frame: seed one editable zero row so the photo, the 0/0/0
@@ -105,7 +107,10 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white px-4 pt-12" contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      className="flex-1 bg-white px-4 pt-12"
+      contentContainerStyle={{ paddingBottom: 40 + Math.max(insets.bottom, 0) }}
+    >
       <View className="flex-row items-center mb-4">
         <Pressable onPress={close} accessibilityLabel="Back" hitSlop={8} className="mr-3">
           <ChevronLeft size={26} color="#1A1A1A" />
