@@ -6,6 +6,7 @@ export default function MealsRoute() {
   return (
     <MealsScreen
       meals={s.meals || []}
+      loading={s.loading}
       onSave={s.handleSave}
       onOpenQuickLog={() => s.setSheetOpen(true)}
     />

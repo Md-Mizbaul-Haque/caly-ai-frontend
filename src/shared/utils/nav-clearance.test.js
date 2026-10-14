@@ -30,13 +30,21 @@ describe('tab-bar clearance (measured, not assumed)', () => {
     );
   });
 
-  it('overlay sheets clear the tab bar (offset or full-screen Modal)', () => {
+  it('quick-log sheet covers the tab bar (nav hides behind the sheet)', () => {
+    // The open sheet hides the nav behind itself: full-height dim/panel plus
+    // Android elevation above BottomNav (elevation 8) — so it must NOT dock
+    // above the nav via bottomOffset anymore.
     const layout = read('app/(tabs)/_layout.js');
-    assert.match(
-      layout,
-      /bottomOffset=\{navHeight\}/,
-      'QuickLogSheet must get bottomOffset={navHeight}'
-    );
+    const tagStart = layout.indexOf('<QuickLogSheet');
+    assert.ok(tagStart >= 0, 'QuickLogSheet must be rendered by the tab layout');
+    const tag = layout.slice(tagStart, layout.indexOf('/>', tagStart));
+    assert.doesNotMatch(tag, /bottomOffset/, 'QuickLogSheet must not take bottomOffset (it covers the nav)');
+    const quick = read('shared/components/ui/QuickLogSheet.js');
+    assert.doesNotMatch(quick, /bottomOffset/, 'QuickLogSheet must not accept bottomOffset');
+    assert.match(quick, /elevation:\s*(?:[3-9]\d|\d{3,})/, 'sheet must out-elevate BottomNav on Android');
+  });
+
+  it('weight log sheet clears the tab bar (offset or full-screen Modal)', () => {
     // WeightLogSheet renders in a full-screen Modal (same pattern as
     // FoodDetailSheet), which overlays the tab bar by construction — so it
     // must either take bottomOffset or be Modal-based with safe-area padding.

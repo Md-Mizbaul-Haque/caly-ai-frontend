@@ -51,7 +51,7 @@ function withBootTimeout(promise, ms = 5000) {
 export function AuthSessionProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [goal, setGoal] = useState(2000);
+  const [goal, setGoal] = useState(null);
   const [stageEmail, setStageEmail] = useState('');
   const [verifyNext, setVerifyNext] = useState('app');
   const [authBusy, setAuthBusy] = useState(false);
@@ -65,13 +65,21 @@ export function AuthSessionProvider({ children }) {
   function applyUser(u) {
     setUser(u);
     if (u) writeCache('user', u);
-    if (u && u.dailyGoalKcal) setGoal(u.dailyGoalKcal);
+    // Nullable: a missing/invalid goal stays null so Home renders "set your
+    // goal" instead of a phantom 2000 (backend defaults 2000, so null only
+    // shows pre-hydration or for accounts without a saved goal).
+    if (u && Number.isFinite(Number(u.dailyGoalKcal)) && Number(u.dailyGoalKcal) > 0) {
+      setGoal(Number(u.dailyGoalKcal));
+    } else if (u) {
+      setGoal(null);
+    }
     syncTimeZone(u, setUser);
   }
 
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setUser(null);
+      setGoal(null);
       setStageEmail('');
       clearAppCache();
     });
@@ -102,7 +110,7 @@ export function AuthSessionProvider({ children }) {
           if (alive) applyUser(data.user);
         } catch (e) {
           if (!alive) return;
-          if (e?.status === 401) { setUser(null); clearAppCache(); }
+          if (e?.status === 401) { setUser(null); setGoal(null); clearAppCache(); }
           // Offline/other errors: keep whatever we have (cached or null).
         }
       } catch {
@@ -208,6 +216,7 @@ export function AuthSessionProvider({ children }) {
       await logout();
     } finally {
       setUser(null);
+      setGoal(null);
       setStageEmail('');
       clearAppCache();
     }

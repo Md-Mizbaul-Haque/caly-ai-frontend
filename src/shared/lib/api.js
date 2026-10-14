@@ -1,8 +1,11 @@
 // Caly AI API client - point to your backend
 // Set EXPO_PUBLIC_API_URL in .env, e.g. http://localhost:5000
 import { getToken, handleUnauthorized } from './tokenStore';
+import { classifyApiError, isRetryableCode } from './apiErrors';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+export { classifyApiError, isRetryableCode };
+
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000').trim();
 
 async function authHeaders() {
   const token = await getToken();
@@ -21,24 +24,34 @@ function logApiError(id, method, path, outcome) {
   console.info(`[api #${id}] ${method} ${path} -> ${outcome}`);
 }
 
+function isTimeoutCause(cause) {
+  // Web gives AbortError; React Native/Hermes gives generic Error
+  // ("fetch failed: Fetch request has been canceled"), undici similar.
+  if (cause?.name === 'AbortError') return true;
+  const msg = cause?.message || String(cause || '');
+  return /abort|cancel/i.test(msg);
+}
+
 function connectionError(id, method, path, cause) {
   // A timer abort means the server was too slow, not unreachable — say so
   // and mark it non-retryable (retrying a 60 s timeout burns minutes).
   // Caller cancels (scan "Cancel") are also AbortErrors; the caller stays
   // silent via its own signal check, so this message is timeout-only here.
-  const timedOut = cause?.name === 'AbortError';
+  const timedOut = cause?.timeout === true || isTimeoutCause(cause);
   logApiError(id, method, path, `network-failure: ${cause?.name || ''} ${cause?.message || cause}`);
-  // Host only (no tokens/bodies): tells us instantly whether the phone is
-  // pointed at a LAN URL it can't reach vs a real internet outage.
-  console.info(`[api #${id}] target ${API_URL} (check same-WiFi + backend running)`);
+  // Host only (no tokens/bodies): LAN URLs mean the phone can't reach the
+  // PC; hosted URLs (Render etc) mean cold start or a down backend.
+  const isLan = /localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\./.test(API_URL);
+  console.info(`[api #${id}] target ${API_URL} (${isLan ? 'check same-WiFi + backend running' : 'backend may be waking up — retry in ~30 s'})`);
   const err = new Error(
     timedOut
-      ? `The request to ${API_URL} timed out. Try a smaller photo or a stronger signal, then retry. (Ref #${id})`
+      ? `The server is taking too long (it may be waking up). Check your connection, then retry. (Ref #${id})`
       : `Couldn't connect to the server at ${API_URL}. Check your internet connection and try again. (Ref #${id})`
   );
   err.network = !timedOut;
   err.timeout = timedOut;
   err.reportId = id;
+  err.code = timedOut ? 'TIMEOUT_WAKE' : 'UNREACHABLE';
   return err;
 }
 
@@ -50,6 +63,7 @@ async function parseError(res, method, path, id) {
     err.status = res.status;
     err.data = data;
     err.reportId = id;
+    err.code = 'HTTP_5xx';
     return err;
   }
   const detail = data.details && data.details[0] && data.details[0].message;
@@ -57,39 +71,54 @@ async function parseError(res, method, path, id) {
   const err = new Error(message);
   err.status = res.status;
   err.data = data;
+  err.code = res.status === 401 ? 'UNAUTHORIZED' : 'HTTP_4xx';
   return err;
 }
 
 async function request(method, path, { headers = {}, body } = {}) {
   const id = newReportId();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-  let res;
-  try {
-    res = await fetch(`${API_URL}${path}`, {
-      method,
-      headers: { ...(await authHeaders()), ...headers },
-      body,
-      signal: ctrl.signal,
-    });
-   } catch (e) {
-     throw connectionError(id, method, path, e);
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!res.ok) {
-    // Login's 401 means "wrong credentials", not "expired session" — only
-    // authenticated data routes trigger the logout-and-reroute path.
-    if (res.status === 401 && path !== '/api/auth/login') {
-      const err = await parseError(res, method, path, id);
-      await handleUnauthorized();
-      throw err;
+  // GETs are idempotent: one retry survives a Render cold start (first
+  // attempt wakes the instance, second hits it warm). Non-GETs stay
+  // single-attempt; scan has its own retry policy in scanApi.js.
+  const attempts = method === 'GET' ? 2 : 1;
+  let lastCause;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        method,
+        // X-Request-Id carries the Ref # so one backend log line matches
+        // this exact request (the server echoes it back).
+        headers: { ...(await authHeaders()), 'X-Request-Id': id, ...headers },
+        body,
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        // Login's 401 means "wrong credentials", not "expired session" — only
+        // authenticated data routes trigger the logout-and-reroute path.
+        if (res.status === 401 && path !== '/api/auth/login') {
+          const err = await parseError(res, method, path, id);
+          await handleUnauthorized();
+          throw err;
+        }
+        throw await parseError(res, method, path, id);
+      }
+      // Guarded like parseError: a 200 with non-JSON (proxy error page) must
+      // not surface as a raw SyntaxError.
+      return res.json().catch(() => ({}));
+    } catch (e) {
+      clearTimeout(timer);
+      if (e?.status || attempts === 1 || attempt === attempts - 1) {
+        if (!e?.status) throw connectionError(id, method, path, e);
+        throw e;
+      }
+      lastCause = e;
     }
-    throw await parseError(res, method, path, id);
   }
-  // Guarded like parseError: a 200 with non-JSON (proxy error page) must
-  // not surface as a raw SyntaxError.
-  return res.json().catch(() => ({}));
+  throw connectionError(id, method, path, lastCause);
 }
 
 export async function apiGet(path) {
@@ -120,7 +149,11 @@ export async function apiDelete(path) {
 export async function authedFetch(path, options = {}) {
   const id = newReportId();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS);
+  let didTimeout = false;
+  const timer = setTimeout(() => {
+    didTimeout = true;
+    ctrl.abort();
+  }, options.timeoutMs || REQUEST_TIMEOUT_MS);
   // A caller abort (e.g. Scan "Cancel") must stop our request too — fetch
   // only honors one signal, so link the caller's to ours.
   const { timeoutMs: _timeoutMs, signal: externalSignal, ...fetchOptions } = options;
@@ -132,12 +165,20 @@ export async function authedFetch(path, options = {}) {
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...fetchOptions,
-      headers: { ...(await authHeaders()), ...(options.headers || {}) },
+      headers: { ...(await authHeaders()), 'X-Request-Id': id, ...(options.headers || {}) },
       signal: ctrl.signal,
     });
    } catch (e) {
+     // didTimeout wins over message sniffing: on RN Android an abort
+     // rejects with generic "Network request failed", which contains no
+     // abort/cancel substring. Caller-cancel (externalSignal) leaves
+     // didTimeout false, so Cancel stays silent via the caller's own check.
+     if (didTimeout) {
+       e = e || new Error('timeout');
+       e.timeout = true;
+     }
      throw connectionError(id, options.method || 'GET', path, e);
-  } finally {
+   } finally {
     clearTimeout(timer);
   }
   if (res.status === 401) await handleUnauthorized();

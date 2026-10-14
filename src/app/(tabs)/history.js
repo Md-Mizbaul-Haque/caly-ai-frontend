@@ -18,6 +18,7 @@ export default function HistoryRoute() {
       onEditGoal={() => router.push('/weight-tracker')}
       onRetry={() => Promise.allSettled([s.loadWeek(), s.refreshWeights(), s.loadRangeMeals(365)])}
       onRefreshWeights={s.refreshWeights}
+      refreshWeightsIfStale={s.refreshWeightsIfStale}
       onLoadRangeMeals={s.loadRangeMeals}
       onDeleteWeight={s.handleDeleteWeight}
     />

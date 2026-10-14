@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Animated, Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Camera, Scale, Plus } from './icons';
@@ -10,11 +11,14 @@ const QUICK_ACTIONS = [
 ];
 
 /**
- * Quick-log sheet: white panel docked above the nav bar.
+ * Quick-log sheet: white panel covering the nav bar (the tab bar hides
+ * behind the sheet while it is open). Dismiss via the dim, an action, or
+ * the nav center button's close state.
  * Core actions only: Log Food / Scan / Weight.
  */
-export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose, onLogFood, onLogWeight, onScan }) {
+export default function QuickLogSheet({ remaining = 0, onClose, onLogFood, onLogWeight, onScan }) {
   const [progress] = useState(() => new Animated.Value(0));
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
@@ -29,14 +33,14 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [28, 0] });
 
   return (
-    <View className="absolute inset-0" pointerEvents="box-none" style={{ zIndex: 30 }}>
+    <View className="absolute inset-0" pointerEvents="box-none" style={{ zIndex: 30, elevation: 30 }}>
       <Animated.View
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          bottom: bottomOffset,
+          bottom: 0,
           backgroundColor: 'rgba(26,26,26,0.45)',
           opacity: progress,
         }}
@@ -50,14 +54,14 @@ export default function QuickLogSheet({ bottomOffset = 0, remaining = 0, onClose
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: bottomOffset,
+          bottom: 0,
+          paddingBottom: insets.bottom + 16,
           opacity: progress,
           transform: [{ translateY }],
-          // No shadow/elevation: the panel docks flush above BottomNav, and
-          // Android elevation draws on all sides so it bled downward over the
-          // nav as a gray strip. The nav's own top border is the separator.
+          // No shadow: the panel now covers the nav area and Android
+          // elevation draws on all sides, which would bleed past the
+          // screen edge. The dim above is the separator.
           shadowOpacity: 0,
-          elevation: 0,
         }}
       >
         <View className="flex-row" style={{ gap: 12 }}>

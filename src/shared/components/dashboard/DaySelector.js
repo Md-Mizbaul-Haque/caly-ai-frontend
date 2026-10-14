@@ -1,364 +1,123 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Pressable, Text, View } from 'react-native';
-import { useIsFocused } from 'expo-router/react-navigation';
+import { useMemo } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { dateKey } from '../../utils/format';
-import {
-  zonedParts,
-  edgePadding,
-  centerTarget,
-  nearestToCenter,
-  needsSnap,
-  buildWindow,
-  extendWindow,
-} from '../../utils/mealDates';
+import { weekRange, zonedParts } from '../../utils/mealDates';
 import ProgressRing from '../ui/ProgressRing';
+
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Tab switches unmount this route (Slot + custom BottomNav), so every Home
-// return remounts the strip from scratch: pad back to 0, measurements wiped,
-// scroll back to 0 — first paint uncentered, then a visible jump once layout
-// passes complete. Retain the last strip across unmounts so a return paints
-// the same window with correct padding and centers on the first measure pass
-// instead of flashing blank/misplaced first.
-let retainedStrip = null;
-
-// Rolling strip window: ±10 day-blocks around the selection at mount, so
-// ~5 pills fill the viewport and swiping either way instantly reveals more.
-// Only taps change the selection; swiping merely browses (totals below stay
-// put). The selected pill ends up centered after mount, tap, swipe release
-// (snap), tab return, and parent refresh.
-const WINDOW_RADIUS = 10;
-const EXTEND_COUNT = 7;
-// ~±3 weeks of swipe room: bounds worst-case render cost (every pill mounts
-// a real SVG ring — no virtualization in ScrollView) while far exceeding a
-// fling's reach. Hitting the cap behaves like a normal list end, never blank.
-const MAX_BLOCKS = 63;
-
-// Horizontal day strip where the selected pill always ends up centered —
-// like real-world calendar pickers.
+// Home week strip: exactly the Sun..Sat calendar week containing `selected`
+// in `timeZone` — the same week `loadWeek` fetches, so every pill always has
+// data behind it. Tap-only: no auto-select on swipe, no auto-centering, no
+// retained scroll state. 7 pills, no ScrollView, so taps never get stolen
+// and low-end phones mount 7 rings instead of 63.
 export default function DaySelector({
   selected,
   onSelect,
   totalsByDate = {},
-  goal = 2000,
+  goal = null,
   timeZone,
-  recenterSignal = 0,
+  recenterSignal, // accepted for compat, intentionally ignored (no auto-center)
 }) {
-  const today = new Date();
-  const todayKey = dateKey(today, timeZone);
-  const selectedKey = dateKey(selected, timeZone);
-  const selectedKeyRef = useRef(selectedKey);
-  useEffect(() => {
-    selectedKeyRef.current = selectedKey;
-  }, [selectedKey]);
-  const isFocused = useIsFocused();
+  void recenterSignal;
+  const safeSelected = selected instanceof Date && !Number.isNaN(selected.getTime()) ? selected : new Date();
+  const todayKey = dateKey(new Date(), timeZone);
+  const selectedKey = dateKey(safeSelected, timeZone);
 
-  const [windowDays, setWindowDays] = useState(() => {
-    // Tab return: restore the retained window when it still contains the
-    // anchor (same day + zone) instead of rebuilding + remeasuring.
-    const anchor = selectedKey || todayKey;
-    if (
-      retainedStrip &&
-      retainedStrip.anchorKey === anchor &&
-      retainedStrip.timeZone === timeZone &&
-      Array.isArray(retainedStrip.windowDays) &&
-      retainedStrip.windowDays.some((d) => d.key === anchor)
-    ) {
-      return retainedStrip.windowDays;
-    }
-    return buildWindow(selectedKey || todayKey, WINDOW_RADIUS, timeZone);
-  });
-  // Anchor the render-phase rebuild below fired for: a non-converging anchor
-  // (e.g. an Invalid Date's empty key) settles after one rebuild instead of
-  // looping setWindowDays forever ("Too many re-renders"). State (not a ref)
-  // because refs must not be read/written during render.
-  const [lastRebuildKey, setLastRebuildKey] = useState(null);
-  const [pad, setPad] = useState(() => {
-    // Restored padding lets the first measure pass center immediately
-    // instead of failing the pad check, re-rendering, then centering.
-    const anchor = selectedKey || todayKey;
-    if (
-      retainedStrip &&
-      retainedStrip.anchorKey === anchor &&
-      retainedStrip.timeZone === timeZone &&
-      Number.isFinite(retainedStrip.pad)
-    ) {
-      return retainedStrip.pad;
-    }
-    return 0;
-  });
-  // Visible on first paint: the strip must never flash blank on tab return.
-  // Centering still happens asynchronously via requestCenter/flushPending;
-  // `ready` only tracks whether a programmatic center has completed.
-  const [ready, setReady] = useState(true);
-  const padRef = useRef(pad);
-  const readyRef = useRef(true);
-  const pending = useRef(null);
-  // Mirror for the unmount save: the cleanup must persist the LATEST window,
-  // not the mount-time closure.
-  const windowDaysRef = useRef(windowDays);
-  useEffect(() => {
-    windowDaysRef.current = windowDays;
-  }, [windowDays]);
-  // Backward-extension compensation: { key, oldX } of the anchor pill so the
-  // viewport doesn't jump when blocks are prepended ahead of it.
-  const shiftRef = useRef(null);
-
-  const scrollRef = useRef(null);
-  const containerWidth = useRef(0);
-  const contentWidth = useRef(0);
-  // Restore the last scroll offset so a tab return lands near the selection
-  // even before fresh measurements arrive (exact center follows via pending).
-  const scrollX = useRef(
-    (() => {
-      const anchor = selectedKey || todayKey;
-      if (
-        retainedStrip &&
-        retainedStrip.anchorKey === anchor &&
-        retainedStrip.timeZone === timeZone &&
-        Number.isFinite(retainedStrip.scrollX) &&
-        retainedStrip.scrollX > 0
-      ) {
-        return retainedStrip.scrollX;
-      }
-      return 0;
-    })(),
-  );
-  const itemLayout = useRef({});
-
-  // Persist the strip on unmount (tab switch) for the next mount above.
-  // Re-registers on zone change so the saved zone is never stale.
-  useEffect(() => () => {
-    retainedStrip = {
-      windowDays: windowDaysRef.current,
-      pad: padRef.current,
-      scrollX: scrollX.current,
-      anchorKey: selectedKeyRef.current,
-      timeZone,
-      containerWidth: containerWidth.current,
-    };
-  }, [timeZone]);
-
-  // A far-away selection (or zone change) rebuilds the window around it.
-  // Render-phase adjustment (React-endorsed for derived state): taps land on
-  // rendered blocks, so this normally keeps the same array — no extra render.
-  // The anchor falls back to today when the selection has no key, and the
-  // last-rebuild guard makes a non-converging anchor structurally unable to
-  // loop: one rebuild per anchor, then settle.
-  const anchorKey = selectedKey || todayKey;
-  if (anchorKey && lastRebuildKey !== anchorKey && !windowDays.some((d) => d.key === anchorKey)) {
-    setLastRebuildKey(anchorKey);
-    setWindowDays(buildWindow(anchorKey, WINDOW_RADIUS, timeZone));
-  }
-
-  function setPadBoth(next) {
-    padRef.current = next;
-    setPad((prev) => (prev === next ? prev : next));
-  }
-
-  function markCentered() {
-    pending.current = null;
-    if (!readyRef.current) {
-      readyRef.current = true;
-      setReady(true);
-    }
-  }
-
-  // Scroll `key` to the viewport center. Returns false when measurement is
-  // missing (caller keeps the pending request for the next layout pass).
-  // Measured item x already includes the edge padding, so padLeft is 0.
-  const tryCenter = useCallback((key, animated) => {
-    const scroller = scrollRef.current;
-    const item = itemLayout.current[key];
-    const cw = containerWidth.current;
-    if (!scroller || !item || !cw) return false;
-    const need = edgePadding(cw, item.w);
-    if (need !== padRef.current) {
-      // Pill widths changed (e.g. new selection): re-render with corrected
-      // padding first; the re-measure pass will complete the scroll.
-      setPadBoth(need);
-      return false;
-    }
-    const target = centerTarget(item.x, item.w, cw, 0, contentWidth.current);
-    scroller.scrollTo({ x: target, animated });
-    return true;
-  }, []);
-
-  function requestCenter(key, animated) {
-    pending.current = { key, animated };
-    if (tryCenter(key, animated)) markCentered();
-  }
-
-  function flushPending() {
-    const p = pending.current;
-    if (!p) return;
-    if (tryCenter(p.key, p.animated)) markCentered();
-  }
-
-  // Selection change (tap only — swiping never selects): center it.
-  const mountedRef = useRef(false);
-  useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      requestCenter(selectedKey, false);
-      return;
-    }
-    requestCenter(selectedKey, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKey]);
-
-  // Return from another tab: keep the selection, restore it back to center
-  // WITHOUT animation — this is a state restore, not a user action, so an
-  // animated glide reads as a re-render flash.
-  const wasFocused = useRef(isFocused);
-  useEffect(() => {
-    if (isFocused && !wasFocused.current) requestCenter(selectedKeyRef.current, false);
-    wasFocused.current = isFocused;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFocused]);
-
-  // Parent refresh (new data may resize pills): re-center without animation.
-  useEffect(() => {
-    if (recenterSignal) requestCenter(selectedKeyRef.current, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recenterSignal]);
-
-  function measuredLayouts() {
+  const weekDays = useMemo(() => {
+    const { from } = weekRange(safeSelected, timeZone);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(from || '');
+    if (!m) return [];
+    const y = +m[1];
+    const mo = +m[2];
+    const d0 = +m[3];
     const out = [];
-    for (const d of windowDays) {
-      const item = itemLayout.current[d.key];
-      if (item) out.push({ key: d.key, x: item.x, w: item.w });
+    for (let i = 0; i < 7; i += 1) {
+      const t = new Date(Date.UTC(y, mo - 1, d0 + i, 12));
+      out.push({ date: t, key: dateKey(t, timeZone) });
     }
     return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, timeZone]);
+
+  function shiftWeek(deltaDays) {
+    const base = safeSelected instanceof Date ? safeSelected : new Date();
+    const next = new Date(base.getTime() + deltaDays * 24 * 60 * 60 * 1000);
+    onSelect?.(next);
   }
 
-  // Grow the window before the user hits a dead end. Backward growth shifts
-  // every pill right, so the anchor pill's delta is compensated on its next
-  // measure pass and the viewport visibly stays put.
-  function maybeExtend() {
-    const cw = containerWidth.current;
-    const contentW = contentWidth.current;
-    if (!cw || !contentW || contentW <= cw) return;
-    const x = scrollX.current;
-    if (x < cw) {
-      const layouts = measuredLayouts();
-      if (layouts.length === 0) return;
-      shiftRef.current = { key: layouts[0].key, oldX: layouts[0].x };
-      setWindowDays((prev) => {
-        if (prev.length >= MAX_BLOCKS) return prev;
-        const grown = extendWindow(prev, 'backward', EXTEND_COUNT, timeZone);
-        return grown.length === prev.length ? prev : grown;
-      });
-    } else if (x + cw > contentW - cw) {
-      setWindowDays((prev) => {
-        if (prev.length >= MAX_BLOCKS) return prev;
-        const grown = extendWindow(prev, 'forward', EXTEND_COUNT, timeZone);
-        return grown.length === prev.length ? prev : grown;
-      });
-    }
-  }
-
-  // Swipe release: snap the nearest pill to center WITHOUT selecting it —
-  // browsing never moves the totals below. The needsSnap guard also stops
-  // programmatic-scroll momentum echoes from re-issuing scrolls forever.
-  function handleSnap() {
-    const layouts = measuredLayouts();
-    if (layouts.length === 0) return;
-    const cw = containerWidth.current;
-    const nearest = nearestToCenter(layouts, scrollX.current, cw, 0);
-    if (!nearest) return;
-    const item = itemLayout.current[nearest];
-    if (!item || !cw) return;
-    const target = centerTarget(item.x, item.w, cw, 0, contentWidth.current);
-    if (!needsSnap(scrollX.current, target)) return;
-    requestCenter(nearest, true);
-  }
+  const weekLabel = useMemo(() => {
+    if (weekDays.length !== 7) return '';
+    const first = weekDays[0];
+    const last = weekDays[6];
+    const fp = zonedParts(first.date, timeZone);
+    const lp = zonedParts(last.date, timeZone);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const fm = months[new Date(first.key + 'T12:00:00Z').getUTCMonth()] ?? '';
+    const lm = months[new Date(last.key + 'T12:00:00Z').getUTCMonth()] ?? '';
+    void fp;
+    void lp;
+    return fm === lm ? `${fm} ${first.key.slice(8)} – ${last.key.slice(8)}` : `${fm} ${first.key.slice(8)} – ${lm} ${last.key.slice(8)}`;
+  }, [weekDays, timeZone]);
 
   return (
-    <ScrollView
-      ref={scrollRef}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      scrollEventThrottle={16}
-      style={{ opacity: ready ? 1 : 0 }}
-      onScroll={(e) => {
-        scrollX.current = e.nativeEvent.contentOffset.x;
-        maybeExtend();
-      }}
-      onLayout={(e) => {
-        const w = e.nativeEvent.layout.width;
-        const rotated = w !== containerWidth.current && containerWidth.current !== 0;
-        containerWidth.current = w;
-        if (rotated && readyRef.current) {
-          // Viewport width changed (rotation/split-screen): padding derived
-          // from the old width no longer centers. Update it and queue the
-          // scroll — the re-measure pass flushes it with fresh offsets
-          // (scrolling now would use stale x positions).
-          const sel = itemLayout.current[selectedKeyRef.current];
-          if (sel) setPadBoth(edgePadding(w, sel.w));
-          pending.current = { key: selectedKeyRef.current, animated: false };
-        }
-        flushPending();
-      }}
-      onContentSizeChange={(w) => {
-        contentWidth.current = w;
-        flushPending();
-      }}
-      onMomentumScrollEnd={handleSnap}
-      onScrollEndDrag={(e) => {
-        // Slow drags release without momentum: snap immediately. Flings are
-        // handled by onMomentumScrollEnd when the glide stops.
-        const velocity = e.nativeEvent.velocity;
-        if (!velocity || Math.abs(velocity.x) < 0.1) handleSnap();
-      }}
-      contentContainerStyle={{ gap: 8, paddingVertical: 2, paddingHorizontal: pad, flexGrow: 1, justifyContent: 'center' }}
-    >
-      {windowDays.map(({ date: d, key }) => {
-        const isSelected = key === selectedKey;
-        const isToday = key === todayKey;
-        const eaten = (totalsByDate[key] && totalsByDate[key].eaten) || 0;
-        const parts = zonedParts(d, timeZone);
-        return (
-          <Pressable
-            key={key}
-            onPress={() => {
-              onSelect(d);
-              requestCenter(key, true);
-            }}
-            onLayout={(e) => {
-              const { x, width } = e.nativeEvent.layout;
-              itemLayout.current[key] = { x, w: width };
-              const shift = shiftRef.current;
-              if (shift && shift.key === key) {
-                shiftRef.current = null;
-                if (scrollRef.current) {
-                  scrollRef.current.scrollTo({ x: Math.max(0, scrollX.current + (x - shift.oldX)), animated: false });
-                }
-              }
-              flushPending();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`${DAY_LABELS[parts.weekday]} ${parts.d}${isToday ? ', today' : ''}${isSelected ? ', selected' : ''}`}
-            accessibilityState={{ selected: isSelected }}
-            className={`items-center rounded-card px-3 py-2 min-w-[44px] ${
-              isSelected ? 'bg-primary' : isToday ? 'bg-white border border-[#F1E8E0]' : 'bg-transparent'
-            }`}
-          >
-            <Text className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>{DAY_LABELS[parts.weekday]}</Text>
-            <Text className={`text-sm font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-ink'}`}>{parts.d}</Text>
-            <View className="mt-1.5">
-              <ProgressRing
-                eaten={eaten}
-                goal={goal}
-                size={36}
-                strokeWidth={4}
-                color={isSelected ? '#FFFFFF' : '#f2470c'}
-                trackColor={isSelected ? 'rgba(255,255,255,0.35)' : '#F1E8E0'}
-              />
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+    <View>
+      <View className="flex-row items-center justify-between mb-2">
+        <Pressable
+          onPress={() => shiftWeek(-7)}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Previous week"
+          className="px-3 py-2 rounded-card border border-[#F1E8E0] bg-white"
+        >
+          <Text className="text-base font-bold text-ink">‹</Text>
+        </Pressable>
+        <Text className="text-sm font-semibold text-muted-foreground">{weekLabel}</Text>
+        <Pressable
+          onPress={() => shiftWeek(7)}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Next week"
+          className="px-3 py-2 rounded-card border border-[#F1E8E0] bg-white"
+        >
+          <Text className="text-base font-bold text-ink">›</Text>
+        </Pressable>
+      </View>
+
+      <View className="flex-row" style={{ gap: 6 }}>
+        {weekDays.map(({ date: d, key }) => {
+          const isSelected = key === selectedKey;
+          const isToday = key === todayKey;
+          const eaten = (totalsByDate[key] && totalsByDate[key].eaten) || 0;
+          const parts = zonedParts(d, timeZone);
+          return (
+            <Pressable
+              key={key}
+              onPress={() => onSelect?.(d)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`${DAY_LABELS[parts.weekday]} ${parts.d}${isToday ? ', today' : ''}${isSelected ? ', selected' : ''}`}
+              accessibilityState={{ selected: isSelected }}
+              className={`flex-1 items-center rounded-card px-1 py-2 min-w-[40px] ${
+                isSelected ? 'bg-primary' : isToday ? 'bg-white border border-[#F1E8E0]' : 'bg-transparent'
+              }`}
+            >
+              <Text className={`text-[11px] ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>{DAY_LABELS[parts.weekday]}</Text>
+              <Text className={`text-sm font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-ink'}`}>{parts.d}</Text>
+              <View className="mt-1.5">
+                <ProgressRing
+                  eaten={eaten}
+                  goal={goal}
+                  size={36}
+                  strokeWidth={4}
+                  color={isSelected ? '#FFFFFF' : '#f2470c'}
+                  trackColor={isSelected ? 'rgba(255,255,255,0.35)' : '#F1E8E0'}
+                />
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 }

@@ -16,9 +16,15 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
  */
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   const close = onClose ?? onDone ?? (() => {});
-  const [items, setItems] = useState(() =>
-    result.kind === 'barcode' ? [result.item].filter(Boolean) : (result.items ?? [])
-  );
+  const [items, setItems] = useState(() => {
+    if (result.kind === 'barcode') return [result.item].filter(Boolean);
+    // No food in frame: seed one editable zero row so the photo, the 0/0/0
+    // totals, and Save all work exactly like a normal result.
+    if (result.noFood && !(result.items ?? []).length) {
+      return [{ name: 'Scanned food', kcal: 0, protein: 0, carbs: 0, fat: 0 }];
+    }
+    return result.items ?? [];
+  });
   const [type, setType] = useState(() => {
     // Sensible default by time of day; the user can still override.
     const h = new Date().getHours();
@@ -29,6 +35,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [photoNotice, setPhotoNotice] = useState(null);
 
   function updateItem(idx, field, value) {
     setItems(prev => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
@@ -57,9 +64,11 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
     if (saving) return;
     setSaving(true);
     setSaveError(null);
+    setPhotoNotice(null);
     try {
       // Persist kept photos to Cloudinary so the diary shows them on every
-      // device. A failed upload must not lose the meal — save without it.
+      // device. A failed upload must not lose the meal — save without it,
+      // but say so instead of silently dropping the photo.
       // Anything not already remote (file:, content:, data:) is uploadable.
       let imageUrl;
       if (result.imageUri && !result.imageUri.startsWith('http')) {
@@ -67,6 +76,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
           ({ imageUrl } = await uploadMealImage(result.imageUri));
         } catch {
           imageUrl = undefined;
+          setPhotoNotice('Saved without photo — image storage is unavailable.');
         }
       }
       const r1 = v => Math.round(Number(v) * 10) / 10;
@@ -101,6 +111,14 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
         <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
             AI scan unavailable — showing an estimate you can edit. Add OPENAI_API_KEY on the server for real detection.
+          </Text>
+        </View>
+      )}
+
+      {result.noFood && (
+        <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
+          <Text className="text-xs text-[#B4530A]">
+            No food detected — showing 0. Enter your estimates below to log it.
           </Text>
         </View>
       )}
@@ -217,6 +235,11 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
         {saveError && (
           <Text className="text-xs text-destructive text-center mt-2">
             {saveError}
+          </Text>
+        )}
+        {photoNotice && (
+          <Text className="text-xs text-muted-foreground text-center mt-2">
+            {photoNotice}
           </Text>
         )}
         {activeTotals.kcal <= 0 && (

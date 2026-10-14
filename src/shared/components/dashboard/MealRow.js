@@ -11,6 +11,16 @@ const MACROS = [
 
 export default function MealRow({ meal, onDelete }) {
   const [imageFailed, setImageFailed] = useState(false);
+  // In-flight guard: double-taps used to fire a second DELETE that 404d.
+  const [deleting, setDeleting] = useState(false);
+  function handleDelete() {
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    Promise.resolve()
+      .then(() => onDelete(meal.id))
+      .catch(() => {})
+      .finally(() => setDeleting(false));
+  }
   const showImage = Boolean(meal.imageUrl) && !imageFailed;
   return (
     <View className="bg-white rounded-card p-3 flex-row border border-[#F1E8E0]" style={{ shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
@@ -37,9 +47,17 @@ export default function MealRow({ meal, onDelete }) {
             </View>
           ) : null}
           <Text className="text-[11px] text-muted-foreground ml-2">{formatTime(meal.loggedAt)}</Text>
-          {onDelete ? (
-            <Pressable onPress={() => onDelete(meal.id)} hitSlop={8} className="ml-2">
-               <Trash size={14} color={'#8A8A8A'} />
+          {onDelete && meal?.id ? (
+            <Pressable
+              onPress={handleDelete}
+              hitSlop={8}
+              className="ml-2"
+              style={{ opacity: deleting ? 0.4 : 1 }}
+              accessibilityRole="button"
+              accessibilityLabel="Delete meal"
+              accessibilityState={{ busy: deleting }}
+            >
+              <Trash size={14} color={'#8A8A8A'} />
             </Pressable>
           ) : null}
         </View>

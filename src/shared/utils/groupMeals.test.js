@@ -46,13 +46,16 @@ describe('groupMealsForDay', () => {
     assert.ok(out.every((g) => g.count === 1));
   });
 
-  it('matches case-insensitively and skips nameless entries', () => {
+  it('matches case-insensitively and buckets nameless entries as Unnamed', () => {
     const out = groupMealsForDay([
       chicken({ id: 'a', name: '  CHICKEN BREAST, GRILLED WI. ' }),
       chicken({ id: 'b', name: 'chicken breast, grilled wi.' }),
       { id: 'c', name: '   ', kcal: 99 },
     ]);
-    assert.equal(out.length, 1);
+    assert.equal(out.length, 2);
     assert.equal(out[0].count, 2);
+    const unnamed = out.find((g) => g.name === 'Unnamed');
+    assert.ok(unnamed, 'nameless meal must stay visible, never invisible calories');
+    assert.equal(unnamed.kcal, 99);
   });
 });
