@@ -24,12 +24,12 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const TYPE_EMOJI = { Breakfast: '☀️', Lunch: '☀️', Dinner: '🌙', Snack: '🥤' };
 const SEARCH_DEBOUNCE_MS = 400;
 const CATEGORIES = [
-  { key: 'Fruits', Icon: Apple, tint: '#FDECEC', color: '#D92D20' },
-  { key: 'Vegetables', Icon: Carrot, tint: '#E7F6EC', color: '#12805C' },
-  { key: 'Proteins', Icon: Beef, tint: '#FFF1E5', color: '#C2410C' },
-  { key: 'Grains', Icon: Wheat, tint: '#FBF3DB', color: '#A16207' },
-  { key: 'Dairy', Icon: Milk, tint: '#EAF2FD', color: '#1D6FD1' },
-  { key: 'Snacks', Icon: Cookie, tint: '#F3ECFD', color: '#7C3AED' },
+  { key: 'Fruits', Icon: Apple, tint: '#F8F9FA', color: '#1A1A1A' },
+  { key: 'Vegetables', Icon: Carrot, tint: '#F8F9FA', color: '#1A1A1A' },
+  { key: 'Proteins', Icon: Beef, tint: '#F8F9FA', color: '#1A1A1A' },
+  { key: 'Grains', Icon: Wheat, tint: '#F8F9FA', color: '#1A1A1A' },
+  { key: 'Dairy', Icon: Milk, tint: '#F8F9FA', color: '#1A1A1A' },
+  { key: 'Snacks', Icon: Cookie, tint: '#F8F9FA', color: '#1A1A1A' },
 ];
 const FALLBACK_SUGGESTIONS = {
   Breakfast: [
@@ -85,7 +85,7 @@ function MealPill({ label, active, onPress }) {
     <Pressable
       onPress={onPress}
       accessibilityLabel={label}
-      className={`flex-row items-center px-4 py-2.5 rounded-full mr-2 ${active ? 'bg-primary' : 'bg-cream'}`}
+      className={`flex-row items-center px-4 py-2.5 rounded-full mr-2 ${active ? 'bg-primary' : 'bg-white'}`}
     >
       <Text className="text-sm mr-1">{TYPE_EMOJI[label] || '🍽️'}</Text>
       <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-ink'}`}>{label}</Text>
@@ -95,7 +95,7 @@ function MealPill({ label, active, onPress }) {
 
 function QuickAction({ Icon, label, onPress }) {
   return (
-    <Pressable onPress={onPress} accessibilityLabel={label} className="flex-1 bg-cream rounded-2xl items-center py-3 px-1">
+    <Pressable onPress={onPress} accessibilityLabel={label} className="flex-1 bg-white rounded-2xl items-center py-3 px-1">
       <Icon size={20} color="#1A1A1A" />
       <Text className="text-[11px] font-semibold text-ink mt-1.5" numberOfLines={1}>{label}</Text>
     </Pressable>
@@ -105,7 +105,7 @@ function QuickAction({ Icon, label, onPress }) {
 function FoodCard({ item, subtitle, onAdd }) {
   return (
     <View className="w-28 mr-3">
-      <View className="w-28 h-24 rounded-2xl bg-cream items-center justify-center overflow-hidden mb-1.5">
+      <View className="w-28 h-24 rounded-2xl bg-white items-center justify-center overflow-hidden mb-1.5">
         {item.imageUrl ? (
                       <CachedImage uri={item.imageUrl} className="w-full h-full" resizeMode="cover" />
         ) : (
@@ -116,7 +116,7 @@ function FoodCard({ item, subtitle, onAdd }) {
       <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>{subtitle}</Text>
       <View className="flex-row items-center justify-between mt-1">
         <Text className="text-xs font-bold text-ink">{Math.round(item.kcal)} <Text className="font-normal text-muted-foreground">kcal</Text></Text>
-        <Pressable onPress={onAdd} accessibilityLabel={`Add ${item.name}`} className="w-7 h-7 rounded-full bg-cream items-center justify-center border border-border">
+        <Pressable onPress={onAdd} accessibilityLabel={`Add ${item.name}`} className="w-7 h-7 rounded-full bg-white items-center justify-center border border-border">
           <Plus size={16} color="#f2470c" />
         </Pressable>
       </View>
@@ -162,9 +162,9 @@ function SuggestionSkeletons() {
     >
       {[0, 1, 2, 3].map((i) => (
         <View key={i} className="w-28 mr-3">
-          <View className="w-28 h-24 rounded-2xl bg-[#F1E8E0] animate-pulse mb-1.5" />
-          <View className="w-20 h-3 rounded-md bg-[#F1E8E0] animate-pulse" />
-          <View className="w-14 h-3 rounded-md bg-[#F1E8E0] animate-pulse mt-1" />
+          <View className="w-28 h-24 rounded-2xl bg-white animate-pulse mb-1.5" />
+          <View className="w-20 h-3 rounded-md bg-white animate-pulse" />
+          <View className="w-14 h-3 rounded-md bg-white animate-pulse mt-1" />
         </View>
       ))}
     </View>
@@ -184,9 +184,9 @@ function MealsFirstLoadSkeleton() {
     >
       {[0, 1, 2, 3].map((i) => (
         <View key={i} className="w-28 mr-3">
-          <View className="w-28 h-24 rounded-2xl bg-[#F1E8E0] animate-pulse mb-1.5" />
-          <View className="w-20 h-3 rounded-md bg-[#F1E8E0] animate-pulse" />
-          <View className="w-14 h-3 rounded-md bg-[#F1E8E0] animate-pulse mt-1" />
+          <View className="w-28 h-24 rounded-2xl bg-white animate-pulse mb-1.5" />
+          <View className="w-20 h-3 rounded-md bg-white animate-pulse" />
+          <View className="w-14 h-3 rounded-md bg-white animate-pulse mt-1" />
         </View>
       ))}
     </View>
@@ -346,7 +346,7 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
 
   return (
     <View className="flex-1 bg-white">
-      <ScrollView className="flex-1 px-4 pt-12" contentContainerStyle={{ paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
+      <ScrollView className="flex-1 px-4 pt-12" showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
          <View className="flex-row items-center mb-1">
            <View>
              <Text className="text-2xl font-bold text-ink">Log food</Text>
@@ -360,7 +360,7 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
           ))}
         </ScrollView>
 
-        <View className="flex-row items-center bg-cream rounded-2xl px-3 mb-3">
+        <View className="flex-row items-center bg-white rounded-2xl px-3 mb-3">
           <Search size={18} color="#71717A" />
           <TextInput
             value={query}
@@ -393,13 +393,13 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
             {!searching && !searchError && results.length === 0 && (
               <Text className="text-muted-foreground text-center my-4">No foods found.</Text>
             )}
-             {results.map((item) => (
-               <Pressable
-                 key={String(item.fdcId ?? item.id ?? item.name)}
-                 onPress={() => setSheet({ food: item, mode: 'grams' })}
-                 className="flex-row items-center bg-cream rounded-2xl px-3 py-2.5 mb-2"
-               >
-                 <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
+{results.map((item) => (
+                <Pressable
+                  key={String(item.fdcId ?? item.id ?? item.name)}
+                  onPress={() => setSheet({ food: item, mode: 'grams' })}
+                  className="flex-row items-center bg-white rounded-2xl px-3 py-2.5 mb-2"
+                >
+                  <View className="w-10 h-10 rounded-2xl bg-white items-center justify-center mr-3">
                    {item.imageUrl ? (
           <CachedImage uri={item.imageUrl} className="w-full h-full" resizeMode="cover" />
                    ) : (
@@ -469,7 +469,7 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
               </ScrollView>
             )}
 
-            <Pressable onPress={() => setManualOpen((v) => !v)} accessibilityLabel="Manual entry" className="flex-row items-center bg-cream rounded-2xl px-4 py-3.5 mt-4">
+            <Pressable onPress={() => setManualOpen((v) => !v)} accessibilityLabel="Manual entry" className="flex-row items-center bg-white rounded-2xl px-4 py-3.5 mt-4">
               <View className="w-9 h-9 rounded-full bg-primary/10 items-center justify-center mr-3">
                 <Pencil size={18} color="#f2470c" />
               </View>
@@ -482,14 +482,14 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
             {manualOpen && (
               <Card style={{ marginTop: 8 }}>
                 <Text className="font-bold text-ink mb-2">New meal</Text>
-                <TextInput value={name} onChangeText={setName} placeholder="Food name" placeholderTextColor="#A1A1AA" maxLength={80} returnKeyType="next" accessibilityLabel="Food name" className="bg-cream rounded-xl px-3 py-3 mb-2 text-base text-ink" />
+                <TextInput value={name} onChangeText={setName} placeholder="Food name" placeholderTextColor="#A1A1AA" maxLength={80} returnKeyType="next" accessibilityLabel="Food name" className="bg-white rounded-xl px-3 py-3 mb-2 text-base text-ink" />
                 <View className="flex-row mb-2" style={{ gap: 8 }}>
-                  <TextInput value={kcal} onChangeText={setKcal} placeholder="kcal *" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Calories" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
+                  <TextInput value={kcal} onChangeText={setKcal} placeholder="kcal *" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Calories" className="flex-1 bg-white rounded-xl px-3 py-3 text-base text-ink" />
                 </View>
                 <View className="flex-row mb-2" style={{ gap: 8 }}>
-                  <TextInput value={protein} onChangeText={setProtein} placeholder="protein g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Protein grams" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
-                  <TextInput value={carbs} onChangeText={setCarbs} placeholder="carbs g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Carbs grams" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
-                  <TextInput value={fat} onChangeText={setFat} placeholder="fat g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="done" accessibilityLabel="Fat grams" className="flex-1 bg-cream rounded-xl px-3 py-3 text-base text-ink" />
+                  <TextInput value={protein} onChangeText={setProtein} placeholder="protein g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Protein grams" className="flex-1 bg-white rounded-xl px-3 py-3 text-base text-ink" />
+                  <TextInput value={carbs} onChangeText={setCarbs} placeholder="carbs g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="next" accessibilityLabel="Carbs grams" className="flex-1 bg-white rounded-xl px-3 py-3 text-base text-ink" />
+                  <TextInput value={fat} onChangeText={setFat} placeholder="fat g" placeholderTextColor="#A1A1AA" keyboardType="numeric" returnKeyType="done" accessibilityLabel="Fat grams" className="flex-1 bg-white rounded-xl px-3 py-3 text-base text-ink" />
                 </View>
                 <Text className="text-xs font-semibold text-muted-foreground mt-1 mb-1.5">Meal type</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 12, paddingVertical: 2 }} className="mb-3">
