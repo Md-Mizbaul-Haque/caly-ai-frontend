@@ -48,16 +48,17 @@ describe('scan flow robustness', () => {
     assert.match(upload, /resize/, 'no resize bound on the upload');
   });
 
-  it('uploads resolve every URI to real bytes via the shared helper', () => {
+  it('uploads send a manual multipart body with an explicit boundary', () => {
     const scanApi = read('shared/lib/scanApi.js');
-    assert.match(scanApi, /buildUploadPart/, 'scanImage/uploadMealImage must build real byte parts, not raw {uri} objects');
-    assert.match(scanApi, /'meal\.jpg'/, 'multipart part needs an explicit filename');
+    assert.match(scanApi, /buildMultipartPayload/, 'uploads must bypass the serializer that drops filenames');
+    assert.match(scanApi, /'Content-Type': contentType/, 'raw bytes need the explicit boundary Content-Type from the builder');
+    assert.doesNotMatch(scanApi, /new FormData\(\)/, 'no FormData object may reach the fetch serializer');
   });
 
-  it('native file:// uploads use real Blobs (expo WinterCG fetch rejects {uri} parts)', () => {
+  it('native file:// uploads never rely on Blob identity (expo-blob removed)', () => {
     const scanApi = read('shared/lib/scanApi.js');
     assert.doesNotMatch(scanApi, /\{\s*uri:\s*imageUri/, 'raw {uri} parts throw Unsupported FormDataPart implementation');
-    assert.match(scanApi, /expo-blob/, "native bytes need expo-blob (RN's Blob cannot hold JS binary)");
+    assert.doesNotMatch(scanApi, /expo-blob/, 'expo-blob is unneeded: the filename never survived it');
     assert.match(scanApi, /expo-file-system/, 'native file:// bytes must be read via expo-file-system');
   });
 
