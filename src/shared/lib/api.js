@@ -37,7 +37,7 @@ function connectionError(id, method, path, cause) {
   // and mark it non-retryable (retrying a 60 s timeout burns minutes).
   // Caller cancels (scan "Cancel") are also AbortErrors; the caller stays
   // silent via its own signal check, so this message is timeout-only here.
-  const timedOut = isTimeoutCause(cause);
+  const timedOut = cause?.timeout === true || isTimeoutCause(cause);
   logApiError(id, method, path, `network-failure: ${cause?.name || ''} ${cause?.message || cause}`);
   // Host only (no tokens/bodies): LAN URLs mean the phone can't reach the
   // PC; hosted URLs (Render etc) mean cold start or a down backend.
@@ -149,7 +149,11 @@ export async function apiDelete(path) {
 export async function authedFetch(path, options = {}) {
   const id = newReportId();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS);
+  let didTimeout = false;
+  const timer = setTimeout(() => {
+    didTimeout = true;
+    ctrl.abort();
+  }, options.timeoutMs || REQUEST_TIMEOUT_MS);
   // A caller abort (e.g. Scan "Cancel") must stop our request too — fetch
   // only honors one signal, so link the caller's to ours.
   const { timeoutMs: _timeoutMs, signal: externalSignal, ...fetchOptions } = options;
@@ -165,8 +169,16 @@ export async function authedFetch(path, options = {}) {
       signal: ctrl.signal,
     });
    } catch (e) {
+     // didTimeout wins over message sniffing: on RN Android an abort
+     // rejects with generic "Network request failed", which contains no
+     // abort/cancel substring. Caller-cancel (externalSignal) leaves
+     // didTimeout false, so Cancel stays silent via the caller's own check.
+     if (didTimeout) {
+       e = e || new Error('timeout');
+       e.timeout = true;
+     }
      throw connectionError(id, options.method || 'GET', path, e);
-  } finally {
+   } finally {
     clearTimeout(timer);
   }
   if (res.status === 401) await handleUnauthorized();

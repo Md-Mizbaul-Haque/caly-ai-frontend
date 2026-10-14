@@ -161,4 +161,16 @@ describe('scan flow robustness', () => {
     const api = read('shared/lib/api.js');
     assert.match(api, /EXPO_PUBLIC_API_URL[^;]*\.trim\(\)/, 'API_URL must trim the env value so a trailing space cannot poison every URL');
   });
+
+  it('authedFetch flags our own timer abort as timeout (not message sniffing)', () => {
+    const api = read('shared/lib/api.js');
+    assert.match(api, /didTimeout/, 'timer must set an explicit flag when it fires');
+    assert.match(api, /if \(didTimeout\)/, 'abort after our timer fired must be classified as timeout');
+  });
+
+  it('genuine connection failures still report UNREACHABLE', () => {
+    const api = read('shared/lib/api.js');
+    assert.match(api, /UNREACHABLE/, 'non-timeout network failures must keep the UNREACHABLE code');
+    assert.match(api, /\.timeout = true/, 'timeout errors must carry timeout=true for the wake-up dialog');
+  });
 });
