@@ -1,13 +1,19 @@
 import { useRouter } from 'expo-router';
 import NutritionPlanScreen from '../../features/onboarding/screens/NutritionPlanScreen';
-import { nextPath } from '../../features/onboarding/steps';
+import { useSession } from '../../features/auth/session';
 
 export default function NutritionPlanRoute() {
   const router = useRouter();
+  const { refreshUser } = useSession();
   return (
     <NutritionPlanScreen
-      onNext={() => router.push(nextPath('nutritionPlan'))}
-      onBack={() => router.back()}
+      onNext={async () => {
+        try {
+          await refreshUser();
+        } finally {
+          router.replace('/(tabs)/dashboard');
+        }
+      }}
     />
   );
 }

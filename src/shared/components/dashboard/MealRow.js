@@ -23,8 +23,8 @@ export default function MealRow({ meal, onDelete }) {
   }
   const showImage = Boolean(meal.imageUrl) && !imageFailed;
   return (
-    <View className="bg-white rounded-card p-3 flex-row border border-[#F1E8E0]" style={{ shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
-      <View className="w-16 h-16 rounded-2xl overflow-hidden bg-cream border border-[#F1E8E0] items-center justify-center mr-3">
+    <View className="bg-card rounded-card p-3 flex-row border border-border" style={{ shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
+      <View className="w-16 h-16 rounded-2xl overflow-hidden bg-muted border border-border items-center justify-center mr-3">
         {showImage ? (
           <Image
             source={{ uri: meal.imageUrl }}
@@ -69,7 +69,7 @@ export default function MealRow({ meal, onDelete }) {
         </View>
         <View className="flex-row flex-wrap mt-1.5" style={{ gap: 6 }}>
           {MACROS.map(({ key, label, color, Icon }) => (
-            <View key={key} className="flex-row items-center bg-white border border-[#F1E8E0] rounded-full px-2 py-0.5">
+            <View key={key} className="flex-row items-center bg-card border border-border rounded-full px-2 py-0.5">
                <Icon size={12} color={color} />
               <Text className="text-[10px] font-semibold text-ink ml-1" numberOfLines={1}>
                 {formatAmount(Number(meal[key]) || 0)}g <Text className="font-normal text-muted-foreground">{label}</Text>

@@ -214,4 +214,14 @@ describe('scan flow robustness', () => {
     const screen = read('features/scan/screens/ScanResultScreen.js');
     assert.match(screen, /uploadUri/, 'save must prefer the converted upload over the raw original');
   });
+
+  it('quota exhaustion shows a daily-limit dialog, not a generic failure', () => {
+    const scanApi = read('shared/lib/scanApi.js');
+    assert.match(scanApi, /RATE_LIMITED/, '429 must map to a RATE_LIMITED code');
+    const errors = read('shared/lib/apiErrors.js');
+    assert.match(errors, /RATE_LIMITED/, 'failure taxonomy must know RATE_LIMITED');
+    const upload = read('features/scan/screens/PictureUploadScreen.js');
+    assert.match(upload, /RATE_LIMITED/, 'scan screen must branch on RATE_LIMITED');
+    assert.match(upload, /Daily scan limit reached/i, 'quota dialog must say the daily limit was reached');
+  });
 });

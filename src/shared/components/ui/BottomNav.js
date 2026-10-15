@@ -16,14 +16,12 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
   const rightItems = ITEMS.slice(2);
   return (
     <View
-      className={cn('bg-card flex-row items-center pl-1 pr-4 pt-2')}
+      className={cn('bg-card flex-row items-center pl-1 pr-4 pt-2 border-t border-border')}
       // Report the measured height so screens/sheets can clear the tab bar
       // (including the protruding center button and bottom safe-area inset).
       onLayout={(e) => onHeight?.(Math.round(e.nativeEvent.layout.height))}
       style={{
         paddingBottom: Math.max(insets.bottom, 10),
-        borderTopWidth: 1,
-        borderTopColor: '#F1E8E0',
         shadowColor: '#1A1A1A',
         shadowOpacity: 0.06,
         shadowRadius: 12,
@@ -51,7 +49,7 @@ export default function BottomNav({ active, onChange, sheetOpen = false, onToggl
       <Pressable
         onPress={onToggleSheet}
         accessibilityLabel={sheetOpen ? 'Close quick log' : 'Log food'}
-        className={cn('w-14 h-14 rounded-full bg-primary items-center justify-center mx-1 -mt-6 border-4 border-white')}
+        className={cn('w-14 h-14 rounded-full bg-primary items-center justify-center mx-1 -mt-6 border-4 border-background')}
         style={{
           elevation: 6,
           shadowColor: '#f2470c',

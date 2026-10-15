@@ -1,10 +1,14 @@
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useSession } from '../../auth/session';
+import { exportMyData } from '../../../shared/lib/exportCsv';
+import { toastError, toastSuccess } from '../../../shared/utils/toast';
+import { effectiveTimeZone } from '../../../shared/utils/format';
 import {
-  Bell, BookOpen, CircleQuestionMark, LogOut, Newspaper, Rocket, Scale, Settings,
-  Target, TicketPercent, Trophy, Utensils,
+  BookOpen, CircleQuestionMark, Download, LogOut, Newspaper, Rocket, Scale,
+  Share2, Utensils,
 } from '../../../shared/components/ui/icons';
 import MenuRow, { MenuGroup } from '../components/MenuRow';
 
@@ -21,10 +25,11 @@ function SectionLabel({ children }) {
 export default function MoreScreen() {
   const router = useRouter();
   const { user, handleLogout, authChecked } = useSession();
+  const [exporting, setExporting] = useState(false);
 
   if (!authChecked) {
     return (
-      <ScrollView className="flex-1 bg-white" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 }}>
+      <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 }}>
         <View style={{ width: '100%', maxWidth: 480, alignSelf: 'center' }}>
           <Text className="text-lg font-bold text-ink">More</Text>
           {/* Skeleton for profile header */}
@@ -56,6 +61,33 @@ export default function MoreScreen() {
   const email = user?.email || '';
   const initial = (name.trim()[0] || 'C').toUpperCase();
 
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { meals, weights, files } = await exportMyData({ timeZone: effectiveTimeZone(user) });
+      const parts = [];
+      if (meals) parts.push(`${meals} meal${meals === 1 ? '' : 's'}`);
+      if (weights) parts.push(`${weights} weigh-in${weights === 1 ? '' : 's'}`);
+      const names = (files || []).map((f) => f.name).join(', ');
+      toastSuccess('Saved to your phone', `${parts.join(' and ')} from the last 90 days${names ? ` — ${names}` : ''}`);
+    } catch (e) {
+      toastError('Export failed', e.message || 'Could not export your data.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleShareApp() {
+    try {
+      await Share.share({
+        message: 'Track calories with me on Caly AI — scan meals, hit your macros, and build streaks!',
+      });
+    } catch (e) {
+      toastError('Could not share', e.message);
+    }
+  }
+
   function confirmSignOut() {
     Alert.alert('Sign out', 'You will need to sign back in to keep your streak going.', [
       { text: 'Cancel', style: 'cancel' },
@@ -75,7 +107,7 @@ export default function MoreScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 }}>
       <View style={{ width: '100%', maxWidth: 480, alignSelf: 'center' }}>
         <Text className="text-lg font-bold text-ink">More</Text>
 
@@ -107,45 +139,24 @@ export default function MoreScreen() {
           </View>
         </Pressable>
 
-        {/* Upgrade membership — highlighted banner like the mock */}
-        <Pressable
-          onPress={() => router.push('/upgrade-membership')}
-          accessibilityRole="button"
-          accessibilityLabel="Upgrade membership"
-          className="mt-3"
-          style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-        >
-          <View className="rounded-card px-4 py-4 flex-row items-center border" style={{ backgroundColor: '#FFF1E9', borderColor: '#F9C5AC' }}>
-            <View className="w-9 h-9 rounded-full items-center justify-center mr-3" style={{ backgroundColor: '#FFFFFF' }}>
-               <Trophy size={18} color="#E8A317" />
-            </View>
-            <View className="flex-1 mr-2">
-              <Text className="text-[15px] font-bold text-ink">Upgrade Membership</Text>
-              <Text className="text-[12px] text-muted-foreground mt-0.5">7-day free trial — cancel anytime</Text>
-            </View>
-          </View>
-        </Pressable>
-
         <SectionLabel>Tracking</SectionLabel>
         <MenuGroup>
-          <MenuRow icon={Target} label="Calorie and Macro Targets" description="Adjust your daily calorie goal" onPress={() => router.push('/calorie-macro-targets')} />
           <MenuRow icon={Scale} label="Weight Tracker" description="Set your weight goal" onPress={() => router.push('/weight-tracker')} />
           <MenuRow icon={Utensils} label="Favorites, Foods, and Recipes" description="Quickly re-log what you eat often" onPress={() => router.push('/favorites')} />
           <MenuRow icon={BookOpen} label="Find Recipes" description="Meals that fit your remaining calories" onPress={() => router.push('/find-recipes')} />
         </MenuGroup>
 
-        <SectionLabel>Preferences</SectionLabel>
+        <SectionLabel>Your Data</SectionLabel>
         <MenuGroup>
-          <MenuRow icon={Bell} label="Notifications" description="Reminders and progress reports" onPress={() => router.push('/notifications')} />
-          <MenuRow icon={Settings} label="Settings" description="Account, data, and app info" onPress={() => router.push('/settings')} />
+          <MenuRow icon={Download} label={exporting ? 'Preparing export…' : 'Export My Data'} description="Saved to your phone as CSV files" onPress={handleExport} last />
         </MenuGroup>
 
         <SectionLabel>Support</SectionLabel>
         <MenuGroup>
-          <MenuRow icon={TicketPercent} label="Referral Code" description="Share Caly AI with a friend" onPress={() => router.push('/referral-code')} />
           <MenuRow icon={Newspaper} label={"What's New"} description="Latest updates and fixes" onPress={() => router.push('/whats-new')} />
           <MenuRow icon={Rocket} label="Snappy Early Access" description="Try new features before anyone else" onPress={() => router.push('/snappy-early-access')} />
           <MenuRow icon={CircleQuestionMark} label="Help" description="FAQs and contact support" onPress={() => router.push('/help')} />
+          <MenuRow icon={Share2} label="Share Caly AI" description="Tell a friend about the app" onPress={handleShareApp} />
         </MenuGroup>
 
         <SectionLabel>Account</SectionLabel>

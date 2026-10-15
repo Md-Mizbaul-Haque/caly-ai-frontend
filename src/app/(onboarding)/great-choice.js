@@ -7,7 +7,6 @@ export default function GreatChoiceRoute() {
   return (
     <GreatChoiceScreen
       onNext={() => router.push(nextPath('greatChoice'))}
-      onBack={() => router.back()}
     />
   );
 }

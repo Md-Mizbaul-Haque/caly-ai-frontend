@@ -1,10 +1,13 @@
 // @ts-nocheck - JS file renamed to .tsx for react-native-reusables doctor (which only checks *.tsx)
 import '../../global.css';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, usePathname, useSegments } from 'expo-router';
 import { PortalHost } from '@rn-primitives/portal';
 import { AuthSessionProvider, useSession } from '../features/auth/session';
+import { ThemeProvider, useTheme } from '../shared/theme/theme';
 import ThemedToast from '../shared/components/ui/ThemedToast';
 import OfflineBanner from '../shared/components/ui/OfflineBanner';
 
@@ -28,17 +31,12 @@ function RouteGuard() {
       // Allow specific routes when authenticated and completed, outside of tabs and onboarding
       const allowedRoutes = [
         '/profile',
-        '/settings',
-        '/weight-tracker',
-        '/notifications',
-        '/referral-code',
         '/whats-new',
         '/snappy-early-access',
         '/help',
-        '/upgrade-membership',
-        '/calorie-macro-targets',
         '/favorites',
         '/find-recipes',
+        '/weight-tracker',
         '/day-strip-lab', // dev-only strip playground (itself __DEV__-gated)
       ];
       if (!allowedRoutes.includes(pathname)) {
@@ -53,11 +51,16 @@ function RouteGuard() {
   return null;
 }
 
-export default function RootLayout() {
+function ThemedRoot() {
+  const { isDark, loaded, surface } = useTheme();
+  // Gate first paint on the persisted theme so dark-mode users never see a
+  // white flash; the native splash covers this gap.
+  if (!loaded) return null;
   return (
-    <SafeAreaProvider>
-      <AuthSessionProvider>
-        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#FFFFFF' }} className="flex-1 bg-white">
+    <AuthSessionProvider>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: surface.background }}>
+        <View className={isDark ? 'dark' : undefined} style={{ flex: 1 }}>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
           <OfflineBanner />
           {/* Unauthenticated stack (welcome/login/register/forgot/verify) lives
               at the root, OUTSIDE the main (tabs) navigator, so the tab bar
@@ -92,8 +95,18 @@ export default function RootLayout() {
           <RouteGuard />
           <ThemedToast />
           <PortalHost />
-        </SafeAreaView>
-      </AuthSessionProvider>
+        </View>
+      </SafeAreaView>
+    </AuthSessionProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <ThemedRoot />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

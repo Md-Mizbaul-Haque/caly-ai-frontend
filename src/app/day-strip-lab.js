@@ -53,7 +53,7 @@ export default function DayStripLabScreen() {
 
   if (!__DEV__) {
     return (
-      <ScrollView className="flex-1 bg-white px-4 pt-12">
+      <ScrollView className="flex-1 bg-background px-4 pt-12">
         <Card>
           <Text className="font-bold text-ink">Not available</Text>
           <Text className="text-sm text-muted-foreground mt-1">The day-strip lab only exists in dev builds.</Text>
@@ -68,7 +68,7 @@ export default function DayStripLabScreen() {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="px-3 py-2 rounded-card border border-[#F1E8E0] bg-white mr-2 mb-2"
+      className="px-3 py-2 rounded-card border border-border bg-card mr-2 mb-2"
     >
       <Text className="text-xs text-muted-foreground">{label}</Text>
       <Text className="text-sm font-bold text-ink">{value}</Text>
@@ -76,7 +76,7 @@ export default function DayStripLabScreen() {
   );
 
   return (
-    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 48, paddingBottom: 48 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 48, paddingBottom: 48 }}>
       <Text className="text-2xl font-bold text-ink">Day-strip lab</Text>
       <Text className="text-sm text-muted-foreground mt-1 mb-4">
         Same DaySelector module as Home. Tap pills or use ‹ › to change weeks, flip fixtures.

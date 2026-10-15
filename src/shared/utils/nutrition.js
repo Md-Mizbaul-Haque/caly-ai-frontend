@@ -48,6 +48,25 @@ function goalLabel(currentKg, targetKg) {
   if (Math.abs(d) <= 1) return 'Maintain Weight';
   return d > 0 ? 'Gain Weight' : 'Lose Weight';
 }
+// Goal-kcal macro split (mirrors the backend nutritionPlan service so Home
+// matches the stored plan): protein 2.0 g/kg on loss else 1.8, fat 30% of
+// the goal, remainder carbs. Takes the FINAL goal kcal (deficits and safe
+// floors already applied server-side) — never maintenance. Null on bad
+// input so screens fall back instead of painting NaN.
+function planMacrosFromGoal({ goalKcal, weightKg, targetWeightKg }) {
+  const g = Number(goalKcal);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  if (typeof weightKg !== 'number' || !Number.isFinite(weightKg) || weightKg <= 0) return null;
+  if (typeof targetWeightKg !== 'number' || !Number.isFinite(targetWeightKg)) return null;
+  let perKg = 1.8;
+  try {
+    if (goalLabel(weightKg, targetWeightKg) === 'Lose Weight') perKg = 2.0;
+  } catch { perKg = 1.8; }
+  const proteinG = Math.round(perKg * weightKg);
+  const fatG = Math.round((0.3 * g) / 9);
+  const carbsG = Math.max(0, Math.round((g - proteinG * 4 - fatG * 9) / 4));
+  return { proteinG, fatG, carbsG };
+}
 function snapToStep(value, min, step) {
   return Math.max(min, Math.round(value / step) * step);
 }
@@ -90,4 +109,4 @@ function missingOnboardingFields(s = {}) {
   return missing;
 }
 
-module.exports = { LB_PER_KG, CM_PER_IN, lbToKg, kgToLb, ftInToCm, cmToFtIn, calcAge, mifflinBmr, activityFactor, calcPlan, goalLabel, snapToStep, sanitizeCode, snapWeight, snapWeightKg, normalizeBirthDate, missingOnboardingFields };
+module.exports = { LB_PER_KG, CM_PER_IN, lbToKg, kgToLb, ftInToCm, cmToFtIn, calcAge, mifflinBmr, activityFactor, calcPlan, planMacrosFromGoal, goalLabel, snapToStep, sanitizeCode, snapWeight, snapWeightKg, normalizeBirthDate, missingOnboardingFields };

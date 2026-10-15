@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Animated, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
-import { Minus, Plus, X, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
+import { Minus, Plus, X, Flame, Beef, Wheat, Droplet, Heart } from '../../../shared/components/ui/icons';
 import Chip from '../../../shared/components/ui/Chip';
 import CachedImage from '../../../shared/components/image/CachedImage';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import { scaleByFactor, clampGrams, defaultMealType } from '../../../shared/utils/foodScale';
+import { fetchFavorites, addFavorite, removeFavorite, nameKey } from '../../../shared/lib/favoritesApi';
+import { useTheme, useThemeClass } from '../../../shared/theme/theme';
 
 const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const GRAM_STEP = 50;
@@ -24,15 +26,36 @@ const SERVING_STEP = 0.5;
  */
 export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  const themeClass = useThemeClass();
   const [progress] = useState(() => new Animated.Value(0));
   const [amount, setAmount] = useState(mode === 'grams' ? 100 : 1);
   const [type, setType] = useState(() => defaultMealType(new Date().getHours()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [favorite, setFavorite] = useState(null);
+  const [favBusy, setFavBusy] = useState(false);
 
   useEffect(() => {
     Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
   }, [progress]);
+
+  // Is this food already a favorite? A failed lookup leaves the heart empty;
+  // pressing it then still works (the server dedupes by name and returns the
+  // existing row).
+  useEffect(() => {
+    let alive = true;
+    fetchFavorites()
+      .then((list) => {
+        if (!alive) return;
+        const key = nameKey(food.name);
+        setFavorite(list.find((f) => nameKey(f.name) === key) || null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [food.name]);
 
   function dismiss(after = onClose) {
     Animated.timing(progress, { toValue: 0, duration: 160, useNativeDriver: true }).start(({ finished }) => {
@@ -77,6 +100,34 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
     }
   }
 
+  async function toggleFavorite() {
+    setFavBusy(true);
+    setError(null);
+    try {
+      if (favorite) {
+        await removeFavorite(favorite.id);
+        setFavorite(null);
+      } else {
+        // shortcut: the favorite keeps the values currently on screen (name is
+        // the identity), so a 0-kcal amount can't be favorited — the server
+        // requires kcal > 0 to keep favorites loggable as meals.
+        const saved = await addFavorite({
+          name: food.name,
+          kcal: scaled.kcal,
+          protein: scaled.protein,
+          carbs: scaled.carbs,
+          fat: scaled.fat,
+          ...(food.imageUrl ? { imageUrl: food.imageUrl } : {}),
+        });
+        setFavorite(saved);
+      }
+    } catch (e) {
+      setError(e.message || 'Could not update favorites. Try again.');
+    } finally {
+      setFavBusy(false);
+    }
+  }
+
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
   const macros = [
     { Icon: Flame, value: `${scaled.kcal}`, unit: 'kcal' },
@@ -87,7 +138,7 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => dismiss()}>
-      <View className="flex-1" pointerEvents="box-none">
+      <View className={`flex-1 ${themeClass ?? ''}`} pointerEvents="box-none">
         <Animated.View
           style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -111,9 +162,25 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
           </View>
           <View className="flex-row items-start justify-between mb-3">
             <Text className="text-xl font-bold text-ink flex-1 mr-2">{food.name}</Text>
-            <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
-              <X size={22} color="#1A1A1A" />
-            </Pressable>
+            <View className="flex-row items-center" style={{ gap: 12 }}>
+              <Pressable
+                onPress={toggleFavorite}
+                disabled={favBusy}
+                accessibilityRole="button"
+                accessibilityLabel={favorite ? 'Remove from favorites' : 'Add to favorites'}
+                accessibilityState={{ selected: !!favorite, disabled: favBusy }}
+                hitSlop={8}
+              >
+                <Heart
+                  size={22}
+                  color={favorite ? '#f2470c' : isDark ? '#F5F5F5' : '#1A1A1A'}
+                  fill={favorite ? '#f2470c' : 'none'}
+                />
+              </Pressable>
+              <Pressable onPress={() => dismiss()} accessibilityLabel="Close" hitSlop={8}>
+                <X size={22} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
+              </Pressable>
+            </View>
           </View>
 
           {food.imageUrl ? (
@@ -124,8 +191,8 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
 
           <View className="flex-row mb-4" style={{ gap: 8 }}>
             {macros.map(({ Icon, value, unit }) => (
-              <View key={unit} className="flex-1 bg-cream rounded-xl items-center py-2">
-                <Icon size={16} color="#1A1A1A" />
+              <View key={unit} className="flex-1 bg-input rounded-xl items-center py-2">
+                <Icon size={16} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
                 <Text className="font-bold text-ink text-sm mt-1">{value}</Text>
                 <Text className="text-muted-foreground text-[11px]">{unit}</Text>
               </View>
@@ -139,11 +206,11 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
             <Pressable
               onPress={() => bump(isGrams ? -GRAM_STEP : -SERVING_STEP)}
               accessibilityLabel="Decrease quantity"
-              className="w-11 h-11 rounded-full bg-cream items-center justify-center"
+              className="w-11 h-11 rounded-full bg-input items-center justify-center"
             >
-              <Minus size={20} color="#1A1A1A" />
+              <Minus size={20} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
             </Pressable>
-            <View className="flex-row items-center flex-1 bg-cream rounded-xl px-3">
+            <View className="flex-row items-center flex-1 bg-input rounded-xl px-3">
               <TextInput
                 value={isGrams ? String(amount) : String(amount).replace(/\.0$/, '')}
                 onChangeText={onAmountText}
@@ -156,9 +223,9 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
             <Pressable
               onPress={() => bump(isGrams ? GRAM_STEP : SERVING_STEP)}
               accessibilityLabel="Increase quantity"
-              className="w-11 h-11 rounded-full bg-cream items-center justify-center"
+              className="w-11 h-11 rounded-full bg-input items-center justify-center"
             >
-              <Plus size={20} color="#1A1A1A" />
+              <Plus size={20} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
             </Pressable>
           </View>
 

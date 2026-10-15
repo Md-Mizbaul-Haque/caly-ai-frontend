@@ -173,6 +173,16 @@ export default function PictureUploadScreen({
           );
           return;
         }
+        // Provider quota (Groq 429 -> backend 429): shared daily budget is
+        // spent. Retrying today can never succeed — say so, no Retry button.
+        if (code === "RATE_LIMITED" || _e?.status === 429) {
+          Alert.alert(
+            "Daily scan limit reached",
+            _e.message || "We've hit today's scan limit — please try again tomorrow.",
+            [{ text: "Cancel", style: "cancel" }],
+          );
+          return;
+        }
         // Verified-only endpoints (scan) return 403 + needsVerification
         // for skip-verification accounts. Retrying can never succeed —
         // route the user to verify instead.
@@ -330,6 +340,14 @@ export default function PictureUploadScreen({
       permission.status === "denied" && permission.canAskAgain === false;
     return (
       <View className="flex-1 bg-black items-center justify-center px-8">
+        <Pressable
+          onPress={close}
+          accessibilityLabel="Close camera"
+          className="absolute left-5 w-10 h-10 rounded-full bg-black/60 items-center justify-center"
+          style={{ top: Math.max(insets.top, 16) }}
+        >
+          <X size={20} color="#FFFFFF" />
+        </Pressable>
         <Text className="text-white text-center text-base mb-2">
           {permanentlyDenied ? "Camera is blocked" : "Camera access needed"}
         </Text>
@@ -360,9 +378,6 @@ export default function PictureUploadScreen({
             <Text className="text-white font-bold">Grant permission</Text>
           </Pressable>
         )}
-        <Pressable onPress={close} className="mt-4 px-4 py-2">
-          <Text className="text-white/70">Go back</Text>
-        </Pressable>
       </View>
     );
   }
@@ -421,8 +436,13 @@ export default function PictureUploadScreen({
               Use a photo from the gallery instead
             </Text>
           </Pressable>
-          <Pressable onPress={close} className="mt-2 px-4 py-2">
-            <Text className="text-white/70">Go back</Text>
+          <Pressable
+            onPress={close}
+            accessibilityLabel="Close camera"
+            className="absolute left-5 w-10 h-10 rounded-full bg-black/60 items-center justify-center"
+            style={{ top: Math.max(insets.top, 16) }}
+          >
+            <X size={20} color="#FFFFFF" />
           </Pressable>
         </View>
       )}

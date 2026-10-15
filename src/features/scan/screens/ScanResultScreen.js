@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, Image, TextInput, Pressable } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, Image, TextInput, Pressable, BackHandler, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Flame, Beef, Wheat, Droplet } from '../../../shared/components/ui/icons';
+import { Flame, Beef, Wheat, Droplet, X } from '../../../shared/components/ui/icons';
+import { useTheme } from '../../../shared/theme/theme';
 import { uploadMealImage } from '../../../shared/lib/scanApi';
 import Card from '../../../shared/components/ui/Card';
 import PrimaryButton from '../../../shared/components/ui/Button';
@@ -16,8 +17,8 @@ const TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
  * User reviews/edits totals, picks a meal type, then confirms -> onSave(meal).
  */
 export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
-  const close = onClose ?? onDone ?? (() => {});
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
   const [items, setItems] = useState(() => {
     if (result.kind === 'barcode') return [result.item].filter(Boolean);
     // No food in frame: seed one editable zero row so the photo, the 0/0/0
@@ -106,22 +107,50 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
     }
   }
 
+  // Native device back button closes this overlay (it's state-rendered,
+  // not a router screen, so the OS back press needs an explicit handler).
+  useEffect(() => {
+    const closeOverlay = onClose ?? onDone ?? (() => {});
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeOverlay();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onClose, onDone]);
+
   return (
     <ScrollView
-      className="flex-1 bg-white px-4 pt-12"
+      className="flex-1 bg-background px-4 pt-12"
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 40 + Math.max(insets.bottom, 0) }}
     >
       <View className="flex-row items-center mb-4">
-        <Pressable onPress={close} accessibilityLabel="Back" hitSlop={8} className="mr-3">
-          <ChevronLeft size={26} color="#1A1A1A" />
-        </Pressable>
-        <Text className="text-2xl font-bold text-ink">
-          {result.kind === 'barcode' ? 'Product found' : 'Scan complete'}
-        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-1 -mx-4 px-4"
+        >
+          {TYPES.map(t => (
+            <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
+          ))}
+        </ScrollView>
+        {/* iOS has no hardware back button, so the overlay gets a close
+            affordance there only — Android uses the device back button. */}
+        {Platform.OS === 'ios' && (
+          <Pressable
+            onPress={onClose ?? onDone}
+            accessibilityLabel="Close"
+            hitSlop={8}
+            className="ml-2 w-10 h-10 rounded-full bg-muted items-center justify-center"
+          >
+            <X size={20} color={isDark ? '#F5F5F5' : '#1A1A1A'} />
+          </Pressable>
+        )}
       </View>
 
       {result.placeholder && (
-        <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
+        <View className="mb-4 rounded-xl bg-accent border border-border px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
             AI scan unavailable — showing an estimate you can edit. The server needs an image-scanning key for real detection.
           </Text>
@@ -129,7 +158,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
       )}
 
       {result.noFood && (
-        <View className="mb-4 rounded-xl bg-[#FFF4EC] border border-[#FFD9C2] px-3 py-2">
+        <View className="mb-4 rounded-xl bg-accent border border-border px-3 py-2">
           <Text className="text-xs text-[#B4530A]">
             No food detected — showing 0. Enter your estimates below to log it.
           </Text>
@@ -170,7 +199,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.kcal ?? '')}
                 onChangeText={v => updateItem(idx, 'kcal', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
             <View className="flex-1">
@@ -179,7 +208,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.protein ?? '')}
                 onChangeText={v => updateItem(idx, 'protein', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
             <View className="flex-1">
@@ -188,7 +217,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.carbs ?? '')}
                 onChangeText={v => updateItem(idx, 'carbs', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
             <View className="flex-1">
@@ -197,7 +226,7 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
                 value={String(item.fat ?? '')}
                 onChangeText={v => updateItem(idx, 'fat', v.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
-                className="bg-cream rounded-xl px-3 py-2"
+                className="bg-input rounded-xl px-3 py-2"
               />
             </View>
           </View>
@@ -229,15 +258,6 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
           </View>
         </View>
       </Card>
-
-      <Text className="text-base font-bold text-ink mt-4 mb-2">Meal type</Text>
-      <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-        {TYPES.map(t => (
-          <View key={t} style={{ marginRight: 0 }}>
-            <Chip label={t} active={type === t} onPress={() => setType(t)} />
-          </View>
-        ))}
-      </View>
 
       <View className="mt-6 mb-8">
         <PrimaryButton

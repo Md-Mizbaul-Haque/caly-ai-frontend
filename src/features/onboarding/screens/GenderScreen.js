@@ -3,6 +3,7 @@ import { Circle, CircleUser, User, UserRound } from '../../../shared/components/
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import OptionCard from '../../../shared/components/auth/OptionCard';
 import { useOnboarding } from '../OnboardingContext';
+import { useTheme } from '../../../shared/theme/theme';
 
 const OPTIONS = [
   { key: 'male', title: 'Male', Icon: User },
@@ -10,13 +11,14 @@ const OPTIONS = [
   { key: 'nonbinary', title: 'Non-binary', Icon: Circle },
 ];
 
-export default function GenderScreen({ onNext, onBack }) {
+export default function GenderScreen({ onNext }) {
   const { state, update } = useOnboarding();
+  const { isDark } = useTheme();
+  const idleIcon = isDark ? '#F5F5F5' : '#1A1A1A';
   return (
     <AuthScaffold
       title="What is your gender?"
       subtitle="This helps us create your personalized health plan."
-      onBack={onBack}
       ctaLabel="Continue"
       ctaDisabled={!state.gender}
       onCta={onNext}
@@ -27,7 +29,7 @@ export default function GenderScreen({ onNext, onBack }) {
           return (
             <View key={key} className="flex-1">
               <OptionCard layout="vertical" title={title} selected={selected} onPress={() => update({ gender: key })}
-                icon={<Icon size={26} color={selected ? '#f2470c' : '#1A1A1A'} />} testID={`gender-${key}`} />
+                icon={<Icon size={26} color={selected ? '#f2470c' : idleIcon} />} testID={`gender-${key}`} />
             </View>
           );
         })}
@@ -35,7 +37,7 @@ export default function GenderScreen({ onNext, onBack }) {
       <View className="mt-4">
         <OptionCard title="Prefer Not To Say" selected={state.gender === 'prefer_not_to_say'}
           onPress={() => update({ gender: 'prefer_not_to_say' })}
-          icon={<CircleUser size={22} color={state.gender === 'prefer_not_to_say' ? '#f2470c' : '#1A1A1A'} />} testID="gender-prefer" />
+          icon={<CircleUser size={22} color={state.gender === 'prefer_not_to_say' ? '#f2470c' : idleIcon} />} testID="gender-prefer" />
       </View>
     </AuthScaffold>
   );

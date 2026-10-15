@@ -10,7 +10,7 @@ import { goalLabel, lbToKg, snapWeight, snapWeightKg } from '../../../shared/uti
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-export default function TargetWeightScreen({ onNext, onBack }) {
+export default function TargetWeightScreen({ onNext }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -36,17 +36,17 @@ export default function TargetWeightScreen({ onNext, onBack }) {
   }), [state.targetWeightKg, update]);
   return (
     <AuthScaffold title="What is your target weight?" subtitle="This helps us determine your nutrition goals."
-      onBack={onBack} ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
+      ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
       onCta={async () => { if (busy) return; setBusy(true); try { const ok = await savePartial({ targetWeightKg: round1(toKg(shownTarget)) }); if (ok) onNext(); } finally { setBusy(false); } }}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={handleUnit} testID="target-unit" compact={compact} />
-      <Text className={`text-center font-extrabold text-[#1A1A1A] ${compact ? 'text-5xl' : 'text-[64px]'}`}>{display}</Text>
+      <Text className={`text-center font-extrabold text-ink ${compact ? 'text-5xl' : 'text-[64px]'}`}>{display}</Text>
       <View className={`flex-row items-center justify-center ${compact ? 'mt-1 mb-4' : 'mt-2 mb-8'}`}>
         <Scale size={28} color="#f2470c" />
-        <Text className="text-[22px] font-medium text-[#1A1A1A] ml-2">{label}</Text>
+        <Text className="text-[22px] font-medium text-ink ml-2">{label}</Text>
       </View>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="target-ruler"
         onChange={handleRuler} />
-      <Text className={`text-center text-[20px] text-[#1A1A1A] ${compact ? 'mt-3' : 'mt-6'}`}>Current: {current}</Text>
+      <Text className={`text-center text-[20px] text-ink ${compact ? 'mt-3' : 'mt-6'}`}>Current: {current}</Text>
     </AuthScaffold>
   );
 }

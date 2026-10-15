@@ -9,7 +9,6 @@ export default function RegisterRoute() {
   const online = useIsOnline();
   return (
     <RegisterScreen
-      onBack={() => router.replace('/welcome')}
       onSubmit={handleRegister}
       onSwitchLogin={() => router.replace('/login')}
       busy={authBusy}

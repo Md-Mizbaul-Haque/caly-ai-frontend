@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { formatDateShort, formatMonthShort } from '../utils/format';
+import { useTheme } from '../theme/theme';
 
 const PAD = { top: 18, right: 14, bottom: 24, left: 36 };
-const MUTED = '#8A8A8A';
-const GRID = '#F1E8E0';
 
 function niceTicks(min, max, count = 4) {
   if (min === max) {
@@ -47,6 +46,11 @@ function smoothPath(pts) {
  * never looks empty (same height/grid, no tooltip/touch).
  */
 export default function WeightChart({ points, width, height, color = '#22C55E' }) {
+  const { isDark } = useTheme();
+  const MUTED = isDark ? '#969696' : '#8A8A8A';
+  const GRID = isDark ? '#383838' : '#F1E8E0';
+  const TIP_BG = isDark ? '#1F1F1F' : '#FFFFFF';
+  const TIP_INK = isDark ? '#F5F5F5' : '#1A1A1A';
   const hasData = points.length >= 2;
   // Parent remounts on range/count change (key), so init-to-latest is enough;
   // idx below clamps for in-place value edits.
@@ -190,7 +194,7 @@ export default function WeightChart({ points, width, height, color = '#22C55E' }
             left: Math.min(Math.max(sel.x - 56, 4), width - 116),
             top: Math.max(sel.y - 60, 2),
             width: 112,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: TIP_BG,
             borderRadius: 10,
             borderWidth: 1,
             borderColor: GRID,
@@ -206,7 +210,7 @@ export default function WeightChart({ points, width, height, color = '#22C55E' }
         >
           <View style={{ width: 28, height: 2, backgroundColor: color, borderRadius: 1, marginBottom: 4 }} />
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <Text style={{ fontWeight: '800', fontSize: 13, color: '#1A1A1A' }}>{sel.value}</Text>
+            <Text style={{ fontWeight: '800', fontSize: 13, color: TIP_INK }}>{sel.value}</Text>
             <Text style={{ fontSize: 11, color: MUTED, marginLeft: 3 }}>lbs</Text>
           </View>
           <Text style={{ fontSize: 10, color: MUTED, marginTop: 1 }}>{formatDateShort(sel.date)}</Text>

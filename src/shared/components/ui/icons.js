@@ -70,6 +70,10 @@ import AppleIcon from 'lucide-react-native/icons/apple';
 import CarrotIcon from 'lucide-react-native/icons/carrot';
 import MilkIcon from 'lucide-react-native/icons/milk';
 import CookieIcon from 'lucide-react-native/icons/cookie';
+import SunIcon from 'lucide-react-native/icons/sun';
+import MoonIcon from 'lucide-react-native/icons/moon';
+import SmartphoneIcon from 'lucide-react-native/icons/smartphone';
+import DownloadIcon from 'lucide-react-native/icons/download';
 
 const withThinStroke = (IconComponent, displayName) => {
   const Wrapped = (props) => (
@@ -149,6 +153,10 @@ const Apple = withThinStroke(AppleIcon, 'Apple');
 const Carrot = withThinStroke(CarrotIcon, 'Carrot');
 const Milk = withThinStroke(MilkIcon, 'Milk');
 const Cookie = withThinStroke(CookieIcon, 'Cookie');
+const Sun = withThinStroke(SunIcon, 'Sun');
+const Moon = withThinStroke(MoonIcon, 'Moon');
+const Smartphone = withThinStroke(SmartphoneIcon, 'Smartphone');
+const Download = withThinStroke(DownloadIcon, 'Download');
 
 export {
   House,
@@ -221,5 +229,9 @@ export {
   Carrot,
   Milk,
   Cookie,
+  Sun,
+  Moon,
+  Smartphone,
+  Download,
 };
 export { Icon } from '@/components/ui/icon';

@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { getToken, setSessionExpiredHandler } from '../../shared/lib/tokenStore';
+import { getToken, setToken, setSessionExpiredHandler, setNeedsVerificationHandler } from '../../shared/lib/tokenStore';
 import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail, updateProfile } from '../../shared/lib/authApi';
 import { toastError, toastSuccess } from '../../shared/utils/toast';
 import { readCache, writeCache, clearAppCache } from '../../shared/lib/appCache';
@@ -37,7 +37,7 @@ function syncTimeZone(u, setUser) {
 // (or throw) on some Android devices, which left authChecked false forever.
 const BOOT_TIMEOUT_MS = 8000;
 
-function withBootTimeout(promise, ms = 5000) {
+function withBootTimeout(promise, ms = BOOT_TIMEOUT_MS) {
   let timer;
   const timeout = new Promise((resolve) => {
     timer = setTimeout(() => resolve(null), ms);
@@ -53,8 +53,10 @@ export function AuthSessionProvider({ children }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [goal, setGoal] = useState(null);
   const [stageEmail, setStageEmail] = useState('');
-  const [verifyNext, setVerifyNext] = useState('app');
   const [authBusy, setAuthBusy] = useState(false);
+  // Mirror of user for callbacks registered once (the 403 verify handler needs
+  // the current email without re-registering on every render).
+  const userRef = useRef(null);
 
   // True when the account exists but onboarding was never finished.
   // Callers show a "finish setup" toast; route guards own the redirect.
@@ -63,6 +65,7 @@ export function AuthSessionProvider({ children }) {
   }
 
   function applyUser(u) {
+    userRef.current = u;
     setUser(u);
     if (u) writeCache('user', u);
     // Nullable: a missing/invalid goal stays null so Home renders "set your
@@ -78,10 +81,27 @@ export function AuthSessionProvider({ children }) {
 
   useEffect(() => {
     setSessionExpiredHandler(() => {
+      userRef.current = null;
       setUser(null);
       setGoal(null);
       setStageEmail('');
       clearAppCache();
+    });
+    // A verified-only data route 403s for an unverified account. Clear the
+    // session (so the route guard allows the auth screen) and hand the user
+    // to the verify screen with a fresh code, exactly like the login-403 path.
+    setNeedsVerificationHandler(async () => {
+      const email = userRef.current?.email || '';
+      await setToken(null);
+      userRef.current = null;
+      setUser(null);
+      setGoal(null);
+      clearAppCache();
+      setStageEmail(email);
+      if (email) {
+        try { await resendCode(email); } catch { /* user can resend from the screen */ }
+      }
+      router.replace('/verify');
     });
   }, []);
 
@@ -136,7 +156,6 @@ export function AuthSessionProvider({ children }) {
     } catch (e) {
       if (e.needsVerification) {
         setStageEmail(email);
-        setVerifyNext('app');
         router.replace('/verify');
         toastSuccess('Check email', 'Verify your email to continue');
       } else {
@@ -152,7 +171,6 @@ export function AuthSessionProvider({ children }) {
     try {
       await register(name, email, password);
       setStageEmail(email);
-      setVerifyNext('onboarding');
       router.replace('/verify');
       toastSuccess('Check email', 'Enter the verification code');
     } catch (e) {
@@ -166,9 +184,6 @@ export function AuthSessionProvider({ children }) {
     setAuthBusy(true);
     try {
       const data = await verifyEmail(email, code);
-      if (verifyNext === 'onboarding') {
-        setStageEmail(data.user.email);
-      }
       applyUser(data.user);
       if (needsOnboarding(data.user)) {
         toastSuccess('Verified', "Let's finish setting up your plan");
@@ -182,12 +197,16 @@ export function AuthSessionProvider({ children }) {
     }
   }
 
+  // Returns true only when the code was actually sent, so the Verify screen
+  // reveals "Skip for now" only after a real resend (not on a failed one).
   async function handleResend(email) {
     try {
       await resendCode(email);
       toastSuccess('Code resent', 'Check your email');
+      return true;
     } catch (e) {
       toastError('Could not resend', e.message);
+      return false;
     }
   }
 
@@ -195,9 +214,6 @@ export function AuthSessionProvider({ children }) {
     setAuthBusy(true);
     try {
       const data = await skipVerification(email);
-      if (verifyNext === 'onboarding') {
-        setStageEmail(data.user.email);
-      }
       applyUser(data.user);
       if (needsOnboarding(data.user)) {
         toastSuccess('Welcome back', "Let's finish setting up your plan");
@@ -215,6 +231,7 @@ export function AuthSessionProvider({ children }) {
     try {
       await logout();
     } finally {
+      userRef.current = null;
       setUser(null);
       setGoal(null);
       setStageEmail('');
@@ -236,7 +253,6 @@ export function AuthSessionProvider({ children }) {
     setGoal,
     stageEmail,
     setStageEmail,
-    verifyNext,
     authBusy,
     needsOnboarding,
     handleLogin,

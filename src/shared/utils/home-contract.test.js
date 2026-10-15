@@ -187,8 +187,20 @@ describe('calendar/day filtering', () => {
 
   it('dashboard macros prefer the plan split over fixed 25/50/25', () => {
     const dash = read('features/dashboard/screens/DashboardScreen.js');
-    assert.match(dash, /calcPlan/, 'dashboard must derive plan macros (backend split wins)');
+    assert.match(dash, /planMacrosFromGoal/, 'dashboard must derive macros from the goal kcal (backend split wins)');
     assert.match(dash, /missingOnboardingFields/, 'plan macros need the completeness gate with 25/50/25 fallback');
+  });
+
+  it('pull-to-refresh re-reads the user so the target is database-fresh', () => {
+    const dash = read('features/dashboard/screens/DashboardScreen.js');
+    assert.match(dash, /refreshUser/, 'pull-to-refresh must revalidate kcal, not just meals/weights');
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(layout, /refreshUser/, 'tab shell must refresh the session user alongside weights');
+  });
+
+  it('an uncomputed calorie plan explains itself instead of silently keeping old kcal', () => {
+    const dash = read('features/dashboard/screens/DashboardScreen.js');
+    assert.match(dash, /finish profile|complete.*profile|plan.*missing/i, 'plan:null must render guidance, not a silent stale target');
   });
 });
 
@@ -240,5 +252,13 @@ describe('per-user + write paths', () => {
     assert.match(lab, /__DEV__/, 'lab must be dev-gated (never a production screen)');
     const rootLayout = read('app/_layout.tsx');
     assert.match(rootLayout, /day-strip-lab/, 'lab route must be reachable for authed users (allowedRoutes)');
+  });
+
+  it('authed menu routes are reachable outside tabs (allowedRoutes)', () => {
+    const rootLayout = read('app/_layout.tsx');
+    // Missing entries bounce authed users to dashboard via RouteGuard
+    // (More -> Weight Tracker died as a silent "refresh").
+    // Appearance screen was removed (theme fixed to light) — no route to allow.
+    assert.match(rootLayout, /'\/weight-tracker'/, 'Weight Tracker must not bounce to dashboard');
   });
 });

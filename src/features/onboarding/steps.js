@@ -10,7 +10,6 @@ export const ORDER = [
   'height',
   'greatChoice',
   'nutritionPlan',
-  'paywall',
 ];
 
 export function nextOf(step) {
@@ -30,7 +29,6 @@ export const PATH = {
   height: 'height',
   greatChoice: 'great-choice',
   nutritionPlan: 'nutrition-plan',
-  paywall: 'paywall',
 };
 
 export function nextPath(step) {

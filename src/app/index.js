@@ -13,9 +13,9 @@ export default function Index() {
   const { authChecked, user } = useSession();
   if (DEV_PREVIEW) {
     return (
-      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+      <SafeAreaView edges={['top']} className="flex-1 bg-background">
         <OnboardingProvider email="dev@preview.local">
-          <GenderScreen onNext={() => {}} onBack={() => {}} />
+          <GenderScreen onNext={() => {}} />
         </OnboardingProvider>
         <ThemedToast />
       </SafeAreaView>

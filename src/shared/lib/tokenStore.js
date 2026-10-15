@@ -5,6 +5,7 @@ const TOKEN_KEY = 'caly-auth-token';
 let cached = null;
 let loaded = false;
 let sessionExpiredHandler = null;
+let needsVerificationHandler = null;
 
 export async function getToken() {
   if (loaded) return cached;
@@ -29,6 +30,17 @@ export async function setToken(token) {
 
 export function setSessionExpiredHandler(handler) {
   sessionExpiredHandler = handler;
+}
+
+// Called by the API layer on a 403 needsVerification from a data route:
+// the account exists but the mailbox is unverified, so the app must send the
+// user to the verify screen instead of leaving an empty, unusable UI.
+export function setNeedsVerificationHandler(handler) {
+  needsVerificationHandler = handler;
+}
+
+export async function handleNeedsVerification() {
+  if (needsVerificationHandler) await needsVerificationHandler();
 }
 
 // Called by the API layer on any 401: drops the stale token and lets App

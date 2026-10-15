@@ -7,7 +7,6 @@ export default function HeightRoute() {
   return (
     <HeightScreen
       onNext={() => router.push(nextPath('height'))}
-      onBack={() => router.back()}
     />
   );
 }

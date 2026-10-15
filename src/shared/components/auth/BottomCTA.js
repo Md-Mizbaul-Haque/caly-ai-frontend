@@ -16,10 +16,10 @@ export default function BottomCTA({ label, onPress, disabled, testID, borderRadi
       accessibilityRole="button"
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      className={`items-center justify-center ${disabled ? 'bg-[#F1E8E0]' : 'bg-primary'}`}
+      className={`items-center justify-center ${disabled ? 'bg-muted' : 'bg-primary'}`}
       style={[{ height: 68, borderRadius, opacity: pressed && !disabled ? 0.85 : 1 }]}
     >
-      <Text className={`text-[20px] font-medium ${disabled ? 'text-[#8A8A8A]' : 'text-white'}`}>{label}</Text>
+      <Text className={`text-[20px] font-medium ${disabled ? 'text-muted-foreground' : 'text-white'}`}>{label}</Text>
     </Pressable>
   );
 }

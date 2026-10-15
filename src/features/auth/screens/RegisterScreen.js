@@ -6,7 +6,7 @@ import PasswordInput from '../../../shared/components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, online = true, prefillEmail }) {
+export default function RegisterScreen({ onSubmit, onSwitchLogin, busy, online = true, prefillEmail }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
@@ -15,14 +15,13 @@ export default function RegisterScreen({ onBack, onSubmit, onSwitchLogin, busy, 
     <AuthScaffold
       title="Hello! Register now to get started."
       titleSize={26}
-      onBack={onBack}
       ctaLabel={busy ? 'Creating…' : 'Register'}
       ctaDisabled={!valid || busy || !online}
       ctaBorderRadius={14}
       onCta={() => onSubmit(name.trim(), email.trim(), password)}
       bottomNote={
         <View className="flex-row justify-center mt-6">
-          <Text className="text-[14px] text-black/60">Already have an account? </Text>
+          <Text className="text-[14px] text-muted-foreground">Already have an account? </Text>
           <Pressable onPress={onSwitchLogin}><Text className="text-[14px] text-[#2D9CDB] font-medium">Login Now</Text></Pressable>
         </View>
       }
