@@ -1,6 +1,6 @@
 // Caly AI API client - point to your backend
 // Set EXPO_PUBLIC_API_URL in .env, e.g. http://localhost:5000
-import { getToken, handleUnauthorized } from './tokenStore';
+import { getToken, handleUnauthorized, handleNeedsVerification } from './tokenStore';
 import { classifyApiError, isRetryableCode } from './apiErrors';
 
 export { classifyApiError, isRetryableCode };
@@ -97,14 +97,21 @@ async function request(method, path, { headers = {}, body } = {}) {
       });
       clearTimeout(timer);
       if (!res.ok) {
+        const err = await parseError(res, method, path, id);
         // Login's 401 means "wrong credentials", not "expired session" — only
         // authenticated data routes trigger the logout-and-reroute path.
         if (res.status === 401 && path !== '/api/auth/login') {
-          const err = await parseError(res, method, path, id);
           await handleUnauthorized();
-          throw err;
+        } else if (
+          res.status === 403 &&
+          err.data?.needsVerification &&
+          !path.startsWith('/api/auth/')
+        ) {
+          // Verified-only data route hit by an unverified account: send the
+          // user to verify (the auth endpoints handle their own 403s).
+          await handleNeedsVerification();
         }
-        throw await parseError(res, method, path, id);
+        throw err;
       }
       // Guarded like parseError: a 200 with non-JSON (proxy error page) must
       // not surface as a raw SyntaxError.

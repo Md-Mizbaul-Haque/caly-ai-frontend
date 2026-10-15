@@ -31,17 +31,12 @@ function RouteGuard() {
       // Allow specific routes when authenticated and completed, outside of tabs and onboarding
       const allowedRoutes = [
         '/profile',
-        '/settings',
-        '/weight-tracker',
-        '/notifications',
-        '/referral-code',
         '/whats-new',
         '/snappy-early-access',
         '/help',
-        '/upgrade-membership',
-        '/calorie-macro-targets',
         '/favorites',
         '/find-recipes',
+        '/weight-tracker',
         '/day-strip-lab', // dev-only strip playground (itself __DEV__-gated)
       ];
       if (!allowedRoutes.includes(pathname)) {

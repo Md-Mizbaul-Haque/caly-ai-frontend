@@ -31,7 +31,12 @@ export async function fetchWeightGoal() {
   return data.goal;
 }
 
-export async function setWeightGoal(value) {
-  const data = await apiPut('/api/weights/goal', { value });
-  return data.goal;
+export async function setWeightGoal(value, opts = {}) {
+  const body = { value };
+  if (opts.pace) body.pace = opts.pace;
+  if (opts.activityLevel) body.activityLevel = opts.activityLevel;
+  const data = await apiPut('/api/weights/goal', body);
+  // Full envelope { goal, plan, missing, user } so the caller can sync the
+  // recomputed dailyGoalKcal in one tick. Callers read data.goal (lbs).
+  return data;
 }

@@ -173,6 +173,16 @@ export default function PictureUploadScreen({
           );
           return;
         }
+        // Provider quota (Groq 429 -> backend 429): shared daily budget is
+        // spent. Retrying today can never succeed — say so, no Retry button.
+        if (code === "RATE_LIMITED" || _e?.status === 429) {
+          Alert.alert(
+            "Daily scan limit reached",
+            _e.message || "We've hit today's scan limit — please try again tomorrow.",
+            [{ text: "Cancel", style: "cancel" }],
+          );
+          return;
+        }
         // Verified-only endpoints (scan) return 403 + needsVerification
         // for skip-verification accounts. Retrying can never succeed —
         // route the user to verify instead.

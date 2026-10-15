@@ -10,23 +10,23 @@ import DaySelector from "../../../shared/components/dashboard/DaySelector";
 import MealRow from "../../../shared/components/dashboard/MealRow";
 import { calcTotals } from "../../../shared/utils/totals";
 import {
-  calcAge,
-  calcPlan,
   missingOnboardingFields,
-  normalizeBirthDate,
+  planMacrosFromGoal,
 } from "../../../shared/utils/nutrition";
 import { formatAmount } from "../../../shared/utils/formatNumber";
 import { groupMealsForDay } from "../../../shared/utils/groupMeals";
 import { dateKey } from "../../../shared/utils/format";
 import { zonedParts } from "../../../shared/utils/mealDates";
 import { weekRange } from "../../../shared/lib/mealsApi";
+import { readCache, scopedKey } from "../../../shared/lib/appCache";
 import PrimaryButton from "../../../shared/components/ui/Button";
 import { useTabShell } from "../../tabs/shell";
 
-// Server-authoritative macro split (matches backend nutrition service):
-// 2.0 g/kg protein for loss, 1.8 otherwise, 30% fat, remainder carbs.
-// Falls back to the old 25/50/25 estimate only when the profile is
-// incomplete (no weight/height/age/activity to compute a plan from).
+// Server-plan macro split (matches the backend nutrition service): protein
+// 2.0 g/kg on loss else 1.8, fat 30% of the goal, remainder carbs — derived
+// from the FINAL goal kcal (deficits and safe floors already applied
+// server-side), never maintenance. Falls back to the old 25/50/25 estimate
+// only when the profile is incomplete (no weight data to compute from).
 function macroTargets(goal, user) {
   const g = Number(goal);
   const fallback = [
@@ -54,17 +54,12 @@ function macroTargets(goal, user) {
   ];
   try {
     if (!user || missingOnboardingFields(user).length > 0) return fallback;
-    const birthDate = normalizeBirthDate(user.birthDate);
-    const age = calcAge(birthDate);
-    if (!Number.isFinite(age)) return fallback;
-    const plan = calcPlan({
-      gender: user.gender,
+    const plan = planMacrosFromGoal({
+      goalKcal: g,
       weightKg: user.weightKg,
-      heightCm: user.heightCm,
-      age,
-      activityLevel: user.activityLevel,
       targetWeightKg: user.targetWeightKg,
     });
+    if (!plan) return fallback;
     if (
       ![plan.proteinG, plan.fatG, plan.carbsG].every(
         (v) => Number.isFinite(v) && v >= 0,
@@ -164,6 +159,10 @@ export default function DashboardScreen({
   // load / hydration (incl. ~30 s offline revalidation), so binding
   // RefreshControl to it pins the native Android spinner over Home.
   const [refreshing, setRefreshing] = useState(false);
+  // True when the last goal save computed no calorie plan (incomplete
+  // profile): the database kcal is untouched, so Home explains the unchanged
+  // target instead of silently showing a stale number.
+  const [planAttention, setPlanAttention] = useState(false);
   const s = useTabShell();
   const { selectedDate } = s;
   // Use setSelectedDate from context directly - the context provider ensures
@@ -190,6 +189,18 @@ export default function DashboardScreen({
   // totalsByDate memo below.
   const rangeMeals = useMemo(() => contextRangeMeals ?? [], [contextRangeMeals]);
   const ownerKey = user ? user._id || user.id || user.email : null;
+  // Re-read the incomplete-plan flag whenever the account or the target
+  // changes (a fresh plan clears it on the next goal save).
+  useEffect(() => {
+    let alive = true;
+    // No owner (logged out): the screen unmounts on the auth reroute, so
+    // there is nothing to clear here — the next owner re-reads below.
+    if (!ownerKey) return;
+    readCache(scopedKey("planAttention", ownerKey))
+      .then((v) => { if (alive) setPlanAttention(v === true); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [ownerKey, goal]);
   // Props win; context (TabShell) is the fallback so the screen works both
   // under the tab layout and in isolation.
   const loading = loadingProp ?? s.loading ?? false;
@@ -338,6 +349,12 @@ export default function DashboardScreen({
       if (onRetry) await onRetry();
       else await s.loadWeek?.({ reference: selectedDate }); // Refresh meals data
       await s.refreshWeights?.(); // Refresh weights and goal
+      // Session user last: a /me failure must never block the meals/weights
+      // paint above, but the calorie target revalidates from the database.
+      await s.refreshUser?.();
+      if (ownerKey) {
+        setPlanAttention((await readCache(scopedKey("planAttention", ownerKey)).catch(() => null)) === true);
+      }
     } catch (err) {
       console.error("Refresh failed:", err);
     } finally {
@@ -406,7 +423,22 @@ export default function DashboardScreen({
                 </Text>
                 <PrimaryButton
                   title="Set goal"
-                  onPress={() => router.push("/calorie-macro-targets")}
+                  onPress={() => router.push("/weight-tracker")}
+                />
+              </Card>
+            )}
+
+            {planAttention && goal != null && !loading && (
+              <Card style={{ marginTop: 16 }}>
+                <Text className="font-bold text-ink mb-1">
+                  Finish your profile for a calorie plan
+                </Text>
+                <Text className="text-sm text-muted-foreground mb-3">
+                  Your goal saved, but the target needs a complete profile to compute — showing your last plan.
+                </Text>
+                <PrimaryButton
+                  title="Review goal"
+                  onPress={() => router.push("/weight-tracker")}
                 />
               </Card>
             )}

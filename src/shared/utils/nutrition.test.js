@@ -64,4 +64,21 @@ describe('units + age + labels', () => {
     assert.equal(N.snapToStep(154.4, 80, 1), 154);
     assert.equal(N.snapToStep(79.2, 80, 1), 80);
   });
+  it('plan macros derive from the goal kcal with the backend split', () => {
+    // Loss: 2.0 g/kg protein, 30% fat, remainder carbs — from the goal,
+    // not maintenance, so Home matches the server plan after a deficit.
+    const loss = N.planMacrosFromGoal({ goalKcal: 2000, weightKg: 80, targetWeightKg: 70 });
+    assert.equal(loss.proteinG, 160);
+    assert.equal(loss.fatG, Math.round((0.3 * 2000) / 9));
+    assert.equal(loss.carbsG, Math.max(0, Math.round((2000 - 160 * 4 - loss.fatG * 9) / 4)));
+    // Maintain/gain: 1.8 g/kg.
+    const keep = N.planMacrosFromGoal({ goalKcal: 2500, weightKg: 70, targetWeightKg: 70 });
+    assert.equal(keep.proteinG, Math.round(1.8 * 70));
+    // Carbs never go negative on extreme inputs.
+    const tiny = N.planMacrosFromGoal({ goalKcal: 500, weightKg: 150, targetWeightKg: 100 });
+    assert.ok(tiny.carbsG >= 0);
+    // Garbage in: null, never NaN on screen.
+    assert.equal(N.planMacrosFromGoal({ goalKcal: null, weightKg: 70, targetWeightKg: 70 }), null);
+    assert.equal(N.planMacrosFromGoal({ goalKcal: 2000, weightKg: null, targetWeightKg: 70 }), null);
+  });
 });

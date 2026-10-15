@@ -8,9 +8,9 @@ export default function VerifyScreen({ email, onVerify, onResend, onSkip, busy }
   const [code, setCode] = useState('');
   const [skipVisible, setSkipVisible] = useState(false);
   const clean = sanitizeCode(code);
-  function handleResend() {
-    onResend(email);
-    setSkipVisible(true);
+  async function handleResend() {
+    const ok = await onResend(email);
+    if (ok) setSkipVisible(true);
   }
   return (
     <AuthScaffold

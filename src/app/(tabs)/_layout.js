@@ -12,6 +12,7 @@ import { useCameraPermissions } from 'expo-camera';
    import { fetchWeights, createWeight, fetchWeightGoal, deleteWeight } from '../../shared/lib/weightsApi';
    import { calcTotals } from '../../shared/utils/totals';
    import { dateKey, effectiveTimeZone } from '../../shared/utils/format';
+   import { shiftDayKey } from '../../shared/utils/streak';
    import { toastSuccess, toastError } from '../../shared/utils/toast';
    import { useSession } from '../../features/auth/session';
    import { TabShellProvider } from '../../features/tabs/shell';
@@ -30,7 +31,7 @@ const WEIGHTS_REFRESH_TTL_MS = 5 * 60 * 1000;
 export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
-   const { user, authChecked, goal } = useSession();
+   const { user, authChecked, goal, refreshUser } = useSession();
    const userKey = user ? (user._id || user.id || user.email) : null;
    const [sheetOpen, setSheetOpen] = useState(false);
    const [navHeight, setNavHeight] = useState(0);
@@ -188,15 +189,30 @@ export default function TabsLayout() {
    // Stable identity (reads zone via ref) for the same reason as loadWeek.
    const loadRangeMeals = useCallback(async (days) => {
      const tz = timeZoneRef.current;
-     const end = new Date();
-     const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - days);
-     const from = dateKey(start, tz);
-     // A wider horizon already covers this one ??" nothing to fetch.
-     if (rangeFromRef.current && rangeFromRef.current <= from) return;
-     const data = await fetchMeals(from, dateKey(end, tz), undefined, tz);
-     rangeFromRef.current = from;
+     // Zoned calendar arithmetic: the old device-local `new Date(y, m, d-days)`
+     // drifted a day when the device zone differed from the user's zone, and
+     // the bare-`from` guard below reused one zone's window for another after
+     // travel. Both broke streak/average boundary days for travelers.
+     const n = Math.trunc(Number(days));
+     const todayKey = dateKey(new Date(), tz);
+     const from = shiftDayKey(todayKey, -Math.max(0, Number.isFinite(n) ? n : 0));
+     if (!from) return;
+     // A wider horizon in the SAME zone already covers this one — nothing to
+     // fetch. A zone change always refetches (legacy bare-string guards do one
+     // silent revalidate, then settle into the tz-keyed shape).
+     const cur = rangeFromRef.current;
+     const curFrom = typeof cur === 'string' ? cur : cur?.from;
+     const curTz = typeof cur === 'object' && cur ? cur.tz : undefined;
+     if (curFrom && curTz === tz && curFrom <= from) return;
+     const data = await fetchMeals(from, todayKey, undefined, tz);
+     rangeFromRef.current = { tz, from };
      setRangeMeals(data);
    }, []);
+
+   // Ref mirror of the session refresher: its identity changes every
+   // provider render, which would churn every callback that lists it.
+   const refreshUserRef = useRef(null);
+   useEffect(() => { refreshUserRef.current = refreshUser; });
 
     const fetchWeightsAndGoal = useCallback(async () => {
     if (!user) return;
@@ -210,6 +226,15 @@ export default function TabsLayout() {
     } catch {
       // Offline / 403 (unverified) / server errors: keep cached data as-is
       // instead of an unhandled rejection that leaves state stale.
+    }
+    // Session kcal in the same tick: pull-to-refresh, focus visits, and the
+    // hydration path all funnel through here, so Home's target revalidates
+    // against the database together with weights. Independent try/catch so a
+    // /me failure never blocks the weights paint.
+    try {
+      await refreshUserRef.current?.();
+    } catch {
+      // keep weights/goal; session keeps its last-known user
     }
   }, [user, userKey]);
 
@@ -239,11 +264,15 @@ export default function TabsLayout() {
     useEffect(() => {
       if (!userKey || (hydratedForRef.current && hydratedForRef.current !== userKey) || !rangeMeals.length) return;
       // Skip rewrites when size + horizon are unchanged so a multi-year
-      // history isn't re-stringified on every state change.
-      const stamp = `${rangeMeals.length}:${rangeFromRef.current}`;
+      // history isn't re-stringified on every state change. The guard ref is
+      // {tz,from} (legacy bare strings tolerated); only `from` is persisted
+      // so the cache shape stays {meals, from: 'YYYY-MM-DD'}.
+      const ref = rangeFromRef.current;
+      const refFrom = typeof ref === 'string' ? ref : ref?.from ?? null;
+      const stamp = `${rangeMeals.length}:${refFrom}`;
       if (rangePersistedRef.current === `${userKey}:${stamp}`) return;
       rangePersistedRef.current = `${userKey}:${stamp}`;
-      writeCache(scopedKey('rangeMeals', userKey), { meals: rangeMeals, from: rangeFromRef.current });
+      writeCache(scopedKey('rangeMeals', userKey), { meals: rangeMeals, from: refFrom });
     }, [rangeMeals, userKey]);
 
     // Selection changes are painted by the dashboard's silent week-fill
@@ -513,41 +542,45 @@ if (hydratedForRef.current === key) return;
    // bails without a user). Deriving here instead of clearing in an effect
    // guarantees Home can never sit on a spinner forever after sign-out.
    const displayLoading = loading && (user != null || !authChecked);
-   // Value to expose through TabShell context. Declared AFTER the handlers it
-   // references — building it earlier reads the handler consts before
-   // initialization (TDZ) and crashes the whole tab layout on first render.
-   // Must stay in sync with what DashboardScreen / ProgressScreen consume:
-   // progressCache + goal/loading/error, week + range meals, weights + goal,
-   // selectedDate, and every handler the routes pass down as props.
-   const tabShellValue = useMemo(() => ({
-     progressCache,
-     goal,
-     user,
-     loading: displayLoading,
-     error,
-     meals,
-     rangeMeals,
-     weights,
-     weightGoal,
-     selectedDate,
-     setSelectedDate,
-     navHeight,
-     timeZone,
-     loadWeek,
-     loadRangeMeals,
-     refreshWeights: fetchWeightsAndGoal,
-     refreshWeightsIfStale,
+    // Value to expose through TabShell context. Declared AFTER the handlers it
+    // references — building it earlier reads the handler consts before
+    // initialization (TDZ) and crashes the whole tab layout on first render.
+    // Must stay in sync with what DashboardScreen / ProgressScreen consume:
+    // progressCache + goal/loading/error, week + range meals, weights + goal,
+    // selectedDate, and every handler the routes pass down as props.
+    // refreshUserStable keeps a fixed identity (session's refreshUser is
+    // recreated every provider render, which would churn this memo).
+    const refreshUserStable = useCallback((...args) => refreshUserRef.current?.(...args), []);
+    const tabShellValue = useMemo(() => ({
+      progressCache,
+      goal,
+      user,
+      loading: displayLoading,
+      error,
+      meals,
+      rangeMeals,
+      weights,
+      weightGoal,
+      selectedDate,
+      setSelectedDate,
+      navHeight,
+      timeZone,
+      loadWeek,
+      loadRangeMeals,
+      refreshWeights: fetchWeightsAndGoal,
+      refreshWeightsIfStale,
+      refreshUser: refreshUserStable,
      setSheetOpen,
      setLogWeightOpen,
      deleteMeal: handleMealDeleted,
      handleSave,
      handleWeightSave,
      handleDeleteWeight,
-   }), [
-     progressCache, goal, user, displayLoading, error, meals, rangeMeals, weights, weightGoal,
-      selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal, refreshWeightsIfStale,
-     handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
-   ]);
+    }), [
+      progressCache, goal, user, displayLoading, error, meals, rangeMeals, weights, weightGoal,
+       selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal, refreshWeightsIfStale,
+      refreshUserStable, handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
+    ]);
 
   // Branded splash stays at least SPLASH_MIN_MS so startup never flashes,
   // then fades via SplashOverlay's `done` prop. Previously the layout passed

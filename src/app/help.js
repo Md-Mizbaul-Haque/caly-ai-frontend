@@ -1,17 +1,39 @@
-import { ScrollView, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import Card from '../shared/components/ui/Card';
 import PrimaryButton from '../shared/components/ui/Button';
 import ScreenHeader from '../shared/components/ui/ScreenHeader';
 import { CircleQuestionMark } from '../shared/components/ui/icons';
-import { toastSuccess } from '../shared/utils/toast';
+import { apiPost } from '../shared/lib/api';
+import { toastError, toastSuccess } from '../shared/utils/toast';
 
 const FAQS = [
   { q: 'How does calorie tracking work?', a: 'Log meals from the Diary tab or tap + to scan a meal. Caly AI estimates calories and macros automatically.' },
-  { q: 'How do I change my daily goal?', a: 'Open More → Calorie and Macro Targets and save a new goal between 500 and 10000 kcal.' },
+  { q: 'How do I change my daily goal?', a: 'Open More → Weight Tracker and save your target, pace, and activity — the plan computes your new target automatically.' },
   { q: 'Can I log my weight?', a: 'Yes — use the Log Weight button on Progress or the + menu to log a weigh-in. Set your goal under More → Weight Tracker.' },
 ];
 
 export default function HelpScreen() {
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const trimmed = message.trim();
+  const canSend = trimmed.length >= 5 && !sending;
+
+  async function handleSend() {
+    if (!canSend) return;
+    setSending(true);
+    try {
+      await apiPost('/api/support/message', { message: trimmed });
+      setMessage('');
+      toastSuccess('Message sent', 'Support will get back to you soon');
+    } catch (e) {
+      toastError('Could not send', e.message || 'Please try again.');
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <View className="flex-1 bg-background">
       <ScreenHeader title="Help" subtitle="FAQs and contact support" />
@@ -46,11 +68,29 @@ export default function HelpScreen() {
             <Card>
               <Text className="font-bold text-ink mb-1">Still stuck?</Text>
               <Text className="text-[13px] text-muted-foreground mb-3">
-                Our support team replies within one business day.
+                Send us a message and our team will get back to you within one business day.
               </Text>
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Type your message…"
+                placeholderTextColor="#A1A1AA"
+                multiline
+                maxLength={2000}
+                accessibilityLabel="Support message"
+                className="bg-input rounded-xl px-3 py-3 text-base text-ink"
+                style={{ minHeight: 112, textAlignVertical: 'top' }}
+              />
+              <View className="flex-row items-center justify-between mt-2 mb-3">
+                <Text className="text-[12px] text-muted-foreground">
+                  {trimmed.length < 5 ? 'At least 5 characters' : ''}
+                </Text>
+                <Text className="text-[12px] text-muted-foreground">{message.length}/2000</Text>
+              </View>
               <PrimaryButton
-                title="Contact support"
-                onPress={() => toastSuccess('Message sent', 'Support will get back to you soon')}
+                title={sending ? 'Sending…' : 'Send message'}
+                onPress={handleSend}
+                disabled={!canSend}
               />
             </Card>
           </View>

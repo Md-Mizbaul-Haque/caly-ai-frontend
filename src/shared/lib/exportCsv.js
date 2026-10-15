@@ -1,4 +1,4 @@
-import { Directory, EncodingType, File, Paths, makeDirectoryAsync, writeAsStringAsync } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { fetchMeals } from './mealsApi';
 import { fetchWeights } from './weightsApi';
@@ -29,6 +29,7 @@ function dayOf(v, timeZone) {
 }
 
 export function buildMealsCsv(meals, timeZone) {
+  // Essential columns only — never export ids, userId, imageUrl, emoji, timestamps.
   const rows = (meals || []).map((m) => [
     isoOf(m.loggedAt),
     dayOf(m.loggedAt, timeZone),
@@ -46,6 +47,7 @@ export function buildMealsCsv(meals, timeZone) {
 }
 
 export function buildWeightsCsv(weights, timeZone) {
+  // Essential columns only — never export ids, userId, timestamps.
   const rows = (weights || []).map((w) => [
     isoOf(w.loggedAt),
     dayOf(w.loggedAt, timeZone),
@@ -54,10 +56,11 @@ export function buildWeightsCsv(weights, timeZone) {
   return rowsToCsv(['logged_at', 'date', 'weight_lbs'], rows);
 }
 
-// Fetches the last 90 days of real meals + weights, writes one CSV per
-// dataset, and opens the OS share sheet so the files land somewhere useful
-// (Files, Drive, email). Throws a human-readable message when there is
-// nothing to export, sharing is unavailable, or the network fails.
+// Fetches the last 90 days of real meals + weights, saves one CSV per
+// dataset to the phone's document storage (visible in the Files app), and
+// opens the OS share sheet so the user instantly sees/opens the file.
+// Throws a human-readable message when there is nothing to export, sharing
+// is unavailable, or the network fails.
 export async function exportMyData({ timeZone } = {}) {
   const to = new Date();
   const from = new Date(to.getTime() - (EXPORT_DAYS - 1) * 86400000);
@@ -75,37 +78,43 @@ export async function exportMyData({ timeZone } = {}) {
     throw new Error(`No meals or weight logs in the last ${EXPORT_DAYS} days yet — log something first.`);
   }
 
-  const cache = Paths.cache;
-  if (!cache) {
+  if (!Paths.document) {
     throw new Error("Export isn't available on this platform.");
   }
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Sharing is not available on this device.');
   }
 
-  const dir = new Directory(cache, 'caly-export');
-  try {
-    await makeDirectoryAsync(dir.uri, { intermediates: true });
-  } catch {
-    // Already exists — the writes below surface any real failure.
+  // SDK 57: Directory/File methods are sync; legacy makeDirectoryAsync /
+  // writeAsStringAsync throw at runtime, so use create()/write() instead.
+  // Document storage (not cache) so the files persist and stay visible in
+  // the phone's Files app.
+  const dir = new Directory(Paths.document, 'caly-export');
+  if (!dir.exists) dir.create();
+
+  function writeCsvFile(name, csv) {
+    const file = new File(dir, name);
+    if (file.exists) file.delete();
+    file.create();
+    file.write(csv);
+    return file;
   }
 
   const shared = [];
+  const files = [];
   if (hasMeals) {
-    const file = new File(dir, `caly-meals-${toKey}.csv`);
-    await writeAsStringAsync(file.uri, buildMealsCsv(meals, timeZone), {
-      encoding: EncodingType.UTF8,
-    });
+    const name = `caly-meals-${toKey}.csv`;
+    const file = writeCsvFile(name, buildMealsCsv(meals, timeZone));
     await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Share your meals CSV' });
     shared.push('meals');
+    files.push({ kind: 'meals', name, uri: file.uri });
   }
   if (hasWeights) {
-    const file = new File(dir, `caly-weights-${toKey}.csv`);
-    await writeAsStringAsync(file.uri, buildWeightsCsv(weights, timeZone), {
-      encoding: EncodingType.UTF8,
-    });
+    const name = `caly-weights-${toKey}.csv`;
+    const file = writeCsvFile(name, buildWeightsCsv(weights, timeZone));
     await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Share your weights CSV' });
     shared.push('weights');
+    files.push({ kind: 'weights', name, uri: file.uri });
   }
-  return { meals: hasMeals ? meals.length : 0, weights: hasWeights ? weights.length : 0, shared };
+  return { meals: hasMeals ? meals.length : 0, weights: hasWeights ? weights.length : 0, shared, files };
 }

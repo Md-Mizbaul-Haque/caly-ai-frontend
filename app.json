@@ -27,6 +27,13 @@
     },
     "plugins": [
       [
+        "expo-file-system",
+        {
+          "supportsOpeningDocumentsInPlace": true,
+          "enableFileSharing": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",

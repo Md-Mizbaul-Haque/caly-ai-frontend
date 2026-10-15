@@ -1,15 +1,27 @@
 export const UTC = 'UTC';
 
+// Canonical zone lookups + en-CA formatters are cached: dateKey runs per
+// meal per render, and a fresh Intl.DateTimeFormat each call is ~10x slower
+// on Hermes. Few distinct zones in practice, so a plain Map never grows.
+const zoneCache = new Map();
+const dateKeyFormatterCache = new Map();
+
 // Valid IANA zone or 'UTC' — any situation (missing, blank, unknown)
 // falls back to UTC instead of throwing.
 export function resolveTimeZone(tz) {
   if (typeof tz !== 'string' || !tz.trim()) return UTC;
+  const key = tz.trim();
+  const hit = zoneCache.get(key);
+  if (hit !== undefined) return hit;
+  let out = UTC;
   try {
-    const canonical = new Intl.DateTimeFormat('en-US', { timeZone: tz.trim() }).resolvedOptions().timeZone;
-    return canonical || UTC;
+    const canonical = new Intl.DateTimeFormat('en-US', { timeZone: key }).resolvedOptions().timeZone;
+    out = canonical || UTC;
   } catch {
-    return UTC;
+    out = UTC;
   }
+  zoneCache.set(key, out);
+  return out;
 }
 
 // The device's IANA zone; 'UTC' when it cannot be determined.
@@ -46,7 +58,12 @@ export function dateKey(value, timeZone) {
     return `${d.getFullYear()}-${m}-${day}`;
   }
   const tz = resolveTimeZone(timeZone);
-  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  let fmt = dateKeyFormatterCache.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+    dateKeyFormatterCache.set(tz, fmt);
+  }
+  return fmt.format(d);
 }
 
 export function formatTime(value) {

@@ -43,4 +43,42 @@ describe('progress block cache + ALL coverage', () => {
     const layout = read('app/(tabs)/_layout.js');
     assert.match(layout, /!== userKey\)\) return;/, 'persist effects run before hydration clears state -> old owner data filed under the new key');
   });
+
+  it('history wires onLoadWeek so Progress focus can revalidate today (no stale streak)', () => {
+    const history = read('app/(tabs)/history.js');
+    assert.match(history, /onLoadWeek/, 'Progress never refreshes its week on focus -> cross-device logs leave the streak stale');
+  });
+
+  it('progress focus silently reloads today\'s week for the streak', () => {
+    const progress = read('features/progress/screens/ProgressScreen.js');
+    assert.match(progress, /onLoadWeek\?\.\(\{ reference: new Date\(\), silent: true \}\)/, 'focus skips the week fetch -> streak misses logs made on other devices');
+  });
+
+  it('progress pull-to-refresh includes today\'s week (not just the selected week)', () => {
+    const progress = read('features/progress/screens/ProgressScreen.js');
+    assert.match(progress, /handleRefresh[\s\S]*onLoadWeek/, 'refresh only reloads the selected week -> streak stays stale after Dashboard week navigation');
+  });
+
+  it('streak math is pure + calendar-safe (no UTC-noon drift in extreme zones)', () => {
+    const progress = read('features/progress/screens/ProgressScreen.js');
+    assert.match(progress, /calcStreak|buildWeekStrip/, 'inline streak loop regressed -> extreme-zone (UTC+13/+14) drift returns');
+  });
+
+  it('range horizon guard is tz-keyed with zoned start (travelers keep correct streak)', () => {
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(layout, /curTz/, 'bare-from guard reuses one zone\'s window for another after travel -> streak boundary days misattribute');
+    assert.match(layout, /shiftDayKey\(todayKey/, 'device-local horizon start drifts a day when device zone != user zone');
+  });
+
+  it('history passes the profile user so Progress can compute BMI', () => {
+    const history = read('app/(tabs)/history.js');
+    assert.match(history, /user=\{s\.user\}/, 'BMI has no height/profile weight -> card can never compute');
+  });
+
+  it('progress BMI card shows advice + update-goal action (no dead card)', () => {
+    const progress = read('features/progress/screens/ProgressScreen.js');
+    assert.match(progress, /Your BMI/, 'no BMI card on the Progress screen');
+    assert.match(progress, /Update weight goal/, 'BMI card has no goal action -> user cannot act on the advice');
+    assert.match(progress, /BMI_DISCLAIMER|not medical advice/i, 'health advice without a medical disclaimer');
+  });
 });

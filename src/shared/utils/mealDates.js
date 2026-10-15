@@ -4,17 +4,26 @@
 import { dateKey, resolveTimeZone, UTC } from './format.js';
 
 // { y, m, d, weekday } (Sun=0..Sat=6) of `instant` in `timeZone`.
+// Formatter cached per zone (see format.js): DaySelector calls this per
+// pill per render, and a fresh Intl.DateTimeFormat each call janks low-end
+// phones.
+const zonedPartsFormatterCache = new Map();
 export function zonedParts(instant, timeZone) {
   const tz = resolveTimeZone(timeZone);
   const d = instant instanceof Date ? instant : new Date(instant);
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
+  let fmt = zonedPartsFormatterCache.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
       timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       weekday: 'short',
-    })
+    });
+    zonedPartsFormatterCache.set(tz, fmt);
+  }
+  const parts = Object.fromEntries(
+    fmt
       .formatToParts(d)
       .map((p) => [p.type, p.value])
   );

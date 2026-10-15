@@ -74,6 +74,13 @@ export async function scanImage(imageUri, { signal } = {}) {
     }
     // Map known backend error messages to user-friendly ones
     let errorMessage = data.error || `scan failed: ${res.status}`;
+    if (res.status === 429) {
+      const quotaErr = new Error(errorMessage);
+      quotaErr.status = 429;
+      quotaErr.code = 'RATE_LIMITED';
+      quotaErr.data = data;
+      throw quotaErr;
+    }
     if (errorMessage && errorMessage.includes('model does not support image input')) {
       errorMessage = 'The image format is not supported. Please try a different image or format.';
     } else if (errorMessage && errorMessage.includes('Cannot read')) {

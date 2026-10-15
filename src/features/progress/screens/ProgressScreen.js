@@ -7,6 +7,8 @@ import WeightChart from '../../../shared/components/WeightChart';
 import { ArrowRight, Flame, Pencil, Scale, Target, TrendingDown, TrendingUp } from '../../../shared/components/ui/icons';
 import { dateKey } from '../../../shared/utils/format';
 import { zonedParts } from '../../../shared/utils/mealDates';
+import { calcStreak, buildWeekStrip, shiftDayKey } from '../../../shared/utils/streak';
+import { calcBmi, bmiCategory, categoryTone, resolveBmiWeight, validHeightCm, bmiAdvice, BMI_DISCLAIMER } from '../../../shared/utils/bmi';
 import { useTheme } from '../../../shared/theme/theme';
 
 // Step whole calendar days in the user's zone (noon-anchored UTC so DST
@@ -99,12 +101,14 @@ export default function ProgressScreen({
   loading = false,
   error = null,
   timeZone,
+  user = null,
   onLogWeight,
   onEditGoal,
   onRetry,
   onRefreshWeights,
   refreshWeightsIfStale,
   onLoadRangeMeals,
+  onLoadWeek,
   onDeleteWeight,
 }) {
   const [range, setRange] = useState('6M');
@@ -117,6 +121,7 @@ export default function ProgressScreen({
   const onDarkBtn = isDark ? '#F5F5F5' : '#FFFFFF';
 
   // Revalidate on every focus: weights/goal (skipped when freshly fetched)
+  // + the visible week (streak needs today's rows even when logged elsewhere)
   // + the year of meals this screen needs for streak and daily-average.
   // Fire-and-forget — cached data paints meanwhile, failures just leave
   // the cache as-is. Pull-to-refresh below still always refetches.
@@ -124,16 +129,20 @@ export default function ProgressScreen({
     if (!isFocused) return;
     if (refreshWeightsIfStale) refreshWeightsIfStale();
     else onRefreshWeights?.();
+    onLoadWeek?.({ reference: new Date(), silent: true })?.catch?.(() => {});
     onLoadRangeMeals?.(365)?.catch?.(() => {});
-  }, [isFocused, onRefreshWeights, refreshWeightsIfStale, onLoadRangeMeals]);
+  }, [isFocused, onRefreshWeights, refreshWeightsIfStale, onLoadRangeMeals, onLoadWeek]);
 
   async function handleRefresh() {
     setRefreshing(true);
     try {
       // allSettled: one failing request must not swallow the others.
+      // Today's week is explicit: onRetry reloads the *selected* week, which
+      // may be weeks old after Dashboard navigation — streak needs today.
       await Promise.allSettled([
         onRetry?.(),
         onRefreshWeights?.(),
+        onLoadWeek?.({ reference: new Date(), silent: true }),
         onLoadRangeMeals?.(365),
       ]);
     } finally {
@@ -165,6 +174,18 @@ export default function ProgressScreen({
     ? Math.sign(Number(weightGoal) - latest.value)
     : 0;
 
+  // BMI from the freshest weight (latest weigh-in in lbs, else profile kg)
+  // and the profile height. Null when uncomputable — the card then prompts
+  // instead of printing NaN. Updates live with every weigh-in/goal change.
+  const bmiInfo = useMemo(() => {
+    const kg = resolveBmiWeight({ latestLbs: latest?.value, profileKg: user?.weightKg });
+    const cm = Number(user?.heightCm);
+    const bmi = calcBmi(kg, cm);
+    if (bmi == null) return { bmi: null, hasHeight: validHeightCm(cm), hasWeight: kg != null };
+    const category = bmiCategory(bmi);
+    return { bmi, category, tone: categoryTone(category), ...bmiAdvice(category, goalDir), hasHeight: true, hasWeight: true };
+  }, [latest, user, goalDir]);
+
   const start = useMemo(() => rangeStart(range), [range]);
   const rangeMeta = RANGES.find(r => r.key === range);
   const rangeEntries = useMemo(
@@ -194,22 +215,16 @@ export default function ProgressScreen({
 
   const { streak, weekDays } = useMemo(() => {
     const logged = new Set(mergedMeals.map(m => dateKey(m.loggedAt, timeZone)).filter(Boolean));
-    let count = 0;
-    let cursor = dateKey(new Date(), timeZone);
-    if (!logged.has(cursor)) cursor = shiftCalKey(cursor, -1, timeZone);
-    while (cursor && logged.has(cursor)) {
-      count += 1;
-      cursor = shiftCalKey(cursor, -1, timeZone);
-    }
-    // Week strip in the user's zone: weekday comes from zoned parts, not the
-    // device calendar, so travel across zones can't shift the Sunday anchor.
+    // Pure calendar math on already-zoned keys (see shared/utils/streak.js):
+    // the old noon-anchored shiftCalKey stepped through UTC and drifted a day
+    // in extreme zones (UTC+13/+14). Pure day arithmetic can't drift.
     const now = new Date();
     const todayKey = dateKey(now, timeZone);
-    const sundayKey = shiftCalKey(todayKey, -zonedParts(now, timeZone).weekday, timeZone);
-    const days = WEEKDAY_LABELS.map((label, i) => {
-      const key = shiftCalKey(sundayKey, i, timeZone);
-      return { label, logged: logged.has(key), isToday: key === todayKey };
-    });
+    const count = calcStreak(logged, todayKey);
+    // Week strip in the user's zone: weekday comes from zoned parts, not the
+    // device calendar, so travel across zones can't shift the Sunday anchor.
+    const sundayKey = shiftDayKey(todayKey, -zonedParts(now, timeZone).weekday);
+    const days = buildWeekStrip({ sundayKey, todayKey, logged, labels: WEEKDAY_LABELS });
     return { streak: count, weekDays: days };
   }, [mergedMeals, timeZone]);
 
@@ -329,6 +344,46 @@ const encouragement = (() => {
             className="bg-ink rounded-full px-4 py-2.5 flex-row items-center"
           >
             <Text className="text-background text-sm font-bold">Log Weight</Text>
+            <ArrowRight size={14} color={onDarkBtn} style={{ marginLeft: 4 }} />
+          </Pressable>
+        </View>
+      </Card>
+
+      {/* BMI + health advice (latest weigh-in, profile height) */}
+      <Card style={{ marginBottom: 12 }}>
+        <View className="flex-row items-center">
+          <View className="flex-1">
+            <Text className="text-xs text-muted-foreground mb-1">Your BMI</Text>
+            {bmiInfo.bmi != null ? (
+              <View>
+                <View className="flex-row items-center">
+                  <Text className="text-3xl font-extrabold text-ink">{bmiInfo.bmi}</Text>
+                  <View className="rounded-full px-2.5 py-1 ml-2" style={{ backgroundColor: `${bmiInfo.tone}1A` }}>
+                    <Text className="text-xs font-bold" style={{ color: bmiInfo.tone }}>
+                      {bmiInfo.category}
+                    </Text>
+                  </View>
+                </View>
+                <Text className="text-sm font-semibold text-ink mt-1">{bmiInfo.headline}</Text>
+                <Text className="text-xs text-muted-foreground mt-0.5">{bmiInfo.detail}</Text>
+                <Text className="text-[10px] text-muted-foreground mt-1">{BMI_DISCLAIMER}</Text>
+              </View>
+            ) : (
+              <Text className="text-sm text-muted-foreground">
+                {!bmiInfo.hasWeight
+                  ? 'Log weight to see your BMI'
+                  : 'Add your height to see your BMI'}
+              </Text>
+            )}
+          </View>
+          <Pressable
+            onPress={() => onEditGoal?.()}
+            accessibilityLabel="Update weight goal"
+            accessibilityRole="button"
+            className="bg-ink rounded-full px-4 py-2.5 flex-row items-center"
+            style={{ marginLeft: 8 }}
+          >
+            <Text className="text-background text-sm font-bold">Update goal</Text>
             <ArrowRight size={14} color={onDarkBtn} style={{ marginLeft: 4 }} />
           </Pressable>
         </View>

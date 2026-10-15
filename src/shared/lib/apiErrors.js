@@ -4,6 +4,7 @@
 function classifyApiError(err) {
   if (!err || typeof err !== 'object') return 'UNKNOWN';
   if (typeof err.code === 'string' && err.code) return err.code;
+  if (err.status === 429) return 'RATE_LIMITED';
   if (err.timeout === true) return 'TIMEOUT_WAKE';
   if (err.network === true) return 'UNREACHABLE';
   if (err.status === 401) return 'UNAUTHORIZED';
