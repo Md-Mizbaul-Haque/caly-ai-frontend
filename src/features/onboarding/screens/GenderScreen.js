@@ -12,7 +12,7 @@ const OPTIONS = [
   { key: 'nonbinary', title: 'Non-binary', Icon: Circle },
 ];
 
-function GenderScreen({ onNext }) {
+function GenderScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   // Persist immediately like the other steps: gender used to live only in
@@ -34,6 +34,7 @@ function GenderScreen({ onNext }) {
       ctaLabel={busy ? 'Saving…' : 'Continue'}
       ctaDisabled={!state.gender || busy}
       onCta={goNext}
+      onBack={onBack}
     >
       <View className="flex-row items-stretch" style={{ gap: 12 }}>
         {OPTIONS.map(({ key, title, Icon }) => {

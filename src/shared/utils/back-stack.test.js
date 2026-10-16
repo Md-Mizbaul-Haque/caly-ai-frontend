@@ -34,7 +34,9 @@ describe('onboarding back-stack (device back button)', () => {
   });
 
   it('forward moves push (back walks to the previous step)', () => {
-    const offenders = STEP_FILES.filter((f) => /router\.replace/.test(read(f)) && f !== 'nutrition-plan.js');
+    // gender.js is the exception: its replace is the first-step exit to
+    // /welcome, not a forward move (asserted in the back-button test).
+    const offenders = STEP_FILES.filter((f) => /router\.replace/.test(read(f)) && f !== 'nutrition-plan.js' && f !== 'gender.js');
     assert.deepEqual(offenders, [], `these steps replace instead of push — device back skips them: ${offenders}`);
     const pushes = STEP_FILES.filter((f) => /router\.push\(nextPath/.test(read(f)));
     assert.ok(pushes.length >= 8, `expected 8 push-driven steps, found ${pushes.length}`);
@@ -56,10 +58,11 @@ describe('onboarding back-stack (device back button)', () => {
     assert.match(layout, /<Slot/, 'group layout must render the stack Slot');
   });
 
-  it('every step except the first shows an in-UI back button', () => {
+  it('every step shows an in-UI back button with a logical target', () => {
     // Forward moves push, so router.back() pops exactly one step — the same
     // behavior as the device back button. The first step (gender) has no
-    // back: there is nowhere sensible to return to.
+    // previous step, so its back exits the flow to /welcome via replace
+    // (replace, so device-back from welcome can't return into the wizard).
     const { ORDER, PATH } = require('../../features/onboarding/steps');
     for (const step of ORDER) {
       const file = `${PATH[step]}.js`;
@@ -75,8 +78,8 @@ describe('onboarding back-stack (device back button)', () => {
         'utf8'
       );
       if (step === 'gender') {
-        assert.doesNotMatch(src, /onBack/, 'first step must not offer back (nowhere to go)');
-        assert.doesNotMatch(screen, /onBack/, 'first step must not offer back (nowhere to go)');
+        assert.match(src, /onBack=\{\(\) => router\.replace\('\/welcome'\)\}/, 'first step must exit to /welcome via replace');
+        assert.match(screen, /onBack/, `${screenFile} must accept onBack`);
       } else {
         assert.match(src, /onBack=\{\(\) => router\.back\(\)\}/, `${file} must pop one step via router.back()`);
         assert.match(screen, /onBack/, `${screenFile} must accept onBack`);

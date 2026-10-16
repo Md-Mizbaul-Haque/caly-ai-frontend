@@ -6,6 +6,7 @@ export default function GenderRoute() {
   const router = useRouter();
   return (
     <GenderScreen
+      onBack={() => router.replace('/welcome')}
       onNext={() => router.push(nextPath('gender'))}
     />
   );
