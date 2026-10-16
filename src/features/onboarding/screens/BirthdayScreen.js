@@ -1,8 +1,9 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays } from '../../../shared/components/ui/icons';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
+import BackButton from '../../../shared/components/auth/BackButton';
 import WheelPicker, { WHEEL_ITEM_H } from '../../../shared/components/auth/WheelPicker';
 import { useCompactAuth } from '../../../shared/components/auth/useCompact';
 import { useOnboarding } from '../OnboardingContext';
@@ -17,10 +18,11 @@ function daysInMonth(year, month1) {
   return new Date(year, month1, 0).getDate();
 }
 
-function BirthdayScreen({ onNext }) {
+function BirthdayScreen({ onNext, onBack }) {
   const insets = useSafeAreaInsets();
   const compact = useCompactAuth();
-  const { state, update } = useOnboarding();
+  const { state, update, savePartial } = useOnboarding();
+  const [saving, setSaving] = useState(false);
   const d = state.birthDate;
   const y = d.getFullYear();
   const m = d.getMonth() + 1;
@@ -40,6 +42,20 @@ function BirthdayScreen({ onNext }) {
     []
   );
   const valid = calcAge(state.birthDate) >= 13;
+  // Persist immediately like the other steps. Pass the Date object itself:
+  // savePartial stores the patch verbatim in local state, and JSON.stringify
+  // converts the Date to ISO on the wire. A pre-stringified ISO here would
+  // overwrite the Date in memory and crash getFullYear on next render.
+  const advance = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const ok = await savePartial({ birthDate: state.birthDate });
+      if (ok) onNext();
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, savePartial, state.birthDate, onNext]);
 
   return (
     <View className="flex-1 bg-background">
@@ -48,6 +64,11 @@ function BirthdayScreen({ onNext }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
       >
+        {!!onBack && (
+          <View className="items-start">
+            <BackButton onPress={onBack} />
+          </View>
+        )}
         <View className={`items-center ${compact ? 'mt-1 mb-2' : 'mt-2 mb-3'}`}>
           <View className="w-24 h-24 rounded-3xl bg-accent items-center justify-center">
             <CalendarDays size={46} color={PRIMARY} />
@@ -99,7 +120,7 @@ function BirthdayScreen({ onNext }) {
         )}
       </ScrollView>
       <View className="px-6" style={{ paddingBottom: Math.max(insets.bottom, 32) + 20 }}>
-        <BottomCTA label="Next" onPress={onNext} disabled={!valid} testID="bottom-cta" />
+        <BottomCTA label={saving ? 'Saving…' : 'Next'} onPress={advance} disabled={!valid || saving} testID="bottom-cta" />
       </View>
     </View>
   );

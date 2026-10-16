@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { apiGet, apiPut } from '../../shared/lib/api';
 import { toastError } from '../../shared/utils/toast';
-import { ftInToCm, lbToKg, normalizeBirthDate } from '../../shared/utils/nutrition';
+import { ftInToCm, lbToKg } from '../../shared/utils/nutrition';
+import { applyHydration } from './applyHydration';
 
 export function initialOnboarding(email) {
   return {
@@ -22,29 +23,28 @@ const OnboardingContext = createContext(null);
 
 export function OnboardingProvider({ email, children }) {
   const [state, setState] = useState(() => initialOnboarding(email));
-  const update = useCallback((patch) => setState((s) => ({ ...s, ...patch })), []);
+  // Keys the user touched while the hydration GET may still be in flight.
+  // Hydration must never stomp a just-tapped answer with stale server data.
+  const dirtyRef = useRef(new Set());
+  const markDirty = useCallback((patch) => {
+    Object.keys(patch || {}).forEach((k) => dirtyRef.current.add(k));
+  }, []);
+  const update = useCallback((patch) => {
+    markDirty(patch);
+    setState((s) => ({ ...s, ...patch }));
+  }, [markDirty]);
   // Hydrate local defaults from the server's partial saves so the final plan
   // is computed from THIS user's real inputs — never stale local defaults
   // (a "wrong plan for this user" bug after backgrounding/deep-linking).
+  // Dirty keys (tapped during the flight) always win over the response.
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const { user } = await apiGet('/api/auth/me');
         if (!alive || !user) return;
-        setState((s) => {
-          const next = { ...s };
-          if (user.gender) next.gender = user.gender;
-          if (user.birthDate) {
-            const d = normalizeBirthDate(user.birthDate);
-            if (d) next.birthDate = d;
-          }
-          if (typeof user.heightCm === 'number') next.heightCm = user.heightCm;
-          if (typeof user.weightKg === 'number') next.weightKg = user.weightKg;
-          if (typeof user.targetWeightKg === 'number') next.targetWeightKg = user.targetWeightKg;
-          if (user.activityLevel) next.activityLevel = user.activityLevel;
-          return next;
-        });
+        const dirty = new Set(dirtyRef.current);
+        setState((s) => applyHydration(s, user, dirty));
       } catch {
         // Offline / unauthed here is fine — local flow continues, final save
         // re-validates completeness server-side.
@@ -56,6 +56,9 @@ export function OnboardingProvider({ email, children }) {
   // when true — advancing on failure desyncs client/server and produces a
   // wrong or unsavable final plan.
   const savePartial = useCallback(async (patch) => {
+    // Mark dirty first: on failure local is ahead of the server and a late
+    // hydration must not clobber it; on success the values match anyway.
+    markDirty(patch);
     setState((s) => ({ ...s, ...patch }));
     try {
       await apiPut('/api/auth/profile', patch);
@@ -64,7 +67,7 @@ export function OnboardingProvider({ email, children }) {
       toastError('Could not save', e.message);
       return false;
     }
-  }, []);
+  }, [markDirty]);
   return <OnboardingContext.Provider value={{ state, update, savePartial }}>{children}</OnboardingContext.Provider>;
 }
 

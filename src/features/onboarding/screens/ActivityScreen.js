@@ -13,7 +13,7 @@ const OPTIONS = [
   { key: 'high', title: 'Highly Active', subtitle: 'Hard exercise 6-7 days/week', Icon: Dumbbell },
 ];
 
-function ActivityScreen({ onNext }) {
+function ActivityScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const goNext = useCallback(async () => {
@@ -27,7 +27,7 @@ function ActivityScreen({ onNext }) {
     }
   }, [busy, savePartial, state.activityLevel, onNext]);
   return (
-    <AuthScaffold title="Lifestyle Activity" subtitle="This step will adjust targets based on your daily caloric burn."
+    <AuthScaffold onBack={onBack} title="Lifestyle Activity" subtitle="This step will adjust targets based on your daily caloric burn."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={!state.activityLevel || busy}
       onCta={goNext}>
       <View style={{ gap: 12 }}>

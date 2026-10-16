@@ -6,6 +6,7 @@ export default function BirthdayRoute() {
   const router = useRouter();
   return (
     <BirthdayScreen
+      onBack={() => router.back()}
       onNext={() => router.push(nextPath('birthday'))}
     />
   );

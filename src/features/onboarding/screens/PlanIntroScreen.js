@@ -4,9 +4,9 @@ import { Target } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import { PRIMARY } from '../../../shared/theme/colors';
 
-function PlanIntroScreen({ onNext }) {
+function PlanIntroScreen({ onNext, onBack }) {
   return (
-    <AuthScaffold title="Let's create your plan" subtitle="Your personalized health journey"
+    <AuthScaffold onBack={onBack} title="Let's create your plan" subtitle="Your personalized health journey"
       ctaLabel="Let's Begin" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
         <View className="w-24 h-24 rounded-3xl bg-accent items-center justify-center">

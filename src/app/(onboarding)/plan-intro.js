@@ -6,6 +6,7 @@ export default function PlanIntroRoute() {
   const router = useRouter();
   return (
     <PlanIntroScreen
+      onBack={() => router.back()}
       onNext={() => router.push(nextPath('planIntro'))}
     />
   );

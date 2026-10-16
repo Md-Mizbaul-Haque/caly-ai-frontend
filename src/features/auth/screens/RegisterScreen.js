@@ -6,7 +6,7 @@ import PasswordInput from '../../../shared/components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function RegisterScreen({ onSubmit, onSwitchLogin, busy, online = true, prefillEmail }) {
+function RegisterScreen({ onSubmit, onSwitchLogin, busy, online = true, prefillEmail, onBack }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
@@ -14,6 +14,7 @@ function RegisterScreen({ onSubmit, onSwitchLogin, busy, online = true, prefillE
   const handleCta = useCallback(() => onSubmit(name.trim(), email.trim(), password), [onSubmit, name, email, password]);
   return (
     <AuthScaffold
+      onBack={onBack}
       title="Hello! Register now to get started."
       titleSize={28}
       ctaLabel={busy ? 'Creating…' : 'Register'}

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Circle, CircleUser, User, UserRound } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
@@ -12,15 +12,29 @@ const OPTIONS = [
   { key: 'nonbinary', title: 'Non-binary', Icon: Circle },
 ];
 
-function GenderScreen({ onNext }) {
-  const { state, update } = useOnboarding();
+function GenderScreen({ onNext, onBack }) {
+  const { state, update, savePartial } = useOnboarding();
+  const [busy, setBusy] = useState(false);
+  // Persist immediately like the other steps: gender used to live only in
+  // memory until the final PUT, so any pre-finish exit silently lost it.
+  const goNext = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await savePartial({ gender: state.gender });
+      if (ok) onNext();
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, savePartial, state.gender, onNext]);
   return (
     <AuthScaffold
       title="What is your gender?"
       subtitle="This helps us create your personalized health plan."
-      ctaLabel="Continue"
-      ctaDisabled={!state.gender}
-      onCta={onNext}
+      ctaLabel={busy ? 'Saving…' : 'Continue'}
+      ctaDisabled={!state.gender || busy}
+      onCta={goNext}
+      onBack={onBack}
     >
       <View className="flex-row items-stretch" style={{ gap: 12 }}>
         {OPTIONS.map(({ key, title, Icon }) => {

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { getToken, setToken, setSessionExpiredHandler, setNeedsVerificationHandler } from '../../shared/lib/tokenStore';
+import { API_URL } from '../../shared/lib/api';
 import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail, updateProfile } from '../../shared/lib/authApi';
 import { toastError, toastSuccess } from '../../shared/utils/toast';
 import { readCache, writeCache, clearAppCache } from '../../shared/lib/appCache';
@@ -122,6 +123,11 @@ export function AuthSessionProvider({ children }) {
     // session) signs them out; network blips must not.
     (async () => {
       try {
+        // Fire-and-forget warm-up: a sleeping backend (free-tier cold start)
+        // starts waking while the user is still on the splash/welcome screen,
+        // so register/login usually hits a warm server. Never awaited — the
+        // splash must never wait on the network.
+        fetch(`${API_URL}/health`).catch(() => {});
         const cached = await withBootTimeout(readCache('user'));
         if (!alive) return;
         if (cached) {
@@ -175,6 +181,17 @@ export function AuthSessionProvider({ children }) {
     setAuthBusy(true);
     try {
       const data = await register(name, email, password);
+      // No-SMTP auto-verify mode: the server already signed the user in
+      // (token, no code). Route guards react to the user like handleVerify.
+      if (data && data.token) {
+        applyUser(data.user);
+        if (needsOnboarding(data.user)) {
+          toastSuccess('Welcome', "Let's finish setting up your plan");
+        } else {
+          toastSuccess('Welcome', 'Signed in');
+        }
+        return;
+      }
       setStageEmail(email);
       router.replace('/verify');
       // The server reports emailSent — when SMTP is down the code never went
@@ -214,6 +231,12 @@ export function AuthSessionProvider({ children }) {
   async function handleResend(email) {
     try {
       const data = await resendCode(email);
+      // No-SMTP auto-verify mode: resend signs the user straight in.
+      if (data && data.token) {
+        applyUser(data.user);
+        toastSuccess('Welcome', 'Signed in');
+        return true;
+      }
       if (data && data.emailSent === false) {
         toastError('Could not resend', 'Email service is down — try again in a bit');
         return false;

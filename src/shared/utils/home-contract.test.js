@@ -290,6 +290,12 @@ describe('cold-start + race hardening', () => {
     const api = read('shared/lib/api.js');
     assert.match(api, /handleUnauthorized\(token\)/, 'api must pass the token it actually sent');
     assert.match(api, /retry5xx/, 'GETs must retry a transient 5xx (cold start)');
+    assert.match(api, /retryablePost \? 3/, 'code-issuing auth POSTs need 3 attempts to survive a cold start');
+  });
+
+  it('app boot pings the backend awake (cold-start warm-up)', () => {
+    const session = read('features/auth/session.js');
+    assert.match(session, /\/health/, 'session bootstrap must fire a warm-up ping so register/login hits a warm server');
   });
 
   it('my-foods view is a flag, not a fake query', () => {
@@ -319,5 +325,44 @@ describe('cold-start + race hardening', () => {
     const src = read('features/scan/screens/PictureUploadScreen.js');
     const offline = src.slice(src.indexOf("You're offline") - 300, src.indexOf("You're offline"));
     assert.match(offline, /setBusy\(false\)/, 'offline early-return must reset busy or the shutter stays disabled');
+  });
+});
+
+describe('auth back navigation', () => {
+  it('AuthScaffold renders the shared back button when onBack is set', () => {
+    const scaffold = read('shared/components/auth/AuthScaffold.js');
+    assert.match(scaffold, /onBack/, 'scaffold must accept onBack');
+    assert.match(scaffold, /BackButton/, 'scaffold must render the shared BackButton');
+    const button = read('shared/components/auth/BackButton.js');
+    assert.match(button, /Go back/, 'back button needs an accessible label');
+    assert.match(button, /ChevronLeft/, 'back button must show a chevron');
+  });
+
+  it('login/register/verify/forgot expose onBack; welcome has none', () => {
+    for (const f of [
+      'features/auth/screens/LoginScreen.js',
+      'features/auth/screens/RegisterScreen.js',
+      'features/auth/screens/VerifyScreen.js',
+      'features/auth/screens/ForgotScreen.js',
+    ]) {
+      assert.match(read(f), /onBack/, `${f} must accept onBack`);
+    }
+    const welcome = read('features/auth/screens/WelcomeScreen.js');
+    assert.doesNotMatch(welcome, /onBack|BackButton/, 'welcome is the entry screen — nowhere to go back to');
+  });
+
+  it('auth routes send back somewhere sensible (entries replace, no stack to pop)', () => {
+    // Login/register land on welcome; verify/forgot land on login (which
+    // prefills the staged email). router.back() would be a no-op or worse
+    // after replace-based entry, so destinations are explicit.
+    assert.match(read('app/login.js'), /router\.replace\('\/welcome'\)/, 'login back must go to welcome');
+    assert.match(read('app/register.js'), /router\.replace\('\/welcome'\)/, 'register back must go to welcome');
+    assert.match(read('app/verify.js'), /router\.replace\('\/login'\)/, 'verify back must go to login');
+    assert.match(read('app/forgot.js'), /router\.replace\('\/login'\)/, 'forgot back must go to login');
+  });
+
+  it('forgot code step backs into its own email step first', () => {
+    const src = read('features/auth/screens/ForgotScreen.js');
+    assert.match(src, /onBack=\{\(\) => setPhase\('email'\)\}/, 'reset-code back must return to the email step, not leave the flow');
   });
 });

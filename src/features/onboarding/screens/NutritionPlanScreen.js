@@ -3,6 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { Check } from '../../../shared/components/ui/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
+import BackButton from '../../../shared/components/auth/BackButton';
 import MacroDots from '../../../shared/components/auth/MacroDots';
 import { useOnboarding } from '../OnboardingContext';
 import { apiPut, apiPost } from '../../../shared/lib/api';
@@ -38,7 +39,7 @@ function Row({ label, value }) {
   );
 }
 
-function NutritionPlanScreen({ onNext }) {
+function NutritionPlanScreen({ onNext, onBack }) {
   const insets = useSafeAreaInsets();
   const { state } = useOnboarding();
   const [busy, setBusy] = useState(false);
@@ -97,7 +98,7 @@ function NutritionPlanScreen({ onNext }) {
   const finish = useCallback(async () => {
     if (!complete || !birthDate) {
       setFailed(true);
-      toastError('Finish your details first', `Missing: ${missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device's back button to complete each step.`);
+      toastError('Finish your details first', `Missing: ${missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use the back button above to complete each step.`);
       return;
     }
     setBusy(true);
@@ -121,7 +122,12 @@ function NutritionPlanScreen({ onNext }) {
       const miss = e.data && Array.isArray(e.data.missing) && e.data.missing.length
         ? ` Missing: ${e.data.missing.map((f) => FIELD_LABEL[f] || f).join(', ')}.`
         : '';
-      toastError('Could not save plan', `${e.message}.${miss}`);
+      // details[] holds the real culprit when missing[] is empty (wrong type,
+      // bad enum, out-of-range) — surface it instead of a bare "required".
+      const det = e.data && Array.isArray(e.data.details) && e.data.details.length
+        ? ` (${e.data.details.map((d) => (d && d.message) || d).join('; ')})`
+        : '';
+      toastError('Could not save plan', `${e.message}.${miss}${det}`);
     } finally {
       setBusy(false);
     }
@@ -132,6 +138,7 @@ function NutritionPlanScreen({ onNext }) {
   return (
     <View className="flex-1 bg-background">
       <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 16 }}>
+        {!!onBack && <BackButton onPress={onBack} />}
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-[26px] font-extrabold text-ink">Your Nutrition Plan</Text>
           <View className="w-9 h-9 rounded-full border-2 border-primary bg-accent items-center justify-center">
@@ -141,7 +148,7 @@ function NutritionPlanScreen({ onNext }) {
         {!complete && (
           <View className="bg-accent rounded-3xl p-5 mb-5 border border-primary">
             <Text className="text-[17px] font-semibold text-ink mb-1">A few details are still missing</Text>
-            <Text className="text-[15px] text-muted-foreground">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device&apos;s back button to complete each step — your plan is created only after all information is received.</Text>
+            <Text className="text-[15px] text-muted-foreground">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use the back button above to complete each step — your plan is created only after all information is received.</Text>
           </View>
         )}
         <Text className="text-[22px] font-bold text-ink mb-2">Your Goal</Text>

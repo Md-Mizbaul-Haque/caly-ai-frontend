@@ -7,7 +7,7 @@ import { useCompactAuth } from '../../../shared/components/auth/useCompact';
 import { useOnboarding } from '../OnboardingContext';
 import { CM_PER_IN } from '../../../shared/utils/nutrition';
 
-function HeightScreen({ onNext }) {
+function HeightScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -41,7 +41,7 @@ function HeightScreen({ onNext }) {
     // slider derives from state; listed via its inputs.
   }, [busy, savePartial, imperial, slider.value, onNext]);
   return (
-    <AuthScaffold title="How tall are you?" subtitle="This helps us calculate your daily calorie needs."
+    <AuthScaffold onBack={onBack} title="How tall are you?" subtitle="This helps us calculate your daily calorie needs."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
       onCta={handleCta}>
       <UnitToggle options={['ft/in', 'cm']} value={state.heightUnit} onChange={handleUnit} testID="height-unit" compact={compact} />

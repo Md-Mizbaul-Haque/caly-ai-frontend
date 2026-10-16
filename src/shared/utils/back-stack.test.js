@@ -34,7 +34,9 @@ describe('onboarding back-stack (device back button)', () => {
   });
 
   it('forward moves push (back walks to the previous step)', () => {
-    const offenders = STEP_FILES.filter((f) => /router\.replace/.test(read(f)) && f !== 'nutrition-plan.js');
+    // gender.js is the exception: its replace is the first-step exit to
+    // /welcome, not a forward move (asserted in the back-button test).
+    const offenders = STEP_FILES.filter((f) => /router\.replace/.test(read(f)) && f !== 'nutrition-plan.js' && f !== 'gender.js');
     assert.deepEqual(offenders, [], `these steps replace instead of push — device back skips them: ${offenders}`);
     const pushes = STEP_FILES.filter((f) => /router\.push\(nextPath/.test(read(f)));
     assert.ok(pushes.length >= 8, `expected 8 push-driven steps, found ${pushes.length}`);
@@ -54,5 +56,39 @@ describe('onboarding back-stack (device back button)', () => {
     const layout = fs.readFileSync(path.join(DIR, '_layout.js'), 'utf8');
     assert.match(layout, /<OnboardingProvider/, 'OnboardingProvider must wrap the group so back keeps entered data');
     assert.match(layout, /<Slot/, 'group layout must render the stack Slot');
+  });
+
+  it('every step shows an in-UI back button with a logical target', () => {
+    // Forward moves push, so router.back() pops exactly one step — the same
+    // behavior as the device back button. The first step (gender) has no
+    // previous step, so its back exits the flow to /welcome via replace
+    // (replace, so device-back from welcome can't return into the wizard).
+    const { ORDER, PATH } = require('../../features/onboarding/steps');
+    for (const step of ORDER) {
+      const file = `${PATH[step]}.js`;
+      const src = fs.readFileSync(path.join(DIR, file), 'utf8');
+      const screenFile = {
+        gender: 'GenderScreen', planIntro: 'PlanIntroScreen', birthday: 'BirthdayScreen',
+        currentWeight: 'CurrentWeightScreen', activity: 'ActivityScreen',
+        targetWeight: 'TargetWeightScreen', height: 'HeightScreen',
+        greatChoice: 'GreatChoiceScreen', nutritionPlan: 'NutritionPlanScreen',
+      }[step];
+      const screen = fs.readFileSync(
+        path.join(__dirname, '..', '..', 'features', 'onboarding', 'screens', `${screenFile}.js`),
+        'utf8'
+      );
+      if (step === 'gender') {
+        assert.match(src, /onBack=\{\(\) => router\.replace\('\/welcome'\)\}/, 'first step must exit to /welcome via replace');
+        assert.match(screen, /onBack/, `${screenFile} must accept onBack`);
+      } else {
+        assert.match(src, /onBack=\{\(\) => router\.back\(\)\}/, `${file} must pop one step via router.back()`);
+        assert.match(screen, /onBack/, `${screenFile} must accept onBack`);
+      }
+      // Custom-layout steps render the button themselves; scaffold steps get
+      // it from AuthScaffold (covered by the auth back-navigation contract).
+      if (step === 'birthday' || step === 'nutritionPlan') {
+        assert.match(screen, /BackButton/, `${screenFile} must render the shared BackButton`);
+      }
+    }
   });
 });
