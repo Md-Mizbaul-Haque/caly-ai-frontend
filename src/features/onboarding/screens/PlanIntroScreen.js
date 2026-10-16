@@ -1,14 +1,16 @@
+import { memo } from 'react';
 import { Text, View } from 'react-native';
 import { Target } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
+import { PRIMARY } from '../../../shared/theme/colors';
 
-export default function PlanIntroScreen({ onNext }) {
+function PlanIntroScreen({ onNext }) {
   return (
     <AuthScaffold title="Let's create your plan" subtitle="Your personalized health journey"
       ctaLabel="Let's Begin" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
         <View className="w-24 h-24 rounded-3xl bg-accent items-center justify-center">
-          <Target size={46} color="#f2470c" />
+          <Target size={46} color={PRIMARY} />
         </View>
       </View>
       <Text className="text-[19px] text-ink leading-[28px] mb-5">We&apos;ll help you reach your health goals by creating a personalized plan based on your unique needs and lifestyle.</Text>
@@ -17,3 +19,5 @@ export default function PlanIntroScreen({ onNext }) {
     </AuthScaffold>
   );
 }
+
+export default memo(PlanIntroScreen);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import AuthInput from '../../../shared/components/auth/AuthInput';
 import PasswordInput from '../../../shared/components/auth/PasswordInput';
@@ -8,14 +8,14 @@ import { toastSuccess, toastError } from '../../../shared/utils/toast';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ForgotScreen({ onDone }) {
+function ForgotScreen({ onDone }) {
   const [phase, setPhase] = useState('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function send() {
+  const send = useCallback(async () => {
     setBusy(true);
     try {
       await forgotPassword(email.trim());
@@ -26,9 +26,9 @@ export default function ForgotScreen({ onDone }) {
     } finally {
       setBusy(false);
     }
-  }
+  }, [email]);
 
-  async function reset() {
+  const reset = useCallback(async () => {
     setBusy(true);
     try {
       await resetPassword(email.trim(), sanitizeCode(code), password);
@@ -39,12 +39,12 @@ export default function ForgotScreen({ onDone }) {
     } finally {
       setBusy(false);
     }
-  }
+  }, [email, code, password, onDone]);
 
   if (phase === 'email') {
     const valid = EMAIL_RE.test(email.trim());
     return (
-      <AuthScaffold title="Reset your password" subtitle="Enter your account email and we'll send a reset code."
+      <AuthScaffold title="Reset your password" titleSize={28} subtitle="Enter your account email and we'll send a reset code."
         ctaLabel={busy ? 'Sending…' : 'Send reset code'} ctaDisabled={!valid || busy} onCta={send}>
         <AuthInput value={email} onChangeText={setEmail} placeholder="Enter your email" keyboardType="email-address" testID="forgot-email" />
       </AuthScaffold>
@@ -53,10 +53,12 @@ export default function ForgotScreen({ onDone }) {
   const clean = sanitizeCode(code);
   const valid = clean.length === 6 && password.length >= 8;
   return (
-    <AuthScaffold title="Enter your reset code" subtitle={`Code sent to ${email.trim()}`}
+    <AuthScaffold title="Enter your reset code" titleSize={28} subtitle={`Code sent to ${email.trim()}`}
       ctaLabel={busy ? 'Resetting…' : 'Reset password'} ctaDisabled={!valid || busy} onCta={reset}>
       <AuthInput value={code} onChangeText={(t) => setCode(sanitizeCode(t))} placeholder="------" keyboardType="numeric" testID="forgot-code" />
       <PasswordInput value={password} onChangeText={setPassword} placeholder="New password (8+ chars)" testID="forgot-password" />
     </AuthScaffold>
   );
 }
+
+export default memo(ForgotScreen);

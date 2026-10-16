@@ -31,6 +31,9 @@ export default function WeightLogSheet({ latestWeight = null, onClose, onSave })
   }, [progress]);
 
   function dismiss(after = onClose) {
+    // Closing mid-save unmounts the sheet and the POST's result (or error)
+    // has nowhere to land; block dismissal until it settles.
+    if (busy) return;
     Animated.timing(progress, { toValue: 0, duration: 160, useNativeDriver: true }).start(({ finished }) => {
       if (finished) after?.();
     });

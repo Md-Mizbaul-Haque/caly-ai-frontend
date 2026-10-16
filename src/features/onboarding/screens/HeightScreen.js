@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Text } from 'react-native';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import UnitToggle from '../../../shared/components/auth/UnitToggle';
@@ -7,7 +7,7 @@ import { useCompactAuth } from '../../../shared/components/auth/useCompact';
 import { useOnboarding } from '../OnboardingContext';
 import { CM_PER_IN } from '../../../shared/utils/nutrition';
 
-export default function HeightScreen({ onNext }) {
+function HeightScreen({ onNext }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -29,10 +29,21 @@ export default function HeightScreen({ onNext }) {
     heightUnit: v,
     heightCm: v === 'cm' ? Math.round(state.heightCm) : Math.round(state.heightCm / CM_PER_IN) * CM_PER_IN,
   }), [state.heightCm, update]);
+  const handleCta = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await savePartial({ heightCm: Math.round(imperial ? slider.value * CM_PER_IN : slider.value) });
+      if (ok) onNext();
+    } finally {
+      setBusy(false);
+    }
+    // slider derives from state; listed via its inputs.
+  }, [busy, savePartial, imperial, slider.value, onNext]);
   return (
     <AuthScaffold title="How tall are you?" subtitle="This helps us calculate your daily calorie needs."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
-      onCta={async () => { if (busy) return; setBusy(true); try { const ok = await savePartial({ heightCm: Math.round(imperial ? slider.value * CM_PER_IN : slider.value) }); if (ok) onNext(); } finally { setBusy(false); } }}>
+      onCta={handleCta}>
       <UnitToggle options={['ft/in', 'cm']} value={state.heightUnit} onChange={handleUnit} testID="height-unit" compact={compact} />
       <Text className={`text-center font-extrabold text-ink ${compact ? 'text-5xl mb-5' : 'text-[64px] mb-8'}`}>{display}</Text>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="height-ruler"
@@ -40,3 +51,5 @@ export default function HeightScreen({ onNext }) {
     </AuthScaffold>
   );
 }
+
+export default memo(HeightScreen);

@@ -134,7 +134,7 @@ function RulerSlider({ min, max, step, value, onChange, testID = 'ruler' }) {
   return (
     <View testID={testID}>
       <View className="items-center mb-2">
-        <View style={{ width: 3, height: 56, backgroundColor: '#f2470c', borderRadius: 2 }} />
+        <View className="bg-primary" style={{ width: 3, height: 56, borderRadius: 2 }} />
       </View>
       <FlatList
         ref={ref}

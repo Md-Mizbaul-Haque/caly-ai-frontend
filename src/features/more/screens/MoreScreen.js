@@ -40,12 +40,10 @@ export default function MoreScreen() {
             shadowOffset: { width: 0, height: 3 },
             elevation: 2,
           }}>
-            <View className="w-14 h-14 rounded-full items-center justify-center" style={{ backgroundColor: '#f2470c' }}>
-              <Text className="text-white text-2xl font-extrabold">Skeleton</Text>
-            </View>
+            <View className="w-14 h-14 rounded-full bg-muted animate-pulse" />
             <View className="flex-1 ml-3">
-              <Text className="text-[17px] font-bold text-ink">Skeleton</Text>
-              <Text className="text-[13px] text-muted-foreground">Skeleton</Text>
+              <View className="w-32 h-4 rounded-md bg-muted animate-pulse" />
+              <View className="w-44 h-3 rounded-md bg-muted animate-pulse mt-2" />
             </View>
           </View>
           {/* We could add more skeletons for the rest of the screen, but for simplicity, we just show the profile header skeleton and hide the rest until loaded */}

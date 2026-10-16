@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Check } from '../../../shared/components/ui/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { useOnboarding } from '../OnboardingContext';
 import { apiPut, apiPost } from '../../../shared/lib/api';
 import { toastError } from '../../../shared/utils/toast';
 import { calcAge, cmToFtIn, goalLabel, kgToLb, missingOnboardingFields, normalizeBirthDate, snapWeightKg } from '../../../shared/utils/nutrition';
+import { PRIMARY } from '../../../shared/theme/colors';
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
@@ -26,6 +27,8 @@ const FIELD_LABEL = {
   activityLevel: 'Activity level',
 };
 
+// Module scope: defining this inside the screen re-created the component type
+// on every render, unmounting/remounting every row (and its text) each frame.
 function Row({ label, value }) {
   return (
     <View className="flex-row justify-between items-center py-3">
@@ -35,7 +38,7 @@ function Row({ label, value }) {
   );
 }
 
-export default function NutritionPlanScreen({ onNext }) {
+function NutritionPlanScreen({ onNext }) {
   const insets = useSafeAreaInsets();
   const { state } = useOnboarding();
   const [busy, setBusy] = useState(false);
@@ -88,7 +91,10 @@ export default function NutritionPlanScreen({ onNext }) {
   const heightStr = state.heightUnit === 'cm' ? `${Math.round(state.heightCm || 0)} cm` : `${ft}'${inch}"`;
   const weightStr = state.weightUnit === 'lb' ? `${Math.round(kgToLb(state.weightKg || 0))} lb` : `${round1(state.weightKg || 0).toFixed(1)} kg`;
 
-  async function finish() {
+  // String key: stable across renders when the missing set is unchanged,
+  // so the CTA keeps a stable identity (missing itself is a fresh array).
+  const missingKey = missing.join(',');
+  const finish = useCallback(async () => {
     if (!complete || !birthDate) {
       setFailed(true);
       toastError('Finish your details first', `Missing: ${missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device's back button to complete each step.`);
@@ -119,19 +125,21 @@ export default function NutritionPlanScreen({ onNext }) {
     } finally {
       setBusy(false);
     }
-  }
+    // Inputs read above; listed individually to keep the CTA identity stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complete, birthDate, missingKey, state.gender, state.heightCm, state.weightKg, state.targetWeightKg, state.activityLevel, onNext]);
 
   return (
     <View className="flex-1 bg-background">
       <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-[26px] font-extrabold text-ink">Your Nutrition Plan</Text>
-          <View className="w-9 h-9 rounded-full border-2 border-[#f2470c] bg-accent items-center justify-center">
-            <Check size={20} color="#f2470c" />
+          <View className="w-9 h-9 rounded-full border-2 border-primary bg-accent items-center justify-center">
+            <Check size={20} color={PRIMARY} />
           </View>
         </View>
         {!complete && (
-          <View className="bg-accent rounded-3xl p-5 mb-5 border border-[#f2470c]">
+          <View className="bg-accent rounded-3xl p-5 mb-5 border border-primary">
             <Text className="text-[17px] font-semibold text-ink mb-1">A few details are still missing</Text>
             <Text className="text-[15px] text-muted-foreground">Missing: {missing.map((f) => FIELD_LABEL[f] || f).join(', ')}. Use your device&apos;s back button to complete each step — your plan is created only after all information is received.</Text>
           </View>
@@ -163,7 +171,7 @@ export default function NutritionPlanScreen({ onNext }) {
           <Row label="AMR (Active Rate)" value={validPlan ? `${serverPlan.maintenance} cal` : '—'} />
         </View>
         <View className="flex-row mb-2">
-          <View className="w-6 h-6 rounded-full bg-[#f2470c] items-center justify-center mr-2 mt-0.5">
+          <View className="w-6 h-6 rounded-full bg-primary items-center justify-center mr-2 mt-0.5">
             <Text className="text-white text-[13px] font-bold">!</Text>
           </View>
           <View className="flex-1">
@@ -179,3 +187,5 @@ export default function NutritionPlanScreen({ onNext }) {
     </View>
   );
 }
+
+export default memo(NutritionPlanScreen);

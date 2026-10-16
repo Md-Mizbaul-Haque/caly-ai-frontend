@@ -16,17 +16,19 @@ const TTL = {
   rangeMeals: 60 * 60 * 1000, // 1h — Progress streak/average paints instantly, revalidates silently
   weights: 24 * 60 * 60 * 1000,
   weightGoal: 24 * 60 * 60 * 1000,
+  snappyEarlyAccess: Number.POSITIVE_INFINITY, // local opt-in preference, never stale
+  planAttention: Number.POSITIVE_INFINITY, // paint instantly, revalidated at startup (same as user)
 };
 
 // Per-user namespaced keys (e.g. `weekMeals:abc123`) so account B never
 // paints account A's cached meals/weights. Unknown keys resolve to
 // `caly.cache.<key>` with the weekMeals TTL.
-function storageKey(key) {
+export function storageKey(key) {
   if (KEYS[key]) return KEYS[key];
   return `caly.cache.${key}`;
 }
 
-function ttlFor(key) {
+export function ttlFor(key) {
   if (TTL[key] !== undefined) return TTL[key];
   const base = String(key).split(':')[0];
   return TTL[base] ?? 0;

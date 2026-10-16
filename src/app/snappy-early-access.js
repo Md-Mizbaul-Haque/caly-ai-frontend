@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
 import Card from '../shared/components/ui/Card';
 import ScreenHeader from '../shared/components/ui/ScreenHeader';
 import { Rocket } from '../shared/components/ui/icons';
 import { toastSuccess } from '../shared/utils/toast';
+import { useSession } from '../features/auth/session';
+import { readCache, scopedKey, writeCache } from '../shared/lib/appCache';
 
 export default function SnappyEarlyAccessScreen() {
+  const { user } = useSession();
+  const userKey = user ? (user._id || user.id || user.email) : null;
   const [optedIn, setOptedIn] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    readCache(scopedKey('snappyEarlyAccess', userKey)).then((v) => {
+      if (alive && v === true) setOptedIn(true);
+    });
+    return () => { alive = false; };
+  }, [userKey]);
 
   return (
     <View className="flex-1 bg-background">
@@ -34,6 +46,7 @@ export default function SnappyEarlyAccessScreen() {
                   accessibilityLabel="Join early access"
                   onValueChange={(v) => {
                     setOptedIn(v);
+                    writeCache(scopedKey('snappyEarlyAccess', userKey), v);
                     toastSuccess(
                       v ? 'Welcome aboard!' : 'Opted out',
                       v ? 'You will get new features first' : 'You are back on the stable version'

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import AuthInput from '../../../shared/components/auth/AuthInput';
@@ -6,21 +6,22 @@ import PasswordInput from '../../../shared/components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function LoginScreen({ onSubmit, onForgot, onSwitchRegister, busy, online = true, prefillEmail }) {
+function LoginScreen({ onSubmit, onForgot, onSwitchRegister, busy, online = true, prefillEmail }) {
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
   const valid = EMAIL_RE.test(email.trim()) && password.length > 0;
+  const handleCta = useCallback(() => onSubmit(email.trim(), password), [onSubmit, email, password]);
   return (
     <AuthScaffold
       title="Welcome back! Good to see you again!"
-      titleSize={26}
+      titleSize={28}
       ctaLabel={busy ? 'Signing in…' : 'Login'}
       ctaDisabled={!valid || busy || !online}
-      onCta={() => onSubmit(email.trim(), password)}
+      onCta={handleCta}
       bottomNote={
         <View className="flex-row justify-center mt-6">
           <Text className="text-[14px] text-muted-foreground">Don&apos;t have an account? </Text>
-          <Pressable onPress={onSwitchRegister}><Text className="text-[14px] text-[#2D9CDB] font-medium">Register Now</Text></Pressable>
+          <Pressable onPress={onSwitchRegister}><Text className="text-[14px] text-primary font-medium">Register Now</Text></Pressable>
         </View>
       }
     >
@@ -30,3 +31,5 @@ export default function LoginScreen({ onSubmit, onForgot, onSwitchRegister, busy
     </AuthScaffold>
   );
 }
+
+export default memo(LoginScreen);

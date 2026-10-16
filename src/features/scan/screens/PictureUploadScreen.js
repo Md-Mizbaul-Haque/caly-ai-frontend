@@ -98,6 +98,9 @@ export default function PictureUploadScreen({
         net &&
         (net.isConnected === false || net.isInternetReachable === false)
       ) {
+        // Early return sits before the try/finally below: callers set busy
+        // before calling analyze, so reset it or the shutter stays disabled.
+        setBusy(false);
         Alert.alert(
           "You're offline",
           "Reconnect to Wi-Fi or mobile data, then try again.",
@@ -153,7 +156,6 @@ export default function PictureUploadScreen({
           const { items, placeholder } = await scanImage(uploadUri, {
             signal: ctrl.signal,
           });
-          console.log(uploadUri, ctrl.signal, items, placeholder);
           setPreviewUri(stableUri);
           // imageUri stays the stable preview reference; uploadUri is the
           // converted (shrunk JPEG) copy the result screen persists.

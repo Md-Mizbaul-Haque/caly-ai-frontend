@@ -11,7 +11,7 @@ const AuthSessionContext = createContext(null);
 // One zone sync per account at a time (module scope — survives rerenders).
 // The PUT response re-enters applyUser with the same zone and no-ops.
 let syncingZoneFor = null;
-function syncTimeZone(u, setUser) {
+function syncTimeZone(u, setUser, isCurrent) {
   if (!u) return;
   const key = u._id || u.id || u.email;
   if (!key || syncingZoneFor === key) return;
@@ -25,7 +25,9 @@ function syncTimeZone(u, setUser) {
   syncingZoneFor = key;
   updateProfile({ timezone: device })
     .then(({ user: fresh }) => {
-      if (fresh) setUser(fresh);
+      // Account switched while the PUT was in flight: the fresh row belongs
+      // to the previous account and must not overwrite the new session.
+      if (fresh && isCurrent(key)) setUser(fresh);
     })
     .catch(() => {})
     .finally(() => {
@@ -76,7 +78,10 @@ export function AuthSessionProvider({ children }) {
     } else if (u) {
       setGoal(null);
     }
-    syncTimeZone(u, setUser);
+    syncTimeZone(u, setUser, (key) => {
+      const cur = userRef.current;
+      return !!cur && (cur._id || cur.id || cur.email) === key;
+    });
   }
 
   useEffect(() => {
@@ -169,10 +174,17 @@ export function AuthSessionProvider({ children }) {
   async function handleRegister(name, email, password) {
     setAuthBusy(true);
     try {
-      await register(name, email, password);
+      const data = await register(name, email, password);
       setStageEmail(email);
       router.replace('/verify');
-      toastSuccess('Check email', 'Enter the verification code');
+      // The server reports emailSent — when SMTP is down the code never went
+      // out, so say so instead of "check your email". The pending survives
+      // server-side, so resend from the verify screen still works.
+      if (data && data.emailSent === false) {
+        toastError('Email not sent', 'We could not send the code — tap "I didn\'t get a code" to retry');
+      } else {
+        toastSuccess('Check email', 'Enter the verification code');
+      }
     } catch (e) {
       toastError('Registration failed', e.message);
     } finally {
@@ -201,7 +213,11 @@ export function AuthSessionProvider({ children }) {
   // reveals "Skip for now" only after a real resend (not on a failed one).
   async function handleResend(email) {
     try {
-      await resendCode(email);
+      const data = await resendCode(email);
+      if (data && data.emailSent === false) {
+        toastError('Could not resend', 'Email service is down — try again in a bit');
+        return false;
+      }
       toastSuccess('Code resent', 'Check your email');
       return true;
     } catch (e) {

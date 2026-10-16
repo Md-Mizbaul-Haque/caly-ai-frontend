@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Bike, Dumbbell, Footprints, Sofa } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import OptionCard from '../../../shared/components/auth/OptionCard';
 import { useOnboarding } from '../OnboardingContext';
-import { useTheme } from '../../../shared/theme/theme';
+import { INK, PRIMARY } from '../../../shared/theme/colors';
 
 const OPTIONS = [
   { key: 'sedentary', title: 'Sedentary', subtitle: 'Little or no exercise, desk job', Icon: Sofa },
@@ -13,12 +13,10 @@ const OPTIONS = [
   { key: 'high', title: 'Highly Active', subtitle: 'Hard exercise 6-7 days/week', Icon: Dumbbell },
 ];
 
-export default function ActivityScreen({ onNext }) {
+function ActivityScreen({ onNext }) {
   const { state, update, savePartial } = useOnboarding();
-  const { isDark } = useTheme();
-  const idleIcon = isDark ? '#F5F5F5' : '#1A1A1A';
   const [busy, setBusy] = useState(false);
-  async function goNext() {
+  const goNext = useCallback(async () => {
     if (busy) return;
     setBusy(true);
     try {
@@ -27,7 +25,7 @@ export default function ActivityScreen({ onNext }) {
     } finally {
       setBusy(false);
     }
-  }
+  }, [busy, savePartial, state.activityLevel, onNext]);
   return (
     <AuthScaffold title="Lifestyle Activity" subtitle="This step will adjust targets based on your daily caloric burn."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={!state.activityLevel || busy}
@@ -37,10 +35,12 @@ export default function ActivityScreen({ onNext }) {
           const selected = state.activityLevel === key;
           return (
             <OptionCard key={key} title={title} subtitle={subtitle} selected={selected}
-              onPress={() => update({ activityLevel: key })} icon={<Icon size={28} color={selected ? '#f2470c' : idleIcon} />} testID={`activity-${key}`} />
+              onPress={() => update({ activityLevel: key })} icon={<Icon size={28} color={selected ? PRIMARY : INK} />} testID={`activity-${key}`} />
           );
         })}
       </View>
     </AuthScaffold>
   );
 }
+
+export default memo(ActivityScreen);
