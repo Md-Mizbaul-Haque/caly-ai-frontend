@@ -6,6 +6,7 @@ export default function CurrentWeightRoute() {
   const router = useRouter();
   return (
     <CurrentWeightScreen
+      onBack={() => router.back()}
       onNext={() => router.push(nextPath('currentWeight'))}
     />
   );

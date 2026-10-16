@@ -11,7 +11,7 @@ import { PRIMARY } from '../../../shared/theme/colors';
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-function TargetWeightScreen({ onNext }) {
+function TargetWeightScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -48,7 +48,7 @@ function TargetWeightScreen({ onNext }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, savePartial, shownTarget, unit, onNext]);
   return (
-    <AuthScaffold title="What is your target weight?" subtitle="This helps us determine your nutrition goals."
+    <AuthScaffold onBack={onBack} title="What is your target weight?" subtitle="This helps us determine your nutrition goals."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
       onCta={handleCta}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={handleUnit} testID="target-unit" compact={compact} />

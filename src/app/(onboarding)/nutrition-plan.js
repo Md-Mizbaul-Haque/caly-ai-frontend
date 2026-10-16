@@ -7,6 +7,7 @@ export default function NutritionPlanRoute() {
   const { refreshUser } = useSession();
   return (
     <NutritionPlanScreen
+      onBack={() => router.back()}
       onNext={async () => {
         try {
           await refreshUser();

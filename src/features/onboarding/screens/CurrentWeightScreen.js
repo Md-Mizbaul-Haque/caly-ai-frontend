@@ -9,7 +9,7 @@ import { lbToKg, snapWeight, snapWeightKg } from '../../../shared/utils/nutritio
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-function CurrentWeightScreen({ onNext }) {
+function CurrentWeightScreen({ onNext, onBack }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -41,7 +41,7 @@ function CurrentWeightScreen({ onNext }) {
     // shown derives from state; listed via its inputs.
   }, [busy, savePartial, unit, shown, onNext]);
   return (
-    <AuthScaffold title="What is your current weight?" subtitle="This helps us calculate your daily calorie needs."
+    <AuthScaffold onBack={onBack} title="What is your current weight?" subtitle="This helps us calculate your daily calorie needs."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
       onCta={handleCta}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={handleUnit} testID="weight-unit" compact={compact} />

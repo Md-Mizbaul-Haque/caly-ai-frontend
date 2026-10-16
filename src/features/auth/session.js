@@ -181,6 +181,17 @@ export function AuthSessionProvider({ children }) {
     setAuthBusy(true);
     try {
       const data = await register(name, email, password);
+      // No-SMTP auto-verify mode: the server already signed the user in
+      // (token, no code). Route guards react to the user like handleVerify.
+      if (data && data.token) {
+        applyUser(data.user);
+        if (needsOnboarding(data.user)) {
+          toastSuccess('Welcome', "Let's finish setting up your plan");
+        } else {
+          toastSuccess('Welcome', 'Signed in');
+        }
+        return;
+      }
       setStageEmail(email);
       router.replace('/verify');
       // The server reports emailSent — when SMTP is down the code never went
@@ -220,6 +231,12 @@ export function AuthSessionProvider({ children }) {
   async function handleResend(email) {
     try {
       const data = await resendCode(email);
+      // No-SMTP auto-verify mode: resend signs the user straight in.
+      if (data && data.token) {
+        applyUser(data.user);
+        toastSuccess('Welcome', 'Signed in');
+        return true;
+      }
       if (data && data.emailSent === false) {
         toastError('Could not resend', 'Email service is down — try again in a bit');
         return false;

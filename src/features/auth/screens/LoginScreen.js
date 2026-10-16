@@ -6,13 +6,14 @@ import PasswordInput from '../../../shared/components/auth/PasswordInput';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function LoginScreen({ onSubmit, onForgot, onSwitchRegister, busy, online = true, prefillEmail }) {
+function LoginScreen({ onSubmit, onForgot, onSwitchRegister, busy, online = true, prefillEmail, onBack }) {
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
   const valid = EMAIL_RE.test(email.trim()) && password.length > 0;
   const handleCta = useCallback(() => onSubmit(email.trim(), password), [onSubmit, email, password]);
   return (
     <AuthScaffold
+      onBack={onBack}
       title="Welcome back! Good to see you again!"
       titleSize={28}
       ctaLabel={busy ? 'Signing in…' : 'Login'}

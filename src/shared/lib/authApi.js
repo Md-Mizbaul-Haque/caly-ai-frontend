@@ -5,7 +5,10 @@ import { setToken } from './tokenStore';
 // and stores the JWT on any token-bearing response.
 
 export async function register(name, email, password) {
-  return apiPost('/api/auth/register', { name, email, password });
+  const data = await apiPost('/api/auth/register', { name, email, password });
+  // No-SMTP auto-verify mode returns a session directly instead of a code.
+  if (data.token) await setToken(data.token);
+  return data;
 }
 
 export async function login(email, password) {
@@ -28,7 +31,10 @@ export async function verifyEmail(email, code) {
 }
 
 export async function resendCode(email) {
-  return apiPost('/api/auth/resend-code', { email });
+  const data = await apiPost('/api/auth/resend-code', { email });
+  // No-SMTP auto-verify mode materializes the session here instead of a code.
+  if (data.token) await setToken(data.token);
+  return data;
 }
 
 export async function skipVerification(email) {

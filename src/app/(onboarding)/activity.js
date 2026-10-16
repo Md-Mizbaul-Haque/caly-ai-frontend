@@ -6,6 +6,7 @@ export default function ActivityRoute() {
   const router = useRouter();
   return (
     <ActivityScreen
+      onBack={() => router.back()}
       onNext={() => router.push(nextPath('activity'))}
     />
   );

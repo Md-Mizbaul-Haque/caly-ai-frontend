@@ -55,4 +55,37 @@ describe('onboarding back-stack (device back button)', () => {
     assert.match(layout, /<OnboardingProvider/, 'OnboardingProvider must wrap the group so back keeps entered data');
     assert.match(layout, /<Slot/, 'group layout must render the stack Slot');
   });
+
+  it('every step except the first shows an in-UI back button', () => {
+    // Forward moves push, so router.back() pops exactly one step — the same
+    // behavior as the device back button. The first step (gender) has no
+    // back: there is nowhere sensible to return to.
+    const { ORDER, PATH } = require('../../features/onboarding/steps');
+    for (const step of ORDER) {
+      const file = `${PATH[step]}.js`;
+      const src = fs.readFileSync(path.join(DIR, file), 'utf8');
+      const screenFile = {
+        gender: 'GenderScreen', planIntro: 'PlanIntroScreen', birthday: 'BirthdayScreen',
+        currentWeight: 'CurrentWeightScreen', activity: 'ActivityScreen',
+        targetWeight: 'TargetWeightScreen', height: 'HeightScreen',
+        greatChoice: 'GreatChoiceScreen', nutritionPlan: 'NutritionPlanScreen',
+      }[step];
+      const screen = fs.readFileSync(
+        path.join(__dirname, '..', '..', 'features', 'onboarding', 'screens', `${screenFile}.js`),
+        'utf8'
+      );
+      if (step === 'gender') {
+        assert.doesNotMatch(src, /onBack/, 'first step must not offer back (nowhere to go)');
+        assert.doesNotMatch(screen, /onBack/, 'first step must not offer back (nowhere to go)');
+      } else {
+        assert.match(src, /onBack=\{\(\) => router\.back\(\)\}/, `${file} must pop one step via router.back()`);
+        assert.match(screen, /onBack/, `${screenFile} must accept onBack`);
+      }
+      // Custom-layout steps render the button themselves; scaffold steps get
+      // it from AuthScaffold (covered by the auth back-navigation contract).
+      if (step === 'birthday' || step === 'nutritionPlan') {
+        assert.match(screen, /BackButton/, `${screenFile} must render the shared BackButton`);
+      }
+    }
+  });
 });

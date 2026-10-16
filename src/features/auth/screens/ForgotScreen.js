@@ -8,7 +8,7 @@ import { toastSuccess, toastError } from '../../../shared/utils/toast';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function ForgotScreen({ onDone }) {
+function ForgotScreen({ onDone, onBack }) {
   const [phase, setPhase] = useState('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -18,7 +18,12 @@ function ForgotScreen({ onDone }) {
   const send = useCallback(async () => {
     setBusy(true);
     try {
-      await forgotPassword(email.trim());
+      const data = await forgotPassword(email.trim());
+      // No-SMTP mode: reset codes cannot be delivered — stay on this step.
+      if (data && data.emailSent === false) {
+        toastError('Email service is down', 'Password reset needs email — try again later');
+        return;
+      }
       toastSuccess('Code sent', 'Check your email for the reset code');
       setPhase('reset');
     } catch (e) {
@@ -45,6 +50,7 @@ function ForgotScreen({ onDone }) {
     const valid = EMAIL_RE.test(email.trim());
     return (
       <AuthScaffold title="Reset your password" titleSize={28} subtitle="Enter your account email and we'll send a reset code."
+        onBack={onBack}
         ctaLabel={busy ? 'Sending…' : 'Send reset code'} ctaDisabled={!valid || busy} onCta={send}>
         <AuthInput value={email} onChangeText={setEmail} placeholder="Enter your email" keyboardType="email-address" testID="forgot-email" />
       </AuthScaffold>
@@ -54,6 +60,9 @@ function ForgotScreen({ onDone }) {
   const valid = clean.length === 6 && password.length >= 8;
   return (
     <AuthScaffold title="Enter your reset code" titleSize={28} subtitle={`Code sent to ${email.trim()}`}
+      // The code step backs into this screen's own email step first — only
+      // the email step leaves the flow (to login via onBack).
+      onBack={() => setPhase('email')}
       ctaLabel={busy ? 'Resetting…' : 'Reset password'} ctaDisabled={!valid || busy} onCta={reset}>
       <AuthInput value={code} onChangeText={(t) => setCode(sanitizeCode(t))} placeholder="------" keyboardType="numeric" testID="forgot-code" />
       <PasswordInput value={password} onChangeText={setPassword} placeholder="New password (8+ chars)" testID="forgot-password" />

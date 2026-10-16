@@ -353,11 +353,14 @@ export default function DashboardScreen({
     setRefreshing(true);
     try {
       if (onRetry) await onRetry();
-      else await s.loadWeek?.({ reference: selectedDate }); // Refresh meals data
-      await s.refreshWeights?.(); // Refresh weights and goal
-      // Session user last: a /me failure must never block the meals/weights
-      // paint above, but the calorie target revalidates from the database.
-      await s.refreshUser?.();
+      else {
+        // Parallel fan-out: sum -> max latency on slow cold starts.
+        await Promise.allSettled([
+          s.loadWeek?.({ reference: selectedDate }),
+          s.refreshWeights?.(),
+          s.refreshUser?.(),
+        ]);
+      }
       if (ownerKey) {
         setPlanAttention((await readCache(scopedKey("planAttention", ownerKey)).catch(() => null)) === true);
       }

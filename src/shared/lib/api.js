@@ -5,9 +5,17 @@ import { classifyApiError, isRetryableCode } from './apiErrors';
 
 export { classifyApiError, isRetryableCode };
 
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000').trim();
+function normalizeApiUrl(raw) {
+  let u = (raw || 'http://localhost:5000').trim().replace(/\/+$/, '');
+  // Callers already prefix /api — an env ending in /api would double to /api/api.
+  if (/\/api$/i.test(u)) u = u.slice(0, -4);
+  return u;
+}
+
+export const API_URL = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 
 const REQUEST_TIMEOUT_MS = 15000;
+const AUTH_TIMEOUT_MS = 30000;
 
 function newReportId() {
   return Math.random().toString(36).slice(2, 8);
@@ -74,19 +82,27 @@ async function request(method, path, { headers = {}, body } = {}) {
   const id = newReportId();
   // GETs are idempotent: one retry survives a Render cold start or a
   // transient 5xx (first attempt wakes/faults the instance, second hits it
-  // healthy). Code-issuing auth POSTs (register/resend/forgot) are equally
+  // healthy). Code-issuing auth POSTs (register/login/resend/forgot) are equally
   // safe to repeat — each attempt just mints a fresh code on the same
   // pending row — so they get 3 attempts and also retry timeouts, network
   // failures, AND 5xx (a waking server answers 503 'database unavailable'
   // before Mongo lands). 4xx (wrong credentials, validation) never retries.
-  // Everything else (verify, skip, data writes, scan) stays single-attempt.
-  const retryablePost = method === 'POST' && /\/api\/auth\/(register|resend-code|forgot-password)$/.test(path);
-  const attempts = method === 'GET' ? 2 : retryablePost ? 3 : 1;
+  // Verify stays single-attempt: a retried verify after a timed-out success
+  // would 409/400 (pending already deleted) and confuse the UI.
+  // Everything else (skip, data writes, scan) stays single-attempt.
+  // PUTs here are idempotent profile/week upserts: one retry survives a
+  // Render cold start or a transient 5xx, exactly like GETs. (Scan uploads
+  // ride authedFetch, not this path, so no large-body retry risk.)
+  const retryablePost = method === 'POST' && /\/api\/auth\/(register|login|resend-code|forgot-password)$/.test(path);
+  const retryablePut = method === 'PUT';
+  const attempts = retryablePost ? 3 : (method === 'GET' || retryablePut) ? 2 : 1;
+  // Auth hits bcrypt + cold-start + code save: give it 30s, data routes stay 15s.
+  const timeoutMs = /\/api\/auth\//.test(path) ? AUTH_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
   let lastCause;
   for (let attempt = 0; attempt < attempts; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     // The token this attempt actually sends: a late 401 must only log out
     // the session it belonged to, not a newer one.
     const token = await getToken();
@@ -122,7 +138,7 @@ async function request(method, path, { headers = {}, body } = {}) {
       return res.json().catch(() => ({}));
     } catch (e) {
       clearTimeout(timer);
-      const retry5xx = (method === 'GET' || retryablePost) && e?.status >= 500;
+      const retry5xx = (method === 'GET' || retryablePut || retryablePost) && e?.status >= 500;
       if ((e?.status && !retry5xx) || attempts === 1 || attempt === attempts - 1) {
         if (!e?.status) throw connectionError(id, method, path, e);
         throw e;

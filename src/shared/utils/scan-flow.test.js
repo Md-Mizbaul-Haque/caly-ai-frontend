@@ -168,7 +168,8 @@ describe('scan flow robustness', () => {
 
   it('API_URL trims stray whitespace from EXPO_PUBLIC_API_URL', () => {
     const api = read('shared/lib/api.js');
-    assert.match(api, /EXPO_PUBLIC_API_URL[^;]*\.trim\(\)/, 'API_URL must trim the env value so a trailing space cannot poison every URL');
+    assert.match(api, /normalizeApiUrl\(process\.env\.EXPO_PUBLIC_API_URL\)/, 'API_URL must normalize the env value');
+    assert.match(api, /\.trim\(\)/, 'normalization must trim so a trailing space cannot poison every URL');
   });
 
   it('authedFetch flags our own timer abort as timeout (not message sniffing)', () => {

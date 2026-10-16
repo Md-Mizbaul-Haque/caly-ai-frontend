@@ -10,8 +10,11 @@ export default function LoginRoute() {
   const online = useIsOnline();
   const onForgot = useCallback(() => router.replace('/forgot'), [router]);
   const onSwitchRegister = useCallback(() => router.replace('/register'), [router]);
+  // Auth entries replace (no stack to pop) — back goes to welcome explicitly.
+  const onBack = useCallback(() => router.replace('/welcome'), [router]);
   return (
     <LoginScreen
+      onBack={onBack}
       onSubmit={handleLogin}
       onForgot={onForgot}
       onSwitchRegister={onSwitchRegister}
