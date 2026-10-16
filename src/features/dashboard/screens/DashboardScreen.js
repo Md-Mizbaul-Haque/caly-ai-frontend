@@ -511,8 +511,8 @@ export default function DashboardScreen({
               </Card>
             ) : (
               <View style={{ gap: 12 }}>
-                {groupedDayMeals.map((m) => (
-                  <MealRow key={m.id} meal={m} onDelete={onDelete} />
+                {groupedDayMeals.map((m, idx) => (
+                  <MealRow key={m.id || m._id || `${m.name}-${m.loggedAt}-${idx}`} meal={m} onDelete={onDelete} />
                 ))}
               </View>
             )}

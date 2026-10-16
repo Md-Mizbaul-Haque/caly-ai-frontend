@@ -112,11 +112,14 @@ export default function ScanResultScreen({ result, onSave, onClose, onDone }) {
   useEffect(() => {
     const closeOverlay = onClose ?? onDone ?? (() => {});
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Closing mid-save unmounts the overlay and the in-flight save has
+      // nowhere to report; block back until it settles.
+      if (saving) return true;
       closeOverlay();
       return true;
     });
     return () => sub.remove();
-  }, [onClose, onDone]);
+  }, [onClose, onDone, saving]);
 
   return (
     <ScrollView

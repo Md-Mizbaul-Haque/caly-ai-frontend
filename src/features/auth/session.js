@@ -11,7 +11,7 @@ const AuthSessionContext = createContext(null);
 // One zone sync per account at a time (module scope — survives rerenders).
 // The PUT response re-enters applyUser with the same zone and no-ops.
 let syncingZoneFor = null;
-function syncTimeZone(u, setUser) {
+function syncTimeZone(u, setUser, isCurrent) {
   if (!u) return;
   const key = u._id || u.id || u.email;
   if (!key || syncingZoneFor === key) return;
@@ -25,7 +25,9 @@ function syncTimeZone(u, setUser) {
   syncingZoneFor = key;
   updateProfile({ timezone: device })
     .then(({ user: fresh }) => {
-      if (fresh) setUser(fresh);
+      // Account switched while the PUT was in flight: the fresh row belongs
+      // to the previous account and must not overwrite the new session.
+      if (fresh && isCurrent(key)) setUser(fresh);
     })
     .catch(() => {})
     .finally(() => {
@@ -76,7 +78,10 @@ export function AuthSessionProvider({ children }) {
     } else if (u) {
       setGoal(null);
     }
-    syncTimeZone(u, setUser);
+    syncTimeZone(u, setUser, (key) => {
+      const cur = userRef.current;
+      return !!cur && (cur._id || cur.id || cur.email) === key;
+    });
   }
 
   useEffect(() => {

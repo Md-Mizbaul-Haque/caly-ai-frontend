@@ -24,6 +24,19 @@ const SPLASH_MIN_MS = 450;
 // Freshness window for one cached calendar week. Module scope (not state)
 // so week-scoped fetchers can depend on it without re-creating.
 const WEEK_CACHE_TTL_MS = 5 * 60 * 1000;
+// Weeks kept in the in-memory week cache. Unbounded, month-hopping users
+// accumulate one meals array per visited week for the whole session.
+const WEEK_CACHE_MAX = 12;
+function pruneWeekCache(cache) {
+  const keys = Object.keys(cache);
+  if (keys.length <= WEEK_CACHE_MAX) return cache;
+  const keep = keys
+    .sort((a, b) => (cache[b].fetchedAt || 0) - (cache[a].fetchedAt || 0))
+    .slice(0, WEEK_CACHE_MAX);
+  const next = {};
+  for (const k of keep) next[k] = cache[k];
+  return next;
+}
 // Background weights refreshes (focus effects) skip when a fetch landed
 // within this window. Module scope so the stable callback needs no dep.
 const WEIGHTS_REFRESH_TTL_MS = 5 * 60 * 1000;
@@ -112,6 +125,9 @@ export default function TabsLayout() {
    // Last weights/goal fetch (hydration, focus, or explicit refresh). Focus
    // effects skip when recent so tab visits don't refetch every time.
    const weightsRefreshedAt = useRef(0);
+   // Bumped by a successful weigh-in/delete: a GET that started BEFORE that
+   // write must not paint its stale snapshot over the just-saved state.
+   const weightsMutatedAt = useRef(0);
 
     const loadWeek = useCallback(async ({ silent, reference } = {}) => {
      // Unverified account: data routes 403 by design — return empty and let
@@ -164,8 +180,12 @@ export default function TabsLayout() {
             return mealsData;
           }
           const stamped = Date.now();
-          setWeekCache((prev) => ({ ...prev, [weekId]: { meals: mealsData, fetchedAt: stamped } }));
-          if (isSelectedWeek || weekId === `${weekRange(selectedDateRef.current || new Date(), tz).from}|${tz}`) {
+          setWeekCache((prev) => pruneWeekCache({ ...prev, [weekId]: { meals: mealsData, fetchedAt: stamped } }));
+          // Resolve-time check only: `isSelectedWeek` was captured when the
+          // request STARTED — if the user switched weeks while it was in
+          // flight, this stale response would paint the wrong week's meals
+          // and poison the persisted cache.
+          if (weekId === `${weekRange(selectedDateRef.current || new Date(), tz).from}|${tz}`) {
             setMeals(mealsData);
             writeCache(scopedKey('weekMeals', key), mealsData);
           }
@@ -216,6 +236,14 @@ export default function TabsLayout() {
      const curTz = typeof cur === 'object' && cur ? cur.tz : undefined;
      if (curFrom && curTz === tz && curFrom <= from) return;
      const data = await fetchMeals(from, todayKey, undefined, tz);
+     // Same guards at resolve time: a late narrow response must not shrink a
+     // wider horizon, and a late response from a previous owner must not
+     // overwrite the new owner's range.
+     if (hydratedForRef.current && hydratedForRef.current.key !== userKeyRef.current) return;
+     const curNow = rangeFromRef.current;
+     const curFromNow = typeof curNow === 'string' ? curNow : curNow?.from;
+     const curTzNow = typeof curNow === 'object' && curNow ? curNow.tz : undefined;
+     if (curFromNow && curTzNow === tz && curFromNow <= from) return;
      rangeFromRef.current = { tz, from };
      setRangeMeals(data);
    }, []);
@@ -228,12 +256,18 @@ export default function TabsLayout() {
     const fetchWeightsAndGoal = useCallback(async () => {
     // Unverified account: weights routes are verified-only (see unverifiedRef).
     if (!user || user.emailVerified === false) return;
+    const startedAt = Date.now();
     try {
       const [w, g] = await Promise.all([fetchWeights(), fetchWeightGoal()]);
-      setWeights(w);
-      setWeightGoalState(g);
-      writeCache(scopedKey('weights', userKey), w);
-      writeCache(scopedKey('weightGoal', userKey), g);
+      // A weigh-in/delete landed while this GET was in flight: its handler
+      // already set the fresh state (and possibly a recomputed goal) — keep
+      // that instead of the stale snapshot.
+      if (weightsMutatedAt.current <= startedAt) {
+        setWeights(w);
+        setWeightGoalState(g);
+        writeCache(scopedKey('weights', userKey), w);
+        writeCache(scopedKey('weightGoal', userKey), g);
+      }
       weightsRefreshedAt.current = Date.now();
     } catch {
       // Offline / 403 (unverified) / server errors: keep cached data as-is
@@ -482,6 +516,7 @@ export default function TabsLayout() {
   // weight goal is edited on the Weight Tracker screen, never here.
   const handleWeightSave = useCallback(async ({ value } = {}) => {
     const { weight, updated } = await createWeight({ value });
+    weightsMutatedAt.current = Date.now();
     const wid = String(weight.id || weight._id);
     const next = updated && weights.some((w) => String(w.id || w._id) === wid)
       ? weights.map((w) => (String(w.id || w._id) === wid ? weight : w))
@@ -498,6 +533,7 @@ export default function TabsLayout() {
     setWeights(prev.filter((x) => String(x.id || x._id) !== id));
     try {
       await deleteWeight(weightId);
+      weightsMutatedAt.current = Date.now();
       toastSuccess('Weight entry deleted!');
     } catch (e) {
       setWeights(prev);
@@ -546,15 +582,26 @@ export default function TabsLayout() {
     }
     return best ? best.value : null;
   }, [weights]);
-  // kcal remaining today for the quick-log sheet (today's meals only).
+  // kcal remaining today for the quick-log sheet. rangeMeals is the full
+  // logged history; `meals` is only the selected week, so a user browsing
+  // an old week would otherwise see a wrong "remaining" in the sheet.
   const remainingToday = useMemo(() => {
     const key = dateKey(new Date(), timeZone);
-    const todays = meals.filter((m) => {
+    // Cold start: rangeMeals may not have loaded yet while weekMeals has
+    // (or vice versa) — merge both, id-deduped, so "remaining" never
+    // overcounts what was already eaten.
+    const seen = new Set();
+    const todays = [...rangeMeals, ...meals].filter((m) => {
+      const id = String(m.id || m._id || '');
+      if (id) {
+        if (seen.has(id)) return false;
+        seen.add(id);
+      }
       const d = new Date(m.loggedAt);
       return !Number.isNaN(d.getTime()) && dateKey(d, timeZone) === key;
     });
     return Math.round(calcTotals(todays, goal).remaining ?? 0);
-  }, [meals, goal, timeZone]);
+  }, [rangeMeals, meals, goal, timeZone]);
    // Derived spinner flag: raw `loading` starts true and is cleared by
    // hydration — which never runs when logged out or expired (its effect
    // bails without a user). Deriving here instead of clearing in an effect

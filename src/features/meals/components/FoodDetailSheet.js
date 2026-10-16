@@ -58,6 +58,9 @@ export default function FoodDetailSheet({ food, mode = 'grams', onClose, onAdd }
   }, [food.name]);
 
   function dismiss(after = onClose) {
+    // Closing mid-save unmounts the sheet and the POST's result (or error)
+    // has nowhere to land; block dismissal until it settles.
+    if (saving) return;
     Animated.timing(progress, { toValue: 0, duration: 160, useNativeDriver: true }).start(({ finished }) => {
       if (finished) after?.();
     });

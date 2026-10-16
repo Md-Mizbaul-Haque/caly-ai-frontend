@@ -261,4 +261,63 @@ describe('per-user + write paths', () => {
     // Appearance screen was removed (theme fixed to light) — no route to allow.
     assert.match(rootLayout, /'\/weight-tracker'/, 'Weight Tracker must not bounce to dashboard');
   });
+
+  it('category tiles browse via the category API instead of poisoning mealType', () => {
+    const src = read('features/meals/screens/MealsScreen.js');
+    // 'Fruits' etc. are not meal types: POST /api/meals and /suggestions
+    // reject them, so a tile tap must never call selectMealType(tile.key).
+    assert.doesNotMatch(src, /selectMealType\(tile\.key\)/, 'category tiles must not set mealType to a category');
+    assert.match(src, /openCategory/, 'category tiles need their own browse handler');
+    assert.match(src, /searchFoodsByCategory/, 'category browse must use the server category search');
+    assert.match(src, /setCategoryFilter\(null\)/, 'typing a query must leave category browse');
+    const api = read('shared/lib/foodsApi.js');
+    assert.match(api, /searchFoodsByCategory/, 'foodsApi must expose the category search');
+  });
+});
+
+describe('cold-start + race hardening', () => {
+  it('appCache exports the helpers the shell hydrates with', () => {
+    const cache = read('shared/lib/appCache.js');
+    assert.match(cache, /export function storageKey/, 'storageKey must be exported (the shell imports it)');
+    assert.match(cache, /export function ttlFor/, 'ttlFor must be exported (the shell imports it)');
+    assert.match(cache, /planAttention:/, 'planAttention needs a TTL entry or reads always expire to null');
+  });
+
+  it('late 401s only clear the session they belong to', () => {
+    const store = read('shared/lib/tokenStore.js');
+    assert.match(store, /handleUnauthorized\(failedToken\)/, 'handleUnauthorized must take the failed token');
+    assert.match(store, /failedToken !== cached/, 'a 401 for an old token must not kill a newer session');
+    const api = read('shared/lib/api.js');
+    assert.match(api, /handleUnauthorized\(token\)/, 'api must pass the token it actually sent');
+    assert.match(api, /retry5xx/, 'GETs must retry a transient 5xx (cold start)');
+  });
+
+  it('my-foods view is a flag, not a fake query', () => {
+    const src = read('features/meals/screens/MealsScreen.js');
+    assert.match(src, /myFoodsView/, 'my-foods needs its own view flag');
+    assert.doesNotMatch(src, /setQuery\('My foods'\)/, 'fake query text let the debounced search clobber the list');
+  });
+
+  it('sheet dismissal is blocked mid-save', () => {
+    const scan = read('features/scan/screens/ScanResultScreen.js');
+    assert.match(scan, /if \(saving\) return true/, 'back button must not close the result overlay mid-save');
+    const weight = read('shared/components/WeightLogSheet.js');
+    assert.match(weight, /if \(busy\) return/, 'weight sheet must not dismiss mid-save');
+    const food = read('features/meals/components/FoodDetailSheet.js');
+    assert.match(food, /if \(saving\) return/, 'food sheet must not dismiss mid-save');
+  });
+
+  it('stale async responses cannot repaint newer state', () => {
+    const layout = read('app/(tabs)/_layout.js');
+    assert.match(layout, /weightsMutatedAt/, 'weights GET must not clobber a just-saved weigh-in');
+    assert.doesNotMatch(layout, /isSelectedWeek \|\| weekId ===/, 'stale week response must not paint the visible week');
+    const session = read('features/auth/session.js');
+    assert.match(session, /isCurrent/, 'timezone sync must not overwrite a switched account');
+  });
+
+  it('offline scan resets busy before returning', () => {
+    const src = read('features/scan/screens/PictureUploadScreen.js');
+    const offline = src.slice(src.indexOf("You're offline") - 300, src.indexOf("You're offline"));
+    assert.match(offline, /setBusy\(false\)/, 'offline early-return must reset busy or the shutter stays disabled');
+  });
 });

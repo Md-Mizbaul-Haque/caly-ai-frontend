@@ -7,11 +7,6 @@ export { classifyApiError, isRetryableCode };
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000').trim();
 
-async function authHeaders() {
-  const token = await getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 const REQUEST_TIMEOUT_MS = 15000;
 
 function newReportId() {
@@ -77,21 +72,29 @@ async function parseError(res, method, path, id) {
 
 async function request(method, path, { headers = {}, body } = {}) {
   const id = newReportId();
-  // GETs are idempotent: one retry survives a Render cold start (first
-  // attempt wakes the instance, second hits it warm). Non-GETs stay
-  // single-attempt; scan has its own retry policy in scanApi.js.
-  const attempts = method === 'GET' ? 2 : 1;
+  // GETs are idempotent: one retry survives a Render cold start or a
+  // transient 5xx (first attempt wakes/faults the instance, second hits it
+  // healthy). Code-issuing auth POSTs (register/resend/forgot) are equally
+  // safe to repeat — each attempt just mints a fresh code on the same
+  // pending row — so they retry ONLY on timeout/network failure, never on an
+  // HTTP response. Everything else (verify, skip, data writes, scan) stays
+  // single-attempt.
+  const retryablePost = method === 'POST' && /\/api\/auth\/(register|resend-code|forgot-password)$/.test(path);
+  const attempts = method === 'GET' || retryablePost ? 2 : 1;
   let lastCause;
   for (let attempt = 0; attempt < attempts; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    // The token this attempt actually sends: a late 401 must only log out
+    // the session it belonged to, not a newer one.
+    const token = await getToken();
     try {
       const res = await fetch(`${API_URL}${path}`, {
         method,
         // X-Request-Id carries the Ref # so one backend log line matches
         // this exact request (the server echoes it back).
-        headers: { ...(await authHeaders()), 'X-Request-Id': id, ...headers },
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Request-Id': id, ...headers },
         body,
         signal: ctrl.signal,
       });
@@ -101,7 +104,7 @@ async function request(method, path, { headers = {}, body } = {}) {
         // Login's 401 means "wrong credentials", not "expired session" — only
         // authenticated data routes trigger the logout-and-reroute path.
         if (res.status === 401 && path !== '/api/auth/login') {
-          await handleUnauthorized();
+          await handleUnauthorized(token);
         } else if (
           res.status === 403 &&
           err.data?.needsVerification &&
@@ -118,7 +121,8 @@ async function request(method, path, { headers = {}, body } = {}) {
       return res.json().catch(() => ({}));
     } catch (e) {
       clearTimeout(timer);
-      if (e?.status || attempts === 1 || attempt === attempts - 1) {
+      const retry5xx = method === 'GET' && e?.status >= 500;
+      if ((e?.status && !retry5xx) || attempts === 1 || attempt === attempts - 1) {
         if (!e?.status) throw connectionError(id, method, path, e);
         throw e;
       }
@@ -169,10 +173,11 @@ export async function authedFetch(path, options = {}) {
     else externalSignal.addEventListener('abort', () => ctrl.abort(), { once: true });
   }
   let res;
+  const token = await getToken();
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...fetchOptions,
-      headers: { ...(await authHeaders()), 'X-Request-Id': id, ...(options.headers || {}) },
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Request-Id': id, ...(options.headers || {}) },
       signal: ctrl.signal,
     });
    } catch (e) {
@@ -188,6 +193,6 @@ export async function authedFetch(path, options = {}) {
    } finally {
     clearTimeout(timer);
   }
-  if (res.status === 401) await handleUnauthorized();
+  if (res.status === 401) await handleUnauthorized(token);
   return res;
 }

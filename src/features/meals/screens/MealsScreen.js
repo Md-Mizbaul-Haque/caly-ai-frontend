@@ -186,6 +186,9 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
   // Browse-by-category view. Separate from mealType: a category is NOT a meal
   // type (the server rejects 'Fruits' on POST /api/meals and on suggestions).
   const [categoryFilter, setCategoryFilter] = useState(null);
+  // My-foods browse view. Its own flag instead of faking a query ("My foods"
+  // as text made the debounced text search fire and clobber the list).
+  const [myFoodsView, setMyFoodsView] = useState(false);
   const requestRef = useRef(0);
 
   const trimmed = query.trim();
@@ -280,9 +283,14 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
       setResults([]);
       setSearchError(null);
       setSearching(false);
-    } else {
-      // Typing a real query leaves category browse.
+      // One-char text wipes every browse view, or the empty state would
+      // claim "No foods found in this category" over cleared results.
       setCategoryFilter(null);
+      setMyFoodsView(false);
+    } else {
+      // Typing a real query leaves category/my-foods browse.
+      setCategoryFilter(null);
+      setMyFoodsView(false);
       setSearching(true);
     }
   }
@@ -308,16 +316,21 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
   }, [trimmed, showResults]);
 
   async function handleMyFoods() {
+    const id = ++requestRef.current; // cancels any in-flight text/category request
     try {
       setSearching(true);
-      const mine = await fetchMyFoods(10);
-      setResults(mine);
-      setQuery('My foods');
+      setMyFoodsView(true);
+      setCategoryFilter(null);
+      setQuery('');
       setSearchError(null);
+      const mine = await fetchMyFoods(10);
+      if (requestRef.current !== id) return;
+      setResults(mine);
     } catch (e) {
+      if (requestRef.current !== id) return;
       setSearchError(e.message || 'Could not load your foods.');
     } finally {
-      setSearching(false);
+      if (requestRef.current === id) setSearching(false);
     }
   }
 
@@ -387,20 +400,31 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
         </View>
 
         <View className="flex-row mb-1" style={{ gap: 8 }}>
-          <QuickAction Icon={Clock} label="Recent" onPress={() => setQuery('')} />
+          <QuickAction Icon={Clock} label="Recent" onPress={() => handleQueryChange('')} />
           <QuickAction Icon={Heart} label="MyFoods" onPress={handleMyFoods} />
           <QuickAction Icon={ScanBarcode} label="Barcode" onPress={onOpenQuickLog} />
           <QuickAction Icon={Camera} label="Scan Meal" onPress={onOpenQuickLog} />
         </View>
 
-        {showResults || categoryFilter ? (
+        {showResults || categoryFilter || myFoodsView ? (
           <View className="mt-4">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-base font-bold text-ink">
-                {categoryFilter ? `Browse ${categoryFilter}` : `Results for “${trimmed}”`}
+                {myFoodsView ? 'My foods' : categoryFilter ? `Browse ${categoryFilter}` : `Results for “${trimmed}”`}
               </Text>
-              {categoryFilter ? (
-                <Pressable onPress={() => openCategory(categoryFilter)} accessibilityLabel="Close category" hitSlop={8}>
+              {categoryFilter || myFoodsView ? (
+                <Pressable
+                  onPress={() => {
+                    if (categoryFilter) {
+                      openCategory(categoryFilter);
+                    } else {
+                      setMyFoodsView(false);
+                      setResults([]);
+                    }
+                  }}
+                  accessibilityLabel="Close browse view"
+                  hitSlop={8}
+                >
                   <Text className="text-xs font-semibold text-primary">Clear</Text>
                 </Pressable>
               ) : null}
@@ -409,7 +433,7 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
             {searchError ? <Text className="text-red-500 mb-2">{searchError}</Text> : null}
             {!searching && !searchError && results.length === 0 && (
               <Text className="text-muted-foreground text-center my-4">
-                {categoryFilter ? 'No foods found in this category.' : 'No foods found.'}
+                {myFoodsView ? 'No foods logged yet.' : categoryFilter ? 'No foods found in this category.' : 'No foods found.'}
               </Text>
             )}
 {results.map((item) => (
