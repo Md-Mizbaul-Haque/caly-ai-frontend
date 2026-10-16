@@ -76,11 +76,12 @@ async function request(method, path, { headers = {}, body } = {}) {
   // transient 5xx (first attempt wakes/faults the instance, second hits it
   // healthy). Code-issuing auth POSTs (register/resend/forgot) are equally
   // safe to repeat — each attempt just mints a fresh code on the same
-  // pending row — so they retry ONLY on timeout/network failure, never on an
-  // HTTP response. Everything else (verify, skip, data writes, scan) stays
-  // single-attempt.
+  // pending row — so they get 3 attempts and also retry timeouts, network
+  // failures, AND 5xx (a waking server answers 503 'database unavailable'
+  // before Mongo lands). 4xx (wrong credentials, validation) never retries.
+  // Everything else (verify, skip, data writes, scan) stays single-attempt.
   const retryablePost = method === 'POST' && /\/api\/auth\/(register|resend-code|forgot-password)$/.test(path);
-  const attempts = method === 'GET' || retryablePost ? 2 : 1;
+  const attempts = method === 'GET' ? 2 : retryablePost ? 3 : 1;
   let lastCause;
   for (let attempt = 0; attempt < attempts; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
@@ -121,7 +122,7 @@ async function request(method, path, { headers = {}, body } = {}) {
       return res.json().catch(() => ({}));
     } catch (e) {
       clearTimeout(timer);
-      const retry5xx = method === 'GET' && e?.status >= 500;
+      const retry5xx = (method === 'GET' || retryablePost) && e?.status >= 500;
       if ((e?.status && !retry5xx) || attempts === 1 || attempt === attempts - 1) {
         if (!e?.status) throw connectionError(id, method, path, e);
         throw e;

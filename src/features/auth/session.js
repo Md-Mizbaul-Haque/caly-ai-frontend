@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { getToken, setToken, setSessionExpiredHandler, setNeedsVerificationHandler } from '../../shared/lib/tokenStore';
+import { API_URL } from '../../shared/lib/api';
 import { fetchMe, login, logout, register, resendCode, skipVerification, verifyEmail, updateProfile } from '../../shared/lib/authApi';
 import { toastError, toastSuccess } from '../../shared/utils/toast';
 import { readCache, writeCache, clearAppCache } from '../../shared/lib/appCache';
@@ -122,6 +123,11 @@ export function AuthSessionProvider({ children }) {
     // session) signs them out; network blips must not.
     (async () => {
       try {
+        // Fire-and-forget warm-up: a sleeping backend (free-tier cold start)
+        // starts waking while the user is still on the splash/welcome screen,
+        // so register/login usually hits a warm server. Never awaited — the
+        // splash must never wait on the network.
+        fetch(`${API_URL}/health`).catch(() => {});
         const cached = await withBootTimeout(readCache('user'));
         if (!alive) return;
         if (cached) {

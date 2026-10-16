@@ -290,6 +290,12 @@ describe('cold-start + race hardening', () => {
     const api = read('shared/lib/api.js');
     assert.match(api, /handleUnauthorized\(token\)/, 'api must pass the token it actually sent');
     assert.match(api, /retry5xx/, 'GETs must retry a transient 5xx (cold start)');
+    assert.match(api, /retryablePost \? 3/, 'code-issuing auth POSTs need 3 attempts to survive a cold start');
+  });
+
+  it('app boot pings the backend awake (cold-start warm-up)', () => {
+    const session = read('features/auth/session.js');
+    assert.match(session, /\/health/, 'session bootstrap must fire a warm-up ping so register/login hits a warm server');
   });
 
   it('my-foods view is a flag, not a fake query', () => {
