@@ -16,7 +16,7 @@ import OfflineBanner from '../shared/components/ui/OfflineBanner';
 function RouteGuard() {
   const segments = useSegments();
   const pathname = usePathname();
-  const { authChecked, user, stageEmail } = useSession();
+  const { authChecked, user, stageEmail, setStageEmail } = useSession();
   useEffect(() => {
     if (!authChecked || !pathname || pathname === '/') return;
     const group = segments[0];
@@ -27,6 +27,16 @@ function RouteGuard() {
     const onboardingActive = !!stageEmail || (authed && !completed);
     if (!authed && (inTabs || (inOnboarding && !onboardingActive))) {
       router.replace('/welcome');
+    } else if (authed && !completed && !inOnboarding) {
+      router.replace('/(onboarding)/gender');
+    } else if (authed && completed && user.emailVerified === false) {
+      // Skip-verification accounts finish onboarding (plan routes allow
+      // unverified) but data routes stay verified-only: park them on the
+      // verify screen so the dashboard's first load can't 403-storm.
+      if (pathname !== '/verify') {
+        if (!stageEmail && user.email) setStageEmail(user.email);
+        router.replace('/verify');
+      }
     } else if (authed && completed && !inTabs && !inOnboarding) {
       // Allow specific routes when authenticated and completed, outside of tabs and onboarding
       const allowedRoutes = [
@@ -42,12 +52,10 @@ function RouteGuard() {
       if (!allowedRoutes.includes(pathname)) {
         router.replace('/(tabs)/dashboard');
       }
-    } else if (authed && !completed && !inOnboarding) {
-      router.replace('/(onboarding)/gender');
     } else if (!authed && onboardingActive && inTabs) {
       router.replace('/welcome');
     }
-  }, [authChecked, pathname, segments, user, stageEmail]);
+  }, [authChecked, pathname, segments, user, stageEmail, setStageEmail]);
   return null;
 }
 

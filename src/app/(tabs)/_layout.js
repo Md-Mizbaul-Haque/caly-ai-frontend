@@ -99,6 +99,13 @@ export default function TabsLayout() {
   useEffect(() => { timeZoneRef.current = timeZone; }, [timeZone]);
   const userKeyRef = useRef(userKey);
   useEffect(() => { userKeyRef.current = userKey; }, [userKey]);
+  // Skip-verification accounts: every data route outside plan/auth is
+  // verified-only, so fetching just 403s. The root RouteGuard parks these
+  // users on /verify; until they verify, the fetchers no-op (the layout still
+  // mounts for a commit before that redirect, and a fetch storm there would
+  // fire the global 403 handler: session clear + resend + reroute race).
+  const unverifiedRef = useRef(user?.emailVerified === false);
+  useEffect(() => { unverifiedRef.current = user?.emailVerified === false; }, [user]);
    const hydratedForRef = useRef(null);
    const loadWeekRequestRef = useRef(null);
    const loadWeekPromiseRef = useRef(null);
@@ -107,6 +114,9 @@ export default function TabsLayout() {
    const weightsRefreshedAt = useRef(0);
 
     const loadWeek = useCallback(async ({ silent, reference } = {}) => {
+     // Unverified account: data routes 403 by design — return empty and let
+     // the root guard reroute to /verify (see unverifiedRef above).
+     if (unverifiedRef.current) return [];
      // Stable identity: reads UI state via refs, writes via functional
      // setState — so consumers can safely list it in effect deps without
      // re-firing on every setMeals/setWeekCache (the Dashboard loop).
@@ -150,7 +160,7 @@ export default function TabsLayout() {
           // Account switched while this request was in flight: drop the
           // result so the previous owner's meals never overwrite the new
           // owner's state (their hydration repopulates separately).
-          if (hydratedForRef.current && hydratedForRef.current !== userKeyRef.current) {
+          if (hydratedForRef.current && hydratedForRef.current.key !== userKeyRef.current) {
             return mealsData;
           }
           const stamped = Date.now();
@@ -188,6 +198,7 @@ export default function TabsLayout() {
    // loaded; results merge under the week view so both screens stay correct.
    // Stable identity (reads zone via ref) for the same reason as loadWeek.
    const loadRangeMeals = useCallback(async (days) => {
+     if (unverifiedRef.current) return;
      const tz = timeZoneRef.current;
      // Zoned calendar arithmetic: the old device-local `new Date(y, m, d-days)`
      // drifted a day when the device zone differed from the user's zone, and
@@ -215,7 +226,8 @@ export default function TabsLayout() {
    useEffect(() => { refreshUserRef.current = refreshUser; });
 
     const fetchWeightsAndGoal = useCallback(async () => {
-    if (!user) return;
+    // Unverified account: weights routes are verified-only (see unverifiedRef).
+    if (!user || user.emailVerified === false) return;
     try {
       const [w, g] = await Promise.all([fetchWeights(), fetchWeightGoal()]);
       setWeights(w);
@@ -255,14 +267,14 @@ export default function TabsLayout() {
     // write would file it under the new key before hydration clears it.
     // Persist selectedDate to cache whenever it changes
     useEffect(() => {
-      if (!userKey || (hydratedForRef.current && hydratedForRef.current !== userKey)) return;
+      if (!userKey || (hydratedForRef.current && hydratedForRef.current.key !== userKey)) return;
       writeCache(scopedKey('selectedDate', userKey), selectedDate.toISOString());
     }, [selectedDate, userKey]);
 
     // Persist the long-horizon meals so the Progress streak/average cards
     // paint instantly on the next cold start (1h TTL, silent revalidate).
     useEffect(() => {
-      if (!userKey || (hydratedForRef.current && hydratedForRef.current !== userKey) || !rangeMeals.length) return;
+      if (!userKey || (hydratedForRef.current && hydratedForRef.current.key !== userKey) || !rangeMeals.length) return;
       // Skip rewrites when size + horizon are unchanged so a multi-year
       // history isn't re-stringified on every state change. The guard ref is
       // {tz,from} (legacy bare strings tolerated); only `from` is persisted
@@ -282,8 +294,14 @@ export default function TabsLayout() {
     useEffect(() => {
      if (!(authChecked && user)) return;
      const key = user._id || user.id || user.email;
-if (hydratedForRef.current === key) return;
-    hydratedForRef.current = key;
+     // Skip-verification accounts hydrate once while unverified with every
+     // fetcher no-oped (verified-only routes would 403). The verified flag
+     // in the guard forces one real hydration pass after they verify —
+     // otherwise the dashboard would stay empty until a manual refresh.
+     const verified = user.emailVerified !== false;
+     const hydrated = hydratedForRef.current;
+     if (hydrated && hydrated.key === key && (hydrated.verified || !verified)) return;
+     hydratedForRef.current = { key, verified };
      // New account (login / switch): drop the previous owner's in-memory
      // state first so their meals/weights never flash, then hydrate from
      // that owner's namespaced cache while the network revalidates.
@@ -396,7 +414,7 @@ if (hydratedForRef.current === key) return;
         // the retry card instead of spinning forever offline.
         const weekJob = weekMealsStale
           ? loadWeek({ silent: true }).catch((e) => {
-              if (alive && hydratedForRef.current === key && !weekMealsResult?.data) {
+              if (alive && hydratedForRef.current?.key === key && !weekMealsResult?.data) {
                 setError(e?.message || 'Could not load meals');
               }
             })
@@ -412,11 +430,11 @@ if (hydratedForRef.current === key) return;
                 }
               });
         await Promise.all([weekJob, weightsJob]);
-        if (alive && hydratedForRef.current === key) setLoading(false);
+        if (alive && hydratedForRef.current?.key === key) setLoading(false);
         // Guarantee: any unexpected throw above (e.g. corrupt cache date
         // handling) must still release the spinner so Home can never hang.
       })().catch(() => {
-        if (alive && hydratedForRef.current === key) setLoading(false);
+        if (alive && hydratedForRef.current?.key === key) setLoading(false);
       });
      return () => { alive = false; };
    }, [authChecked, user, loadWeek, fetchWeightsAndGoal, timeZone]);

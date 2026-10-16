@@ -233,9 +233,12 @@ export default function DashboardScreen({
     if (loadedRangeRef.current === cacheKey) return;
     loadedRangeRef.current = cacheKey;
 
-    loadRangeMeals?.(14)?.catch?.((err) =>
-      console.error("Range meals fetch failed:", err),
-    );
+    loadRangeMeals?.(14)?.catch?.((err) => {
+      // 403 needsVerification is already handled upstream (reroute to
+      // /verify) — console.error would red-screen dev builds for it.
+      if (err?.status === 403 && err?.data?.needsVerification) return;
+      console.error("Range meals fetch failed:", err);
+    });
   }, [ownerKey, timeZone, loadRangeMeals, loading, meals.length]);
 
   // Day blocks rebuild Date objects every render: compare calendar keys so
@@ -273,6 +276,9 @@ export default function DashboardScreen({
     loadedWeekRef.current = weekId;
 
     loadWeek?.({ reference: selectedDate, silent: true })?.catch?.((err) => {
+      // 403 needsVerification is already handled upstream (reroute to
+      // /verify) — console.error would red-screen dev builds for it.
+      if (err?.status === 403 && err?.data?.needsVerification) return;
       console.error("Week fetch failed:", err);
       // Reset ref on failure so the user can retry
       loadedWeekRef.current = null;
