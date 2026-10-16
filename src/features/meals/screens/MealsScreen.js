@@ -10,7 +10,7 @@ import CachedImage from '../../../shared/components/image/CachedImage';
 import Chip from '../../../shared/components/ui/Chip';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import FoodDetailSheet from '../components/FoodDetailSheet';
-import { searchFoods, fetchSuggestions, fetchMyFoods, getCachedSuggestions } from '../../../shared/lib/foodsApi';
+import { searchFoods, searchFoodsByCategory, fetchSuggestions, fetchMyFoods, getCachedSuggestions } from '../../../shared/lib/foodsApi';
 import { recentFoods, defaultMealType } from '../../../shared/utils/foodScale';
 import { useTheme } from '../../../shared/theme/theme';
 
@@ -48,36 +48,6 @@ const FALLBACK_SUGGESTIONS = {
   Snack: [
     { name: 'Black Coffee', kcal: 2, protein: 0, carbs: 0, fat: 0, portion: '1 cup (240ml)' },
     { name: 'Whole Wheat Bread', kcal: 69, protein: 3, carbs: 12, fat: 1, portion: '1 slice (28g)' },
-  ],
-  Fruits: [
-    { name: 'Apple', kcal: 95, protein: 0, carbs: 25, fat: 0, portion: '1 medium' },
-    { name: 'Banana', kcal: 105, protein: 1, carbs: 27, fat: 0, portion: '1 medium' },
-    { name: 'Orange', kcal: 87, protein: 1, carbs: 21, fat: 0, portion: '1 medium' },
-  ],
-  Vegetables: [
-    { name: 'Carrot', kcal: 41, protein: 1, carbs: 10, fat: 0, portion: '1 medium' },
-    { name: 'Broccoli', kcal: 55, protein: 4, carbs: 11, fat: 0, portion: '1 cup' },
-    { name: 'Spinach', kcal: 7, protein: 3, carbs: 1, fat: 0, portion: '1 cup' },
-  ],
-  Proteins: [
-    { name: 'Grilled Chicken', kcal: 320, protein: 35, carbs: 2, fat: 14, portion: '1 fillet (150g)' },
-    { name: 'Salmon', kcal: 280, protein: 25, carbs: 0, fat: 18, portion: '1 fillet (150g)' },
-    { name: 'Eggs', kcal: 155, protein: 13, carbs: 1, fat: 11, portion: '2 large' },
-  ],
-  Grains: [
-    { name: 'Brown Rice', kcal: 230, protein: 5, carbs: 52, fat: 2, portion: '1 cup cooked' },
-    { name: 'Quinoa', kcal: 222, protein: 8, carbs: 39, fat: 4, portion: '1 cup cooked' },
-    { name: 'Whole Wheat Bread', kcal: 110, protein: 4, carbs: 22, fat: 2, portion: '2 slices' },
-  ],
-  Dairy: [
-    { name: 'Milk', kcal: 150, protein: 8, carbs: 12, fat: 8, portion: '1 cup' },
-    { name: 'Greek Yogurt', kcal: 120, protein: 15, carbs: 6, fat: 0, portion: '1 container (150g)' },
-    { name: 'Cheese', kcal: 180, protein: 6, carbs: 1, fat: 15, portion: '1 oz' },
-  ],
-  Snacks: [
-    { name: 'Apple', kcal: 95, protein: 0, carbs: 25, fat: 0, portion: '1 medium' },
-    { name: 'Popcorn', kcal: 108, protein: 3, carbs: 13, fat: 5, portion: '3 cups' },
-    { name: 'Almonds', kcal: 164, protein: 6, carbs: 6, fat: 14, portion: '1/4 cup' },
   ],
 };
 
@@ -213,6 +183,9 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [showAllCategories, setShowAllCategories] = useState(false);
+  // Browse-by-category view. Separate from mealType: a category is NOT a meal
+  // type (the server rejects 'Fruits' on POST /api/meals and on suggestions).
+  const [categoryFilter, setCategoryFilter] = useState(null);
   const requestRef = useRef(0);
 
   const trimmed = query.trim();
@@ -252,6 +225,37 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
     }
   }
 
+  // Category tile: browse the catalog through the category API — mealType
+  // stays untouched so manual save + suggestions keep working.
+  function openCategory(category) {
+    const next = categoryFilter === category ? null : category;
+    setCategoryFilter(next);
+    setQuery('');
+    requestRef.current += 1; // cancel any in-flight text search
+    setSearching(next != null);
+    setSearchError(null);
+    setResults([]);
+  }
+
+  useEffect(() => {
+    if (!categoryFilter) return;
+    const id = ++requestRef.current;
+    searchFoodsByCategory(categoryFilter, 20)
+      .then((foods) => {
+        if (requestRef.current !== id) return;
+        setResults(foods);
+        setSearchError(null);
+      })
+      .catch((e) => {
+        if (requestRef.current !== id) return;
+        setResults([]);
+        setSearchError(e.message || 'Could not load this category.');
+      })
+      .finally(() => {
+        if (requestRef.current === id) setSearching(false);
+      });
+  }, [categoryFilter]);
+
   useEffect(() => {
     let alive = true;
     // Cached rows are already painted via useState initializer / selectMealType;
@@ -277,6 +281,8 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
       setSearchError(null);
       setSearching(false);
     } else {
+      // Typing a real query leaves category browse.
+      setCategoryFilter(null);
       setSearching(true);
     }
   }
@@ -387,13 +393,24 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
           <QuickAction Icon={Camera} label="Scan Meal" onPress={onOpenQuickLog} />
         </View>
 
-        {showResults ? (
+        {showResults || categoryFilter ? (
           <View className="mt-4">
-            <Text className="text-base font-bold text-ink mb-2">Results for “{trimmed}”</Text>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-base font-bold text-ink">
+                {categoryFilter ? `Browse ${categoryFilter}` : `Results for “${trimmed}”`}
+              </Text>
+              {categoryFilter ? (
+                <Pressable onPress={() => openCategory(categoryFilter)} accessibilityLabel="Close category" hitSlop={8}>
+                  <Text className="text-xs font-semibold text-primary">Clear</Text>
+                </Pressable>
+              ) : null}
+            </View>
             {searching && <ActivityIndicator className="my-2" />}
             {searchError ? <Text className="text-red-500 mb-2">{searchError}</Text> : null}
             {!searching && !searchError && results.length === 0 && (
-              <Text className="text-muted-foreground text-center my-4">No foods found.</Text>
+              <Text className="text-muted-foreground text-center my-4">
+                {categoryFilter ? 'No foods found in this category.' : 'No foods found.'}
+              </Text>
             )}
 {results.map((item) => (
                 <Pressable
@@ -459,14 +476,14 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
               <View className="flex-row flex-wrap" style={{ gap: 10 }}>
                 {CATEGORIES.map((tile) => (
                   <View key={tile.key} style={{ width: '30%' }} className="items-center">
-                    <CategoryTile tile={tile} size={56} onPress={() => selectMealType(tile.key)} />
+                    <CategoryTile tile={tile} size={56} onPress={() => openCategory(tile.key)} />
                   </View>
                 ))}
               </View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }} className="-mx-4 px-4">
                 {CATEGORIES.map((tile) => (
-                  <CategoryTile key={tile.key} tile={tile} size={56} onPress={() => selectMealType(tile.key)} />
+                  <CategoryTile key={tile.key} tile={tile} size={56} onPress={() => openCategory(tile.key)} />
                 ))}
               </ScrollView>
             )}

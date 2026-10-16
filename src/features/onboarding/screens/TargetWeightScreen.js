@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Scale } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
@@ -7,10 +7,11 @@ import RulerSlider from '../../../shared/components/auth/RulerSlider';
 import { useCompactAuth } from '../../../shared/components/auth/useCompact';
 import { useOnboarding } from '../OnboardingContext';
 import { goalLabel, lbToKg, snapWeight, snapWeightKg } from '../../../shared/utils/nutrition';
+import { PRIMARY } from '../../../shared/theme/colors';
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-export default function TargetWeightScreen({ onNext }) {
+function TargetWeightScreen({ onNext }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -34,14 +35,26 @@ export default function TargetWeightScreen({ onNext }) {
     targetUnit: v,
     targetWeightKg: v === 'kg' ? snapWeight(state.targetWeightKg, 'kg') : snapWeightKg(state.targetWeightKg, 'lb'),
   }), [state.targetWeightKg, update]);
+  const handleCta = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await savePartial({ targetWeightKg: round1(toKg(shownTarget)) });
+      if (ok) onNext();
+    } finally {
+      setBusy(false);
+    }
+    // shownTarget/toKg derive from state; listed via their inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, savePartial, shownTarget, unit, onNext]);
   return (
     <AuthScaffold title="What is your target weight?" subtitle="This helps us determine your nutrition goals."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
-      onCta={async () => { if (busy) return; setBusy(true); try { const ok = await savePartial({ targetWeightKg: round1(toKg(shownTarget)) }); if (ok) onNext(); } finally { setBusy(false); } }}>
+      onCta={handleCta}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={handleUnit} testID="target-unit" compact={compact} />
       <Text className={`text-center font-extrabold text-ink ${compact ? 'text-5xl' : 'text-[64px]'}`}>{display}</Text>
       <View className={`flex-row items-center justify-center ${compact ? 'mt-1 mb-4' : 'mt-2 mb-8'}`}>
-        <Scale size={28} color="#f2470c" />
+        <Scale size={28} color={PRIMARY} />
         <Text className="text-[22px] font-medium text-ink ml-2">{label}</Text>
       </View>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="target-ruler"
@@ -50,3 +63,5 @@ export default function TargetWeightScreen({ onNext }) {
     </AuthScaffold>
   );
 }
+
+export default memo(TargetWeightScreen);

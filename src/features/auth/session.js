@@ -169,10 +169,17 @@ export function AuthSessionProvider({ children }) {
   async function handleRegister(name, email, password) {
     setAuthBusy(true);
     try {
-      await register(name, email, password);
+      const data = await register(name, email, password);
       setStageEmail(email);
       router.replace('/verify');
-      toastSuccess('Check email', 'Enter the verification code');
+      // The server reports emailSent — when SMTP is down the code never went
+      // out, so say so instead of "check your email". The pending survives
+      // server-side, so resend from the verify screen still works.
+      if (data && data.emailSent === false) {
+        toastError('Email not sent', 'We could not send the code — tap "I didn\'t get a code" to retry');
+      } else {
+        toastSuccess('Check email', 'Enter the verification code');
+      }
     } catch (e) {
       toastError('Registration failed', e.message);
     } finally {
@@ -201,7 +208,11 @@ export function AuthSessionProvider({ children }) {
   // reveals "Skip for now" only after a real resend (not on a failed one).
   async function handleResend(email) {
     try {
-      await resendCode(email);
+      const data = await resendCode(email);
+      if (data && data.emailSent === false) {
+        toastError('Could not resend', 'Email service is down — try again in a bit');
+        return false;
+      }
       toastSuccess('Code resent', 'Check your email');
       return true;
     } catch (e) {

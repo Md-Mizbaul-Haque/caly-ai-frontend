@@ -1,8 +1,10 @@
+import { memo } from 'react';
 import { Text, View } from 'react-native';
 import { PartyPopper } from '../../../shared/components/ui/icons';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import { useOnboarding } from '../OnboardingContext';
 import { goalLabel, snapWeightKg } from '../../../shared/utils/nutrition';
+import { PRIMARY } from '../../../shared/theme/colors';
 
 const COPY = {
   'Maintain Weight': {
@@ -19,7 +21,7 @@ const COPY = {
   },
 };
 
-export default function GreatChoiceScreen({ onNext }) {
+function GreatChoiceScreen({ onNext }) {
   const { state } = useOnboarding();
   // Label from the same snapped grid values the rulers display, so the copy
   // can never contradict the numbers the user just saw.
@@ -29,10 +31,10 @@ export default function GreatChoiceScreen({ onNext }) {
   );
   const copy = COPY[label];
   return (
-    <AuthScaffold title="Great choice!" titleColor="#f2470c" ctaLabel="See your plan" onCta={onNext}>
+    <AuthScaffold title="Great choice!" titleColor={PRIMARY} ctaLabel="See your plan" onCta={onNext}>
       <View className="items-center mt-2 mb-6">
-        <View className="w-24 h-24 rounded-full bg-accent items-center justify-center">
-          <PartyPopper size={44} color="#f2470c" />
+        <View className="w-24 h-24 rounded-3xl bg-accent items-center justify-center">
+          <PartyPopper size={44} color={PRIMARY} />
         </View>
       </View>
       <Text className="text-[24px] font-semibold text-ink leading-[32px] mb-5">{copy.head}</Text>
@@ -41,3 +43,5 @@ export default function GreatChoiceScreen({ onNext }) {
     </AuthScaffold>
   );
 }
+
+export default memo(GreatChoiceScreen);

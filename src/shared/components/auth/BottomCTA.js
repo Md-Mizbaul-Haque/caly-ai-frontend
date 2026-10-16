@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 
-export default function BottomCTA({ label, onPress, disabled, testID, borderRadius = 999 }) {
+function BottomCTA({ label, onPress, disabled, testID, borderRadius = 999 }) {
   // NOTE: Pressable `style` must stay a plain object here. A function-form
   // style combined with className gets merged into a style array whose nested
   // function React Native never calls, silently dropping height/borderRadius
@@ -23,3 +23,5 @@ export default function BottomCTA({ label, onPress, disabled, testID, borderRadi
     </Pressable>
   );
 }
+
+export default memo(BottomCTA);

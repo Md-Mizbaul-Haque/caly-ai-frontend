@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 
-export default function FadeStep({ stepKey, children }) {
+function FadeStep({ stepKey, children }) {
   const [opacity] = useState(() => new Animated.Value(0));
   useEffect(() => {
     opacity.setValue(0);
@@ -11,3 +11,5 @@ export default function FadeStep({ stepKey, children }) {
   }, [stepKey, opacity]);
   return <Animated.View style={{ flex: 1, opacity }}>{children}</Animated.View>;
 }
+
+export default memo(FadeStep);

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Eye, EyeOff } from '../../../shared/components/ui/icons';
 import { cn } from '@/lib/utils';
 import AuthInput from './AuthInput';
 
-export default function PasswordInput({ value, onChangeText, placeholder = 'Enter your password', testID = 'password-input' }) {
+function PasswordInput({ value, onChangeText, placeholder = 'Enter your password', testID = 'password-input' }) {
   const [hidden, setHidden] = useState(true);
   return (
     <View className={cn('relative mb-4')}>
@@ -21,3 +21,5 @@ export default function PasswordInput({ value, onChangeText, placeholder = 'Ente
     </View>
   );
 }
+
+export default memo(PasswordInput);

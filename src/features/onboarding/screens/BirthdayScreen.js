@@ -1,13 +1,13 @@
-import { useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarDays, UserRound } from '../../../shared/components/ui/icons';
+import { CalendarDays } from '../../../shared/components/ui/icons';
 import BottomCTA from '../../../shared/components/auth/BottomCTA';
 import WheelPicker, { WHEEL_ITEM_H } from '../../../shared/components/auth/WheelPicker';
 import { useCompactAuth } from '../../../shared/components/auth/useCompact';
-import { useTheme } from '../../../shared/theme/theme';
 import { useOnboarding } from '../OnboardingContext';
 import { calcAge } from '../../../shared/utils/nutrition';
+import { PRIMARY } from '../../../shared/theme/colors';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MIN_YEAR = 1930;
@@ -17,22 +17,18 @@ function daysInMonth(year, month1) {
   return new Date(year, month1, 0).getDate();
 }
 
-export default function BirthdayScreen({ onNext }) {
+function BirthdayScreen({ onNext }) {
   const insets = useSafeAreaInsets();
   const compact = useCompactAuth();
   const { state, update } = useOnboarding();
-  const { isDark } = useTheme();
-  // Soft peach in light mode, deep ember in dark mode.
-  const band = isDark ? '#3A1C10' : '#FFF1E9';
-  const hairline = isDark ? '#383838' : '#F1E8E0';
   const d = state.birthDate;
   const y = d.getFullYear();
   const m = d.getMonth() + 1;
   const day = d.getDate();
-  function setParts(ny, nm, nd) {
+  const setParts = useCallback((ny, nm, nd) => {
     const dim = daysInMonth(ny, nm);
     update({ birthDate: new Date(ny, nm - 1, Math.min(nd, dim)) });
-  }
+  }, [update]);
 
   const monthData = useMemo(() => MONTHS.map((label, i) => ({ value: i + 1, label })), []);
   const dayData = useMemo(
@@ -53,20 +49,17 @@ export default function BirthdayScreen({ onNext }) {
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
       >
         <View className={`items-center ${compact ? 'mt-1 mb-2' : 'mt-2 mb-3'}`}>
-            <View style={{ width: 112, height: 112, borderRadius: 30, backgroundColor: band, alignItems: 'center', justifyContent: 'center' }}>
-            <CalendarDays size={52} color="#f2470c" />
-            <View style={{ position: 'absolute', top: 10, left: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}>
-              <UserRound size={18} color="#fff" />
-            </View>
+          <View className="w-24 h-24 rounded-3xl bg-accent items-center justify-center">
+            <CalendarDays size={46} color={PRIMARY} />
           </View>
         </View>
         <Text
           className="font-extrabold text-ink text-center"
-          style={{ fontSize: 30, lineHeight: 36, transform: [{ rotate: '-2deg' }] }}
+          style={{ fontSize: 32, lineHeight: 38 }}
         >
           Enter your birth date
         </Text>
-        <Text className={`text-center text-[15px] text-muted-foreground mt-2 ${compact ? 'mb-3' : 'mb-5'}`}>Don&apos;t worry, we&apos;ll keep it private.</Text>
+        <Text className={`text-center text-[16px] text-muted-foreground mt-2 ${compact ? 'mb-3' : 'mb-5'}`}>Don&apos;t worry, we&apos;ll keep it private.</Text>
         <View style={{ height: WHEEL_ITEM_H * 5 }}>
           {/* Fixed selection band, like a native picker: bolted to the middle,
               never moves, never intercepts touches (no elevation + pointer
@@ -78,7 +71,7 @@ export default function BirthdayScreen({ onNext }) {
               height: WHEEL_ITEM_H, justifyContent: 'center',
             }}
           >
-            <View style={{ height: WHEEL_ITEM_H - 8, borderRadius: 14, backgroundColor: band }} />
+            <View className="bg-accent" style={{ height: WHEEL_ITEM_H - 8, borderRadius: 14 }} />
           </View>
           <View
             pointerEvents="none"
@@ -88,9 +81,9 @@ export default function BirthdayScreen({ onNext }) {
             }}
           >
             <View style={{ flex: 1.4 }} />
-            <View style={{ width: 1, height: 24, backgroundColor: hairline }} />
+            <View className="bg-border" style={{ width: 1, height: 24 }} />
             <View style={{ flex: 0.7 }} />
-            <View style={{ width: 1, height: 24, backgroundColor: hairline }} />
+            <View className="bg-border" style={{ width: 1, height: 24 }} />
             <View style={{ flex: 1 }} />
           </View>
           <View style={{ flexDirection: 'row', flex: 1 }}>
@@ -100,7 +93,7 @@ export default function BirthdayScreen({ onNext }) {
           </View>
         </View>
         {!valid && (
-          <Text className="text-center text-[13px] font-medium text-[#f2470c] mt-3">
+          <Text className="text-center text-[13px] font-medium text-primary mt-3">
             You must be at least 13 years old to use Caly AI.
           </Text>
         )}
@@ -111,3 +104,5 @@ export default function BirthdayScreen({ onNext }) {
     </View>
   );
 }
+
+export default memo(BirthdayScreen);

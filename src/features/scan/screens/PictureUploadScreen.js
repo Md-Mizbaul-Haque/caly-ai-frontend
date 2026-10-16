@@ -153,7 +153,6 @@ export default function PictureUploadScreen({
           const { items, placeholder } = await scanImage(uploadUri, {
             signal: ctrl.signal,
           });
-          console.log(uploadUri, ctrl.signal, items, placeholder);
           setPreviewUri(stableUri);
           // imageUri stays the stable preview reference; uploadUri is the
           // converted (shrunk JPEG) copy the result screen persists.

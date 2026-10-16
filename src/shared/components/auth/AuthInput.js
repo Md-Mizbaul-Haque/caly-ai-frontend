@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-export default function AuthInput({ value, onChangeText, placeholder, keyboardType, autoCapitalize = 'none', testID, noMargin, secureTextEntry, label, error }) {
+function AuthInput({ value, onChangeText, placeholder, keyboardType, autoCapitalize = 'none', testID, noMargin, secureTextEntry, label, error }) {
   return (
     <>
       {label ? <Label className="mb-1 text-foreground">{label}</Label> : null}
@@ -23,3 +24,5 @@ export default function AuthInput({ value, onChangeText, placeholder, keyboardTy
     </>
   );
 }
+
+export default memo(AuthInput);

@@ -20,6 +20,12 @@ export async function searchFoods(q, limit = 20) {
   return data.foods || [];
 }
 
+// Browse-by-category row: the server filters the catalog by category keywords.
+export async function searchFoodsByCategory(category, limit = 20) {
+  const data = await apiGet(`/api/foods/search?category=${encodeURIComponent(category)}&limit=${limit}`);
+  return data.foods || [];
+}
+
 export async function fetchFood(fdcId) {
   const data = await apiGet(`/api/foods/${fdcId}`);
   return data.food;

@@ -1,17 +1,16 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useTheme } from '../../theme/theme';
+import { INK } from '../../theme/colors';
 
 export const WHEEL_ITEM_H = 48;
 const SIDE_COUNT = 2;
 
-function tones(isDark) {
-  return {
-    selected: { color: isDark ? '#F5F5F5' : '#1A1A1A', fontWeight: '700', fontSize: 18, opacity: 1 },
-    near: { color: isDark ? '#A3A3A3' : '#8A8A8A', fontWeight: '500', fontSize: 15, opacity: 0.75 },
-    far: { color: isDark ? '#A3A3A3' : '#8A8A8A', fontWeight: '400', fontSize: 14, opacity: 0.35 },
-  };
-}
+// Theme is light-pinned (see theme.js): single static palette, no dark branch.
+const TONES = {
+  selected: { color: INK, fontWeight: '700', fontSize: 18, opacity: 1 },
+  near: { color: '#8A8A8A', fontWeight: '500', fontSize: 15, opacity: 0.75 },
+  far: { color: '#8A8A8A', fontWeight: '400', fontSize: 14, opacity: 0.35 },
+};
 
 // Memoized: re-renders only when THIS row's own props change, so a center
 // move reconciles 2 rows instead of the whole column and bold shows instantly.
@@ -40,8 +39,7 @@ const WheelRow = memo(function WheelRow({ label, tone, rowValue, onSelect, tones
 // snapToInterval — this component never moves the scroll in response to
 // the user's own gesture, so flicks can't be fought or double-committed.
 export default function WheelPicker({ data, value, onChange, testID, flex = 1 }) {
-  const { isDark } = useTheme();
-  const palette = useMemo(() => tones(isDark), [isDark]);
+  const palette = TONES;
   const ref = useRef(null);
   const indexByValue = useMemo(() => {
     const m = new Map();

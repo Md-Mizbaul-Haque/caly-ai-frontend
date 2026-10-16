@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useCompactAuth } from './useCompact';
 
-export default function OptionCard({ title, subtitle, selected, onPress, icon, testID, layout = 'horizontal', style }) {
+function OptionCard({ title, subtitle, selected, onPress, icon, testID, layout = 'horizontal', style }) {
   const isVertical = layout === 'vertical';
   // NOTE: Pressable `style` stays a plain object (see BottomCTA). A
   // function-form style merged with className is never called by React
@@ -18,7 +18,7 @@ export default function OptionCard({ title, subtitle, selected, onPress, icon, t
       accessibilityState={{ selected: !!selected }}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      className={`rounded-3xl ${isVertical ? 'flex-col items-center justify-center py-5 px-3' : `flex-row items-center ${compact ? 'p-3' : 'p-4'}`} ${selected ? 'bg-accent border-[#f2470c]' : 'bg-card border-border'}`}
+      className={`rounded-3xl ${isVertical ? 'flex-col items-center justify-center py-5 px-3' : `flex-row items-center ${compact ? 'p-3' : 'p-4'}`} ${selected ? 'bg-accent border-primary' : 'bg-card border-border'}`}
       style={[
         { opacity: pressed ? 0.75 : 1 },
         { borderWidth: 2, minHeight: isVertical ? 112 : undefined, flex: isVertical ? 1 : undefined },
@@ -39,3 +39,5 @@ export default function OptionCard({ title, subtitle, selected, onPress, icon, t
     </Pressable>
   );
 }
+
+export default memo(OptionCard);

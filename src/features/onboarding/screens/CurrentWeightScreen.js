@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Text } from 'react-native';
 import AuthScaffold from '../../../shared/components/auth/AuthScaffold';
 import UnitToggle from '../../../shared/components/auth/UnitToggle';
@@ -9,7 +9,7 @@ import { lbToKg, snapWeight, snapWeightKg } from '../../../shared/utils/nutritio
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-export default function CurrentWeightScreen({ onNext }) {
+function CurrentWeightScreen({ onNext }) {
   const { state, update, savePartial } = useOnboarding();
   const [busy, setBusy] = useState(false);
   const compact = useCompactAuth();
@@ -29,10 +29,21 @@ export default function CurrentWeightScreen({ onNext }) {
     weightUnit: v,
     weightKg: v === 'kg' ? snapWeight(state.weightKg, 'kg') : snapWeightKg(state.weightKg, 'lb'),
   }), [state.weightKg, update]);
+  const handleCta = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await savePartial({ weightKg: round1(unit === 'lb' ? lbToKg(shown) : shown) });
+      if (ok) onNext();
+    } finally {
+      setBusy(false);
+    }
+    // shown derives from state; listed via its inputs.
+  }, [busy, savePartial, unit, shown, onNext]);
   return (
     <AuthScaffold title="What is your current weight?" subtitle="This helps us calculate your daily calorie needs."
       ctaLabel={busy ? 'Saving…' : 'Next'} ctaDisabled={busy}
-      onCta={async () => { if (busy) return; setBusy(true); try { const ok = await savePartial({ weightKg: round1(unit === 'lb' ? lbToKg(shown) : shown) }); if (ok) onNext(); } finally { setBusy(false); } }}>
+      onCta={handleCta}>
       <UnitToggle options={['lb', 'kg']} value={unit} onChange={handleUnit} testID="weight-unit" compact={compact} />
       <Text className={`text-center font-extrabold text-ink ${compact ? 'text-5xl mb-5' : 'text-[64px] mb-8'}`}>{display}</Text>
       <RulerSlider min={slider.min} max={slider.max} step={slider.step} value={slider.value} testID="weight-ruler"
@@ -40,3 +51,5 @@ export default function CurrentWeightScreen({ onNext }) {
     </AuthScaffold>
   );
 }
+
+export default memo(CurrentWeightScreen);

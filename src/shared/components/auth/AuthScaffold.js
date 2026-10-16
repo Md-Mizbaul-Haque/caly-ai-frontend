@@ -1,14 +1,12 @@
+import { memo } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomCTA from './BottomCTA';
 import { useCompactAuth } from './useCompact';
-import { useTheme } from '../../theme/theme';
 
-export default function AuthScaffold({ title, titleColor, titleSize = 32, subtitle, ctaLabel, onCta, ctaDisabled, ctaBorderRadius = 999, bottomNote, children }) {
+function AuthScaffold({ title, titleColor, titleSize = 32, subtitle, ctaLabel, onCta, ctaDisabled, ctaBorderRadius = 999, bottomNote, children }) {
   const insets = useSafeAreaInsets();
   const compact = useCompactAuth();
-  const { isDark } = useTheme();
-  const resolvedTitleColor = titleColor ?? (isDark ? '#F5F5F5' : '#1A1A1A');
   // Bottom action area (CTA + switch link) is a normal flex footer above the
   // system nav: [scrollable content] -> [flexible space] -> [CTA] -> [note] ->
   // [insets.bottom + theme spacing] -> [system nav]. No absolute positioning.
@@ -19,6 +17,7 @@ export default function AuthScaffold({ title, titleColor, titleSize = 32, subtit
   // primary input stays visible without scrolling.
   // Back navigation is the OS default only (Android hardware back, iOS
   // swipe-back via the router stack) — no in-UI back button.
+  // Title defaults to the theme ink token; titleColor is an explicit override.
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
@@ -32,7 +31,7 @@ export default function AuthScaffold({ title, titleColor, titleSize = 32, subtit
           contentContainerStyle={{ paddingBottom: compact ? 8 : 16, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text className="font-extrabold" style={{ color: resolvedTitleColor, fontSize: titleSize, lineHeight: Math.round(titleSize * 1.2) }}>{title}</Text>
+          <Text className="font-extrabold text-ink" style={[titleColor ? { color: titleColor } : null, { fontSize: titleSize, lineHeight: Math.round(titleSize * 1.2) }]}>{title}</Text>
           {!!subtitle && <Text className="text-[16px] text-muted-foreground mt-2 mb-6">{subtitle}</Text>}
           <View className={`flex-1${subtitle ? '' : ' mt-8'}`}>{children}</View>
         </ScrollView>
@@ -47,3 +46,5 @@ export default function AuthScaffold({ title, titleColor, titleSize = 32, subtit
     </KeyboardAvoidingView>
   );
 }
+
+export default memo(AuthScaffold);

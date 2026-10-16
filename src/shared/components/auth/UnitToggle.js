@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { PRIMARY } from '../../theme/colors';
 
-export default function UnitToggle({ options, value, onChange, testID = 'unit-toggle', compact = false }) {
+function UnitToggle({ options, value, onChange, testID = 'unit-toggle', compact = false }) {
   // NOTE: Pressable `style` stays a plain object (see BottomCTA). A
   // function-form style merged with className is never called by React
   // Native, which silently dropped the pressed opacity and active shadow.
@@ -18,10 +19,10 @@ export default function UnitToggle({ options, value, onChange, testID = 'unit-to
             accessibilityState={{ selected: active }}
             onPressIn={() => setPressedKey(opt)}
             onPressOut={() => setPressedKey(null)}
-            className={`px-8 py-2 rounded-full ${active ? 'bg-[#f2470c]' : 'bg-transparent'}`}
+            className={`px-8 py-2 rounded-full ${active ? 'bg-primary' : 'bg-transparent'}`}
             style={[
               { opacity: pressedKey === opt ? 0.7 : 1 },
-              active ? { elevation: 2, shadowColor: '#f2470c', shadowOpacity: 0.25, shadowRadius: 4 } : null,
+              active ? { elevation: 2, shadowColor: PRIMARY, shadowOpacity: 0.25, shadowRadius: 4 } : null,
             ]}
           >
             <Text className={`text-[18px] ${active ? 'text-white font-medium' : 'text-muted-foreground'}`}>{opt}</Text>
@@ -31,3 +32,5 @@ export default function UnitToggle({ options, value, onChange, testID = 'unit-to
     </View>
   );
 }
+
+export default memo(UnitToggle);
