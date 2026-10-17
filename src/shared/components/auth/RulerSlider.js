@@ -16,6 +16,14 @@ const Tick = memo(function Tick({ major, label }) {
   );
 });
 
+// Frozen first-paint window for one range. `first` sits a half-viewport BEFORE
+// the selected tick because FlatList renders forward from initialScrollIndex
+// only — this guarantees the centered viewport is part of the initial region.
+function makeSeed(rangeKey, index, viewW) {
+  const n = Math.ceil(viewW / TICK_W) + 2;
+  return { rangeKey, index, first: Math.max(0, index - Math.ceil(n / 2)), n };
+}
+
 // Virtualized ruler with exact center math (single source of truth):
 //
 //   scroll offset → selected index → selected weight → displayed weight
@@ -40,6 +48,7 @@ function RulerSlider({ min, max, step, value, onChange, testID = 'ruler' }) {
     [min, max, step]
   );
   const safeValue = Math.min(max, Math.max(min, value ?? min));
+  const valueIndex = Math.min(count - 1, Math.max(0, Math.round((safeValue - min) / step)));
 
   // Measured viewport width (the list is inset by the screen padding, so the
   // window width must NOT be assumed). Falls back to the inset estimate for
@@ -50,6 +59,21 @@ function RulerSlider({ min, max, step, value, onChange, testID = 'ruler' }) {
     setViewW((prev) => (Math.abs(prev - w) < 0.5 ? prev : w));
   }, []);
   const spacerW = (viewW - TICK_W) / 2;
+
+  // First-paint window + initial scroll offset, frozen per range so the
+  // memoized FlatList skips re-rendering while the user drags (a changing
+  // initialScrollIndex/contentOffset prop would defeat PureComponent).
+  //
+  // Without this, VirtualizedList opens its render region at index 0 and only
+  // re-fetches the window after the alignment scroll lands — the graph visibly
+  // fills in late on landing. initialScrollIndex seeds the region around the
+  // value; contentOffset places the list at the exact centered offset on frame
+  // one AND makes VirtualizedList skip its own scrollToIndex, which would align
+  // the tick's LEFT edge instead of its center (off by spacerW).
+  const rangeKey = `${min}|${step}`;
+  const [seed, setSeed] = useState(() => makeSeed(rangeKey, valueIndex, viewW));
+  if (seed.rangeKey !== rangeKey) setSeed(makeSeed(rangeKey, valueIndex, viewW));
+  const initialOffset = useMemo(() => ({ x: seed.index * TICK_W, y: 0 }), [seed.index]);
 
   const onChangeRef = useRef(onChange);
   // Latest prop mirror for the equality guard in commitIndex. Synced in an
@@ -73,41 +97,50 @@ function RulerSlider({ min, max, step, value, onChange, testID = 'ruler' }) {
   const readyRef = useRef(false);
   const prevRangeRef = useRef(`${min}|${step}`);
 
-  function commitIndex(i) {
+  // Stable identities (deps change only with the range) so the FlatList
+  // PureComponent bails out on value-only re-renders during a drag — the whole
+  // list subtree is skipped and only the display number updates.
+  const commitIndex = useCallback((i) => {
     const clamped = Math.min(count - 1, Math.max(0, i));
     lastIndexRef.current = clamped;
     // clamped is already an exact grid index — no snapping helper needed.
     const v = round1(min + clamped * step);
     // Skip repeats: the positioning scroll's own event re-reports the
     // current value, which must not trigger another state update.
-    if (v === valueRef.current) {
-      lastCommittedKey.current = `${min}|${step}|${v}`;
-      return;
-    }
     lastCommittedKey.current = `${min}|${step}|${v}`;
-    onChangeRef.current(v);
-  }
+    if (v !== valueRef.current) onChangeRef.current(v);
+  }, [count, min, step]);
 
-  // Release handler: commit the landed index. The native snap (snapToInterval
-  // lands exactly on tick centers by construction) animates the final ≤6px
-  // glide on its own — no programmatic scroll here, so the release feels
-  // smooth instead of jump-cut. Momentum-end fires after the glide with the
-  // exact offset; drag-end (no momentum) commits the release offset, which
-  // rounds to the same grid stop the snap glides to.
-  function settle(offsetX) {
+  const settle = useCallback((offsetX) => {
     if (!readyRef.current) return;
     commitIndex(Math.round(offsetX / TICK_W));
-  }
+  }, [commitIndex]);
+
+  const onScroll = useCallback((e) => {
+    if (!readyRef.current) return;
+    const i = Math.min(
+      count - 1,
+      Math.max(0, Math.round(e.nativeEvent.contentOffset.x / TICK_W))
+    );
+    if (i !== lastIndexRef.current) commitIndex(i);
+  }, [count, commitIndex]);
+
+  // Release: commit the landed index. The native snap (snapToInterval lands
+  // exactly on tick centers by construction) animates the final ≤6px glide on
+  // its own — no programmatic scroll here, so the release feels smooth instead
+  // of jump-cut.
+  const onMomentumScrollEnd = useCallback((e) => settle(e.nativeEvent.contentOffset.x), [settle]);
+  const onScrollEndDrag = useCallback((e) => settle(e.nativeEvent.contentOffset.x), [settle]);
 
   // Layout effect (pre-paint): positions the list correctly on the very first
   // frame — no visible jump and no follow-up correction commits.
   useLayoutEffect(() => {
-    const rangeKey = `${min}|${step}`;
-    if (prevRangeRef.current !== rangeKey) {
-      prevRangeRef.current = rangeKey;
+    const rk = `${min}|${step}`;
+    if (prevRangeRef.current !== rk) {
+      prevRangeRef.current = rk;
       readyRef.current = false;
     }
-    const key = `${rangeKey}|${safeValue}`;
+    const key = `${rk}|${safeValue}`;
     if (lastCommittedKey.current !== key) {
       lastCommittedKey.current = key;
       const idx = Math.min(count - 1, Math.max(0, Math.round((safeValue - min) / step)));
@@ -154,20 +187,15 @@ function RulerSlider({ min, max, step, value, onChange, testID = 'ruler' }) {
         nestedScrollEnabled
         scrollEventThrottle={16}
         windowSize={5}
-        initialNumToRender={31}
+        initialScrollIndex={seed.first}
+        initialNumToRender={seed.n}
+        contentOffset={initialOffset}
         maxToRenderPerBatch={60}
         updateCellsBatchingPeriod={8}
         removeClippedSubviews
-        onScroll={(e) => {
-          if (!readyRef.current) return;
-          const i = Math.min(
-            count - 1,
-            Math.max(0, Math.round(e.nativeEvent.contentOffset.x / TICK_W))
-          );
-          if (i !== lastIndexRef.current) commitIndex(i);
-        }}
-        onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.x)}
-        onScrollEndDrag={(e) => settle(e.nativeEvent.contentOffset.x)}
+        onScroll={onScroll}
+        onMomentumScrollEnd={onMomentumScrollEnd}
+        onScrollEndDrag={onScrollEndDrag}
       />
     </View>
   );
