@@ -261,6 +261,10 @@ export default function TabsLayout() {
     // Unverified account: weights routes are verified-only (see unverifiedRef).
     if (!user || user.emailVerified === false) return;
     const startedAt = Date.now();
+    // Session kcal refresh runs CONCURRENTLY with the weights+goal GETs —
+    // awaiting it strictly after used to add a serial third roundtrip to
+    // every hydration/pull-to-refresh/focus pass.
+    const meJob = refreshUserRef.current ? refreshUserRef.current().catch(() => {}) : Promise.resolve();
     try {
       const [w, g] = await Promise.all([fetchWeights(), fetchWeightGoal()]);
       // A weigh-in/delete landed while this GET was in flight: its handler
@@ -277,15 +281,9 @@ export default function TabsLayout() {
       // Offline / 403 (unverified) / server errors: keep cached data as-is
       // instead of an unhandled rejection that leaves state stale.
     }
-    // Session kcal in the same tick: pull-to-refresh, focus visits, and the
-    // hydration path all funnel through here, so Home's target revalidates
-    // against the database together with weights. Independent try/catch so a
-    // /me failure never blocks the weights paint.
-    try {
-      await refreshUserRef.current?.();
-    } catch {
-      // keep weights/goal; session keeps its last-known user
-    }
+    // Still awaited so pull-to-refresh settles fully; already caught above
+    // so a /me failure never fails this function.
+    await meJob;
   }, [user, userKey]);
 
   // Background refresher for focus effects: skips when a fetch landed
@@ -457,17 +455,22 @@ export default function TabsLayout() {
               }
             })
           : Promise.resolve();
-        const weightsJob =
-          weightsStale || weightGoalStale
-            ? fetchWeightsAndGoal().catch(() => {})
-            : Promise.resolve().then(() => {
-                if (weightsResult) {
-                  // Fresh cache and no fetch: seed the guard so the first focus
-                  // doesn't duplicate a request hydration just proved unnecessary.
-                  weightsRefreshedAt.current = weightsResult.fetchedAt;
-                }
-              });
-        await Promise.all([weekJob, weightsJob]);
+        if (weightsStale || weightGoalStale) {
+          // Background revalidation: runs to completion but NO LONGER gates
+          // first paint (see below). Its own catch keeps the floating
+          // promise safe; a 5xx that lands after the user moved on is fine.
+          fetchWeightsAndGoal().catch(() => {});
+        } else if (weightsResult) {
+          // Fresh cache and no fetch: seed the guard so the first focus
+          // doesn't duplicate a request hydration just proved unnecessary.
+          weightsRefreshedAt.current = weightsResult.fetchedAt;
+        }
+        // First paint gates on the WEEK only: the rings depend on meals (the
+        // goal already comes from the login/bootstrap user), while weights
+        // + goal + /me revalidate silently in the background. Awaiting the
+        // weightsJob here used to hold the skeleton for two extra roundtrips
+        // on accounts with nothing cached (fresh login).
+        await weekJob;
         if (alive && hydratedForRef.current?.key === key) setLoading(false);
         // Guarantee: any unexpected throw above (e.g. corrupt cache date
         // handling) must still release the spinner so Home can never hang.
