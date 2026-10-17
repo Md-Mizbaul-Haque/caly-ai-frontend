@@ -168,7 +168,13 @@ export function AuthSessionProvider({ children }) {
       if (e.needsVerification) {
         setStageEmail(email);
         router.replace('/verify');
-        toastSuccess('Check email', 'Verify your email to continue');
+        // The 403 also resent a code. If that send failed, say so instead of
+        // pointing the user at an inbox that is going to stay empty.
+        if (e.data && e.data.emailSent === false) {
+          toastError('Email not sent', 'We could not send the code — tap "I didn\'t get a code" to retry');
+        } else {
+          toastSuccess('Check email', 'Verify your email to continue');
+        }
       } else {
         toastError('Login failed', e.message);
       }

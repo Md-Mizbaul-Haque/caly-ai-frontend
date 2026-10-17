@@ -78,7 +78,12 @@ describe('onboarding back-stack (device back button)', () => {
         'utf8'
       );
       if (step === 'gender') {
-        assert.match(src, /onBack=\{\(\) => router\.replace\('\/welcome'\)\}/, 'first step must exit to /welcome via replace');
+        // Exit contract: back from the first step leaves via replace to
+        // /welcome — never back()/push into a step that doesn't exist. The
+        // route may sign the user out first (the guard would bounce /welcome
+        // straight back into the wizard for an authed account); this asserts
+        // the exit mechanism only.
+        assert.match(src, /router\.replace\('\/welcome'\)/, 'first step must exit to /welcome via replace');
         assert.match(screen, /onBack/, `${screenFile} must accept onBack`);
       } else {
         assert.match(src, /onBack=\{\(\) => router\.back\(\)\}/, `${file} must pop one step via router.back()`);

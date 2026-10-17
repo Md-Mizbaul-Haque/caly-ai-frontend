@@ -133,9 +133,24 @@ async function request(method, path, { headers = {}, body } = {}) {
         }
         throw err;
       }
-      // Guarded like parseError: a 200 with non-JSON (proxy error page) must
-      // not surface as a raw SyntaxError.
-      return res.json().catch(() => ({}));
+      // A 2xx that isn't JSON is a real error ONLY hidden by content-type:
+      // the classic case is the app pointed at the Metro dev server, which
+      // answers its own HTML 200 for any path. Returning {} for that made a
+      // failed login toast "Signed in" with no token and no navigation.
+      // Parse explicitly so it surfaces with something the screen can show.
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        const err = new Error(
+          `The server answered in an unexpected format — check that EXPO_PUBLIC_API_URL points at the API, not the dev server. (Ref #${id})`
+        );
+        err.status = res.status;
+        err.code = 'NON_JSON';
+        err.reportId = id;
+        err.data = { raw: text.slice(0, 160) };
+        throw err;
+      }
     } catch (e) {
       clearTimeout(timer);
       const retry5xx = (method === 'GET' || retryablePut || retryablePost) && e?.status >= 500;

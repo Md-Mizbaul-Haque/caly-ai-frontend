@@ -88,7 +88,10 @@ export async function scanImage(imageUri, { signal } = {}) {
     }
     const httpErr = new Error(errorMessage);
     httpErr.status = res.status;
-    httpErr.code = res.status === 401 ? 'UNAUTHORIZED' : 'HTTP_4xx';
+    // Mirror lookupBarcode: a 5xx is a server blip (retryable), a 4xx is a
+    // fix-action. Hardcoding HTTP_4xx here hid the Retry button from every
+    // failed scan — the dialog could only ever offer Cancel.
+    httpErr.code = res.status === 401 ? 'UNAUTHORIZED' : res.status >= 500 ? 'HTTP_5xx' : 'HTTP_4xx';
     httpErr.data = data;
     throw httpErr;
   }
