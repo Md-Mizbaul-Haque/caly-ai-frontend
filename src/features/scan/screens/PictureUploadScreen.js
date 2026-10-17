@@ -45,6 +45,9 @@ export default function PictureUploadScreen({
   onCancel,
   onResult,
   cameraPermission: cameraPermissionProp,
+  // Which MODES key to start in ('scan' default); lets Barcode/Scan Meal
+  // shortcuts open the camera directly in the right mode.
+  initialMode,
 }) {
   const [hookPermission, requestPermission] = useCameraPermissions();
   // Parent may pass an already-loaded permission (tabs layout pre-asks on
@@ -54,7 +57,9 @@ export default function PictureUploadScreen({
   const close = onClose ?? onCancel ?? (() => {});
   const insets = useSafeAreaInsets();
   const [flashOn, setFlashOn] = useState(false);
-  const [mode, setMode] = useState("scan");
+  const [mode, setMode] = useState(
+    MODES.some((m) => m.key === initialMode) ? initialMode : "scan"
+  );
   const [busy, setBusy] = useState(false); // shutter / upload in progress
   const [scanning, setScanning] = useState(false); // AI analyzing
   const [previewUri, setPreviewUri] = useState(null);

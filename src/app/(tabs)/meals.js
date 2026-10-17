@@ -8,7 +8,7 @@ export default function MealsRoute() {
       meals={s.meals || []}
       loading={s.loading}
       onSave={s.handleSave}
-      onOpenQuickLog={() => s.setSheetOpen(true)}
+      onOpenScan={(mode) => s.openScan(mode)}
     />
   );
 }

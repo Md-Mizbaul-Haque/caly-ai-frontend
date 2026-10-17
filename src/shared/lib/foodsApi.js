@@ -44,8 +44,3 @@ export async function fetchCategories() {
   const data = await apiGet('/api/foods/categories');
   return data.categories || [];
 }
-
-export async function fetchMyFoods(limit = 10) {
-  const data = await apiGet(`/api/meals/my-foods?limit=${limit}`);
-  return data.foods || [];
-}

@@ -298,10 +298,19 @@ describe('cold-start + race hardening', () => {
     assert.match(session, /\/health/, 'session bootstrap must fire a warm-up ping so register/login hits a warm server');
   });
 
-  it('my-foods view is a flag, not a fake query', () => {
+  it('favorites view is a flag, not a fake query', () => {
     const src = read('features/meals/screens/MealsScreen.js');
-    assert.match(src, /myFoodsView/, 'my-foods needs its own view flag');
-    assert.doesNotMatch(src, /setQuery\('My foods'\)/, 'fake query text let the debounced search clobber the list');
+    assert.match(src, /favoritesView/, 'favorites needs its own view flag');
+    assert.doesNotMatch(src, /setQuery\('Favorites'\)/, 'fake query text let the debounced search clobber the list');
+    assert.match(src, /fetchFavorites/, 'the Favorites button must list the user\'s hearted foods');
+  });
+
+  it('Barcode and Scan Meal open the camera directly in the right mode', () => {
+    const src = read('features/meals/screens/MealsScreen.js');
+    assert.match(src, /onOpenScan\('barcode'\)/, 'Barcode must open the camera in barcode mode');
+    assert.match(src, /onOpenScan\('scan'\)/, 'Scan Meal must open the camera in scan mode');
+    const camera = read('features/scan/screens/PictureUploadScreen.js');
+    assert.match(camera, /initialMode/, 'camera must accept an initial mode');
   });
 
   it('sheet dismissal is blocked mid-save', () => {

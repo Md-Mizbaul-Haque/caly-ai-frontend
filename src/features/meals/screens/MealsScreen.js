@@ -10,7 +10,8 @@ import CachedImage from '../../../shared/components/image/CachedImage';
 import Chip from '../../../shared/components/ui/Chip';
 import PrimaryButton from '../../../shared/components/ui/Button';
 import FoodDetailSheet from '../components/FoodDetailSheet';
-import { searchFoods, searchFoodsByCategory, fetchSuggestions, fetchMyFoods, getCachedSuggestions } from '../../../shared/lib/foodsApi';
+import { searchFoods, searchFoodsByCategory, fetchSuggestions, getCachedSuggestions } from '../../../shared/lib/foodsApi';
+import { fetchFavorites } from '../../../shared/lib/favoritesApi';
 import { recentFoods, defaultMealType } from '../../../shared/utils/foodScale';
 import { useTheme } from '../../../shared/theme/theme';
 
@@ -165,7 +166,7 @@ function MealsFirstLoadSkeleton() {
   );
 }
 
-export default function MealsScreen({ meals = [], loading = false, onSave, onOpenQuickLog }) {
+export default function MealsScreen({ meals = [], loading = false, onSave, onOpenScan }) {
   const [mealType, setMealType] = useState(() => defaultMealType(new Date().getHours()));
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -186,10 +187,11 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
   // Browse-by-category view. Separate from mealType: a category is NOT a meal
   // type (the server rejects 'Fruits' on POST /api/meals and on suggestions).
   const [categoryFilter, setCategoryFilter] = useState(null);
-  // My-foods browse view. Its own flag instead of faking a query ("My foods"
-  // as text made the debounced text search fire and clobber the list).
-  const [myFoodsView, setMyFoodsView] = useState(false);
+  // Favorites browse view. Its own flag instead of faking a query (query text
+  // would make the debounced text search fire and clobber the list).
+  const [favoritesView, setFavoritesView] = useState(false);
   const requestRef = useRef(0);
+  const scrollRef = useRef(null);
 
   const trimmed = query.trim();
   const showResults = trimmed.length >= 2;
@@ -286,11 +288,11 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
       // One-char text wipes every browse view, or the empty state would
       // claim "No foods found in this category" over cleared results.
       setCategoryFilter(null);
-      setMyFoodsView(false);
+      setFavoritesView(false);
     } else {
-      // Typing a real query leaves category/my-foods browse.
+      // Typing a real query leaves category/favorites browse.
       setCategoryFilter(null);
-      setMyFoodsView(false);
+      setFavoritesView(false);
       setSearching(true);
     }
   }
@@ -315,20 +317,20 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
     return () => clearTimeout(timer);
   }, [trimmed, showResults]);
 
-  async function handleMyFoods() {
+  async function handleFavorites() {
     const id = ++requestRef.current; // cancels any in-flight text/category request
     try {
       setSearching(true);
-      setMyFoodsView(true);
+      setFavoritesView(true);
       setCategoryFilter(null);
       setQuery('');
       setSearchError(null);
-      const mine = await fetchMyFoods(10);
+      const list = await fetchFavorites();
       if (requestRef.current !== id) return;
-      setResults(mine);
+      setResults(list);
     } catch (e) {
       if (requestRef.current !== id) return;
-      setSearchError(e.message || 'Could not load your foods.');
+      setSearchError(e.message || 'Could not load your favorites.');
     } finally {
       if (requestRef.current === id) setSearching(false);
     }
@@ -367,7 +369,7 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView className="flex-1 px-4 pt-12" showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} className="flex-1 px-4 pt-12" showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
          <View className="flex-row items-center mb-1">
            <View>
              <Text className="text-2xl font-bold text-ink">Log food</Text>
@@ -400,25 +402,25 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
         </View>
 
         <View className="flex-row mb-1" style={{ gap: 8 }}>
-          <QuickAction Icon={Clock} label="Recent" onPress={() => handleQueryChange('')} />
-          <QuickAction Icon={Heart} label="MyFoods" onPress={handleMyFoods} />
-          <QuickAction Icon={ScanBarcode} label="Barcode" onPress={onOpenQuickLog} />
-          <QuickAction Icon={Camera} label="Scan Meal" onPress={onOpenQuickLog} />
+          <QuickAction Icon={Clock} label="Recent" onPress={() => { handleQueryChange(''); scrollRef.current?.scrollTo({ y: 0, animated: true }); }} />
+          <QuickAction Icon={Heart} label="Favorites" onPress={handleFavorites} />
+          <QuickAction Icon={ScanBarcode} label="Barcode" onPress={() => onOpenScan('barcode')} />
+          <QuickAction Icon={Camera} label="Scan Meal" onPress={() => onOpenScan('scan')} />
         </View>
 
-        {showResults || categoryFilter || myFoodsView ? (
+        {showResults || categoryFilter || favoritesView ? (
           <View className="mt-4">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-base font-bold text-ink">
-                {myFoodsView ? 'My foods' : categoryFilter ? `Browse ${categoryFilter}` : `Results for “${trimmed}”`}
+                {favoritesView ? 'Favorites' : categoryFilter ? `Browse ${categoryFilter}` : `Results for “${trimmed}”`}
               </Text>
-              {categoryFilter || myFoodsView ? (
+              {categoryFilter || favoritesView ? (
                 <Pressable
                   onPress={() => {
                     if (categoryFilter) {
                       openCategory(categoryFilter);
                     } else {
-                      setMyFoodsView(false);
+                      setFavoritesView(false);
                       setResults([]);
                     }
                   }}
@@ -433,13 +435,13 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
             {searchError ? <Text className="text-red-500 mb-2">{searchError}</Text> : null}
             {!searching && !searchError && results.length === 0 && (
               <Text className="text-muted-foreground text-center my-4">
-                {myFoodsView ? 'No foods logged yet.' : categoryFilter ? 'No foods found in this category.' : 'No foods found.'}
+                {favoritesView ? 'No favorites yet — tap the heart on a food to save it here.' : categoryFilter ? 'No foods found in this category.' : 'No foods found.'}
               </Text>
             )}
 {results.map((item) => (
                 <Pressable
-                  key={String(item.fdcId ?? item.id ?? item.name)}
-                  onPress={() => setSheet({ food: item, mode: 'grams' })}
+                  key={String(item.fdcId ?? item.id ?? item._id ?? item.name)}
+                  onPress={() => setSheet({ food: item, mode: favoritesView ? 'servings' : 'grams' })}
                   className="flex-row items-center bg-card border border-border rounded-2xl px-3 py-2.5 mb-2"
                 >
                   <View className="w-10 h-10 rounded-2xl bg-muted items-center justify-center mr-3">
@@ -451,7 +453,9 @@ export default function MealsScreen({ meals = [], loading = false, onSave, onOpe
                  </View>
                  <View className="flex-1">
                    <Text className="font-bold text-ink" numberOfLines={1}>{item.name}</Text>
-                   <Text className="text-xs text-muted-foreground" numberOfLines={1}>{Math.round(item.kcal)} kcal /100g</Text>
+                   <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                     {favoritesView ? `${Math.round(item.kcal)} kcal per saved amount` : `${Math.round(item.kcal)} kcal /100g`}
+                   </Text>
                  </View>
                  <Text className="font-bold text-primary">+</Text>
                </Pressable>

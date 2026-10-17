@@ -48,7 +48,11 @@ export default function TabsLayout() {
    const userKey = user ? (user._id || user.id || user.email) : null;
    const [sheetOpen, setSheetOpen] = useState(false);
    const [navHeight, setNavHeight] = useState(0);
-   const [showScan, setShowScan] = useState(false);
+   // Camera overlay mode: null = closed, otherwise 'scan' | 'barcode' | ...
+   // (same keys as PictureUploadScreen's MODES). Lets screens open the camera
+   // directly in the right mode instead of going through QuickLogSheet.
+   const [scanMode, setScanMode] = useState(null);
+   const openScan = useCallback((mode = 'scan') => setScanMode(mode), []);
    const [scanResult, setScanResult] = useState(null);
    const [meals, setMeals] = useState([]); // visible calendar week (dashboard view)
    // Per-week cache so week navigation preserves progress: weekId -> { meals, fetchedAt }.
@@ -635,16 +639,17 @@ export default function TabsLayout() {
       refreshWeights: fetchWeightsAndGoal,
       refreshWeightsIfStale,
       refreshUser: refreshUserStable,
-     setSheetOpen,
-     setLogWeightOpen,
-     deleteMeal: handleMealDeleted,
-     handleSave,
-     handleWeightSave,
-     handleDeleteWeight,
+      setSheetOpen,
+      setLogWeightOpen,
+      deleteMeal: handleMealDeleted,
+      handleSave,
+      handleWeightSave,
+      handleDeleteWeight,
+      openScan,
     }), [
       progressCache, goal, user, displayLoading, error, meals, rangeMeals, weights, weightGoal,
        selectedDate, setSelectedDate, navHeight, timeZone, loadWeek, loadRangeMeals, fetchWeightsAndGoal, refreshWeightsIfStale,
-      refreshUserStable, handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight,
+      refreshUserStable, handleMealDeleted, handleSave, handleWeightSave, handleDeleteWeight, openScan,
     ]);
 
   // Branded splash stays at least SPLASH_MIN_MS so startup never flashes,
@@ -677,13 +682,13 @@ export default function TabsLayout() {
   // BackHandler, WeightLogSheet is a Modal (onRequestClose), and
   // QuickLogSheet owns its own.
   useEffect(() => {
-    if (!showScan) return;
+    if (!scanMode) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setShowScan(false);
+      setScanMode(null);
       return true;
     });
     return () => sub.remove();
-  }, [showScan]);
+  }, [scanMode]);
 
   // Render the layout
   return (
@@ -707,7 +712,7 @@ export default function TabsLayout() {
             }}
             onScan={() => {
               setSheetOpen(false);
-              setShowScan(true);
+              openScan('scan');
             }}
             onLogWeight={() => {
               setSheetOpen(false);
@@ -715,19 +720,20 @@ export default function TabsLayout() {
             }}
           />
         )}
-        {showScan && (
+        {scanMode && (
           <View className="absolute inset-0" style={{ zIndex: 50 }}>
             <PictureUploadScreen
-              onClose={() => setShowScan(false)}
+              initialMode={scanMode}
+              onClose={() => setScanMode(null)}
               cameraPermission={cameraPermission}
               onResult={(result) => {
                 setScanResult(result);
-                setShowScan(false);
+                setScanMode(null);
               }}
             />
           </View>
         )}
-        {!showScan && scanResult && (
+        {!scanMode && scanResult && (
           <View className="absolute inset-0" style={{ zIndex: 50 }}>
             <ScanResultScreen
               result={scanResult}
