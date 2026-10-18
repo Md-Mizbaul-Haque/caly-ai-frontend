@@ -9,7 +9,9 @@ Expo (React Native) mobile app for Caly AI: snap or log food, track calories/mac
 - Manual food logging + photo meals
 - AI food scan (camera / library / barcode / label) with editable results
 - Weight chart (90D / 6M / 1Y / ALL), streaks, daily-average calories
-- Daily calorie goal editor (500–10000 kcal)
+- Weight Tracker wizard (target weight + pace + activity) that recomputes the daily calorie plan
+- Favorites and "Find Recipes" (catalog-backed suggestions) with one-tap re-logging
+- Export My Data to CSV, dark mode, Share, and an in-app Help / support form
 - Optimistic creates with rollback; backend errors surface as toasts
 
 ## Stack
@@ -57,7 +59,8 @@ See `.env.example`.
 - **Log food**: manual entry with macros; photos attach as `imageUrl` and render in the meal row.
 - **Scan**: camera / barcode / food-label / library → editable AI items or product lookup → save as meal. Without a backend vision key you get a clearly labeled placeholder estimate.
 - **Progress**: weight chart (90D/6M/1Y/ALL), streaks, daily-average calories, retry on error, delete latest weight.
-- **Profile / More**: daily goal editor (500–10000, persisted via `PUT /api/auth/profile`), settings, help, and related screens.
+- **Favorites / Recipes**: save foods with the heart while logging; re-log from Favorites or pick catalog suggestions per meal type in Find Recipes.
+- **Profile / More**: Weight Tracker (target weight + pace + activity → the server recomputes the daily calorie goal), Favorites, Find Recipes, Export My Data (CSV), What's New, Help/support, and Share. The profile never writes a calorie goal directly — the plan owns it.
 
 Backend errors surface as toasts; optimistic creates roll back on failure.
 
@@ -95,9 +98,9 @@ Investigate a bug: add `await page.screenshot({ path: 'e2e/bug-xyz.png', fullPag
 
 ## Structure
 
-- `src/app/` — Expo Router routes (screens). `src/app/(tabs)/_layout.js` is the tab shell + progress cache; `src/app/(tabs)/dashboard.js|history.js|log.js|more.js` are tabs.
+- `src/app/` — Expo Router routes (screens). `src/app/(tabs)/_layout.js` is the tab shell + progress cache; `src/app/(tabs)/dashboard.js|history.js|meals.js|more.js` are tabs. Standalone screens (`favorites.js`, `find-recipes.js`, `weight-tracker.js`, `help.js`, `whats-new.js`, …) sit alongside.
 - `src/features/` — feature code: `auth/` (session), `dashboard/`, `meals/`, `scan/` (camera + result screens), `progress/`, `onboarding/`, `more/`, `tabs/shell.js`.
-- `src/shared/` — reusable code: `components/` (UI primitives, `BottomNav`, `QuickLogSheet`, `WeightChart`, `WeightLogSheet`), `lib/` (`authApi,mealsApi,weightsApi,scanApi,tokenStore,appCache,api.js`), `utils/` (`totals,format,toast`), `theme/tokens.js`.
+- `src/shared/` — reusable code: `components/` (UI primitives, `BottomNav`, `QuickLogSheet`, `WeightChart`, `WeightLogSheet`), `lib/` (`authApi,mealsApi,weightsApi,foodsApi,favoritesApi,scanApi,tokenStore,appCache,exportCsv,api.js`), `utils/` (`totals,format,nutrition,streak,mealDates,toast,…`), `theme/colors.js,theme.js`.
 - `assets/`, `app.json`, `eas.json` — app icon/splash, Expo config, EAS build profiles.
 - `docs/` — specs and plans.
 
